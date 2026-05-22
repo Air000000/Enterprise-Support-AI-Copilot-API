@@ -6,6 +6,10 @@ from contextlib import asynccontextmanager
 from sqlmodel import SQLModel, Field as SQLField, Session, create_engine, select
 from pathlib import Path
 
+import os
+
+from dotenv import load_dotenv
+from openai import OpenAI
 
 """ 
 连接 SQLite 数据库
@@ -38,6 +42,20 @@ async def lifespan(app: FastAPI):
     create_db_and_tables()
     yield   # yield 前面的代码：应用启动时执行。后面的代码：应用关闭时执行。
 
+
+load_dotenv()
+
+DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY")
+DASHSCOPE_BASE_URL = os.getenv(
+    "DASHSCOPE_BASE_URL",
+    "https://dashscope.aliyuncs.com/compatible-mode/v1",
+)
+DASHSCOPE_MODEL = os.getenv("DASHSCOPE_MODEL", "qwen3.5-plus")
+
+llm_client = OpenAI(
+    api_key=DASHSCOPE_API_KEY,
+    base_url=DASHSCOPE_BASE_URL,
+)
 
 
 app = FastAPI(title="FastAPI Todo API", lifespan= lifespan) # 把 lifespan 传给 FastAPI 实例，应用启动时自动调用 create_db_and_tables() 来创建数据库表格。
@@ -186,3 +204,40 @@ def delete_todo(todo_id: int):
         session.commit()
 
         return {"message": "Todo deleted"}
+    
+@app.post("/ai/chat")
+def ai_chat(request: ChatRequest):
+    if not DASHSCOPE_API_KEY:
+        raise HTTPException(
+            status_code=500,
+            detail="DASHSCOPE_API_KEY is not configured",
+        )
+
+    try:
+        completion = llm_client.chat.completions.create(
+            model=DASHSCOPE_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful programming tutor.",
+                },
+                {
+                    "role": "user",
+                    "content": request.message,
+                },
+            ],
+        )
+
+        assistant_message = completion.choices[0].message.content
+
+        return {
+            "user_message": request.message,
+            "assistant_message": assistant_message,
+            "model": DASHSCOPE_MODEL,
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"LLM API error: {str(e)}",
+        )

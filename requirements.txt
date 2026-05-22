@@ -2,3 +2,5 @@ fastapi
 uvicorn
 pydantic
 sqlmodel
+openai
+python-dotenv
