@@ -13,6 +13,7 @@ This project is a simple Todo REST API built with FastAPI. It supports creating,
 - HTTP status codes
 - Swagger UI documentation
 - Mock AI chat endpoint
+- AI-generated todos with due time extraction
 
 ## Tech Stack
 
@@ -276,7 +277,8 @@ Example response:
     {
       "id": 1,
       "title": "学习 FastAPI",
-      "completed": false
+      "completed": false,
+      "due_time": "明天上午九点"
     }
   ]
 }
