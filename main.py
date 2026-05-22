@@ -11,6 +11,8 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 
+import json
+
 """ 
 连接 SQLite 数据库
 """
@@ -43,14 +45,14 @@ async def lifespan(app: FastAPI):
     yield   # yield 前面的代码：应用启动时执行。后面的代码：应用关闭时执行。
 
 
-load_dotenv()
+load_dotenv()   # 从 .env 文件加载环境变量
 
-DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY")
+DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY") 
 DASHSCOPE_BASE_URL = os.getenv(
     "DASHSCOPE_BASE_URL",
     "https://dashscope.aliyuncs.com/compatible-mode/v1",
-)
-DASHSCOPE_MODEL = os.getenv("DASHSCOPE_MODEL", "qwen3.5-plus")
+)   
+DASHSCOPE_MODEL = os.getenv("DASHSCOPE_MODEL", "qwen3.5-plus")  
 
 llm_client = OpenAI(
     api_key=DASHSCOPE_API_KEY,
@@ -84,19 +86,56 @@ class TodoUpdate(BaseModel):
     title: Optional[str] = PydanticField(default=None, min_length=1, max_length=100)
     completed: Optional[bool] = None
 
+# 从数据库中查询出来的 Todo 记录，返回给用户的响应格式
 class TodoResponse(BaseModel):
     id: int
     title: str
     completed: bool
 
+# 用户输入的一段消息，要求 AI 模型原样重复输出
 class EchoRequest(BaseModel):
     message: str = PydanticField(..., min_length=1, max_length=200)
     repeat: int = PydanticField(1, ge=1, le=5)
 
-
+# 用户输入的一段消息，发送给 AI 模型进行对话
 class ChatRequest(BaseModel):
     message: str = PydanticField(..., min_length=1, max_length=500)
 
+#　用户输入的一段自然语言
+class TaskExtractRequest(BaseModel):   
+    text: str = PydanticField(..., min_length=1, max_length=1000)
+
+# 从用户输入的自然语言中提取出的任务信息
+class ExtractedTask(BaseModel):
+    title: str
+    time: Optional[str] = None
+
+# 从用户输入的自然语言中提取出的任务信息列表
+class TaskExtractResponse(BaseModel):
+    tasks: list[ExtractedTask]
+
+# 从用户输入的自然语言中提取出任务信息，并在数据库中创建对应的 Todo 记录，返回给用户
+class AICreateTodosResponse(BaseModel):
+    extracted_tasks: list[ExtractedTask]    
+    created_todos: list[TodoResponse]
+
+'''
+从 LLM 返回的文本中提取出 JSON 数据，进行清洗和解析
+'''
+def parse_json_from_llm(text: str) -> dict:
+
+    cleaned = text.strip()  # 去掉文本前后的空白字符
+
+    if cleaned.startswith("```json"):   # 如果文本以 ```json 开头，去掉这个前缀
+        cleaned = cleaned.removeprefix("```json").strip()
+
+    if cleaned.startswith("```"):   # 如果文本以 ``` 开头，去掉这个前缀
+        cleaned = cleaned.removeprefix("```").strip()
+
+    if cleaned.endswith("```"): # 如果文本以 ``` 结尾，去掉这个后缀
+        cleaned = cleaned.removesuffix("```").strip()
+
+    return json.loads(cleaned)
 
 @app.get("/")
 def root():
@@ -204,7 +243,8 @@ def delete_todo(todo_id: int):
         session.commit()
 
         return {"message": "Todo deleted"}
-    
+
+# 用户输入的一段消息，发送给 AI 模型进行对话
 @app.post("/ai/chat")
 def ai_chat(request: ChatRequest):
     if not DASHSCOPE_API_KEY:
@@ -241,3 +281,80 @@ def ai_chat(request: ChatRequest):
             status_code=500,
             detail=f"LLM API error: {str(e)}",
         )
+
+# 从用户输入的自然语言中提取出任务信息，返回给用户 
+@app.post("/ai/extract-tasks", response_model=TaskExtractResponse)
+def extract_tasks(request: TaskExtractRequest):
+    return extract_tasks_from_text(request.text)
+
+def extract_tasks_from_text(text: str) -> TaskExtractResponse:
+    if not DASHSCOPE_API_KEY:
+        raise HTTPException(
+            status_code=500,
+            detail="DASHSCOPE_API_KEY is not configured",
+        )
+
+    try:
+        completion = llm_client.chat.completions.create(
+            model=DASHSCOPE_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are an information extraction assistant. "
+                        "Extract todo tasks from the user's text. "
+                        "Return ONLY valid JSON. "
+                        "Do not include markdown. "
+                        "The JSON format must be: "
+                        '{"tasks":[{"title":"string","time":"string or null"}]}'
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": text,
+                },
+            ],
+        )
+
+        raw_content = completion.choices[0].message.content
+        data = parse_json_from_llm(raw_content)
+
+        return TaskExtractResponse(**data)
+
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=500,
+            detail="LLM returned invalid JSON",
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"LLM API error: {str(e)}",
+        )
+    
+@app.post("/ai/create-todos", response_model=AICreateTodosResponse, status_code=201)
+def ai_create_todos(request: TaskExtractRequest):
+    extracted = extract_tasks_from_text(request.text) 
+
+    created_todos = []
+
+    with Session(engine) as session:
+        for task in extracted.tasks:
+            db_todo = Todo(
+                title=task.title,
+                completed=False,
+            )   
+
+            session.add(db_todo)   # 把新创建的 Todo 对象添加到 session 中，但还没有提交到数据库，所以它们还没有 id。
+            created_todos.append(db_todo)   # 先把新创建的 Todo 对象添加到 session 中，但还没有提交到数据库，所以它们还没有 id。
+
+        session.commit()    # 提交 session 中的所有更改到数据库，这时数据库会为每个新添加的 Todo 记录生成一个唯一的 id。
+
+        for todo in created_todos:
+            session.refresh(todo)   # 刷新每个 Todo 对象的状态，从数据库中获取它们最新的数据，包括生成的 id。
+
+        return {
+            "extracted_tasks": extracted.tasks,
+            "created_todos": created_todos,
+        }

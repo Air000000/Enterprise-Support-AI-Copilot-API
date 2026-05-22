@@ -245,3 +245,39 @@ Windows PowerShell 下如果 ${PWD} 不好用，就写：
 $projectPath = (Get-Location).Path
 docker run -p 8001:8000 -v "${projectPath}\data:/app/data" fastapi-todo-api
 ```
+
+## AI Todo Creation
+
+This API can extract todo tasks from natural language and save them into the SQLite database.
+
+Endpoint:
+
+```text
+POST /ai/create-todos
+```
+
+Example request:
+```json
+{
+  "text": "明天上午九点学习 FastAPI，下午三点写 Docker 总结，晚上复习 SQLModel"
+}
+```
+
+Example response:
+```json
+{
+  "extracted_tasks": [
+    {
+      "title": "学习 FastAPI",
+      "time": "明天上午九点"
+    }
+  ],
+  "created_todos": [
+    {
+      "id": 1,
+      "title": "学习 FastAPI",
+      "completed": false
+    }
+  ]
+}
+```
