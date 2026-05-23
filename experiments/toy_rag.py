@@ -2,6 +2,12 @@ import re
 from typing import List, Dict, Any
 
 
+STOPWORDS = {
+    "的", "了", "是", "在", "和", "与", "或", "也", "都", "就",
+    "一个", "什么", "怎么", "如何", "可以", "用于", "进行",
+    "？", "?", "，", ",", "。", "."
+}
+
 documents = [
     {
         "id": "doc_1",
@@ -48,7 +54,7 @@ def tokenize(text: str) -> List[str]:
 
     return tokens
 
-
+# 根据关键词重叠数量，返回最相关的 top_k 个文档。
 def retrieve_by_keyword(
     question: str,
     documents: List[Dict[str, str]],
@@ -61,13 +67,19 @@ def retrieve_by_keyword(
     这只是一个玩具版关键词检索。
     """
 
-    question_tokens = set(tokenize(question))
+    question_tokens = {
+    token for token in tokenize(question)
+    if token not in STOPWORDS
+}
 
     results = []
 
     for doc in documents:
         doc_text = doc["title"] + " " + doc["text"]
-        doc_tokens = set(tokenize(doc_text))
+        doc_tokens = {
+            token for token in tokenize(doc_text)
+            if token not in STOPWORDS
+        }
 
         matched_tokens = question_tokens.intersection(doc_tokens)
         score = len(matched_tokens)
@@ -88,14 +100,14 @@ def retrieve_by_keyword(
 
 
 def main():
-    question = "RAG 是什么？"
+    question = "怎么保存 Todo 到数据库？"
 
     results = retrieve_by_keyword(question, documents, top_k=2)
 
     print(f"问题：{question}")
     print("=" * 50)
 
-    for index, result in enumerate(results, start=1):
+    for index, result in enumerate(results, start=1):   
         print(f"Top {index}")
         print(f"文档 ID: {result['id']}")
         print(f"标题: {result['title']}")
