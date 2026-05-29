@@ -1,0 +1,10 @@
+{"question":"FastAPI 主要用来做什么？","expected_document_id":"doc_fastapi_notes"}
+{"question":"FastAPI 的接口文档在哪里查看？","expected_document_id":"doc_fastapi_notes"}
+{"question":"Dockerfile 的作用是什么？","expected_document_id":"doc_docker_notes"}
+{"question":"Docker Compose 解决什么问题？","expected_document_id":"doc_docker_notes"}
+{"question":"embedding 在 RAG 中有什么作用？","expected_document_id":"doc_embedding_notes"}
+{"question":"为什么语义检索要用向量相似度？","expected_document_id":"doc_embedding_notes"}
+{"question":"RAG 为什么要先检索再回答？","expected_document_id":"doc_rag_notes"}
+{"question":"RAG 为什么需要 chunk？","expected_document_id":"doc_rag_notes"}
+{"question":"SQLModel 和数据库表有什么关系？","expected_document_id":"doc_sqlmodel_notes"}
+{"question":"SQLModel 为什么适合 FastAPI 项目？","expected_document_id":"doc_sqlmodel_notes"}
