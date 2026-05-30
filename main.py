@@ -15,6 +15,8 @@ import json
 
 import logging
 
+from experiments.rag_local.query_chroma import search_chroma
+
 load_dotenv()   # 从 .env 文件加载环境变量
 
 
@@ -148,6 +150,36 @@ class TaskExtractResponse(BaseModel):
 class AICreateTodosResponse(BaseModel):
     extracted_tasks: list[ExtractedTask]    
     created_todos: list[TodoResponse]
+
+
+class RagSearchRequest(BaseModel):
+    '''
+    用户发给 API 的请求
+    '''
+    query: str = PydanticField(..., min_length=1)   
+    top_k: int = PydanticField(default=3, ge=1, le=10)  # 大于等于1，小于等于10
+
+class RagSearchResultResponse(BaseModel):
+    '''
+    一条检索结果
+    '''
+    rank: int
+    document_id: str
+    chunk_id: str
+    title: str
+    source_path: str
+    chunk_index: int
+    distance: float
+    preview: str
+
+class RagSearchResponse(BaseModel):
+    '''
+    整个接口返回结果
+    '''
+    query: str
+    top_k: int
+    total_hits: int
+    results: list[RagSearchResultResponse]
 
 '''
 从 LLM 返回的文本中提取出 JSON 数据，进行清洗和解析
@@ -404,3 +436,32 @@ def ai_create_todos(request: TaskExtractRequest):
             "created_todos": created_todos,
         }
         
+@app.post("/rag/search", response_model=RagSearchResponse)
+def rag_search(request: RagSearchRequest):
+    results = search_chroma(
+        query=request.query,
+        top_k=request.top_k,
+    )
+
+    response_results = []
+
+    for index, item in enumerate(results, start=1):
+        response_results.append(
+            RagSearchResultResponse(
+                rank=index,
+                document_id=item.document_id,
+                chunk_id=item.chunk_id,
+                title=item.title,
+                source_path=item.source_path,
+                chunk_index=item.chunk_index,
+                distance=item.distance,
+                preview=item.content[:200],
+            )
+        )
+
+    return RagSearchResponse(
+        query=request.query,
+        top_k=request.top_k,
+        total_hits=len(response_results),
+        results=response_results,
+    )
