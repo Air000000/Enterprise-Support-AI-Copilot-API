@@ -199,6 +199,18 @@ def parse_json_from_llm(text: str) -> dict:
 
     return json.loads(cleaned)
 
+def make_preview(text: str, max_length: int = 200) -> str:
+    '''
+    对文本进行清洗和截断，生成预览文本
+    '''
+    normalized = " ".join(text.split()) # 按任意空白切开，包括换行、多个空格
+
+    if len(normalized) <= max_length:   # 用单个空格拼回去
+        return normalized   
+
+    return normalized[:max_length] + "..."  # 截断  
+
+
 @app.get("/")
 def root():
     return {"message": "Hello, FastAPI!"}
@@ -438,11 +450,17 @@ def ai_create_todos(request: TaskExtractRequest):
         
 @app.post("/rag/search", response_model=RagSearchResponse)
 def rag_search(request: RagSearchRequest):
-    results = search_chroma(
-        query=request.query,
-        top_k=request.top_k,
-    )
-
+    try:
+        results = search_chroma(
+            query=request.query,
+            top_k=request.top_k,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"RAG search failed: {exc}",
+        ) from exc
+    
     response_results = []
 
     for index, item in enumerate(results, start=1):
@@ -454,8 +472,8 @@ def rag_search(request: RagSearchRequest):
                 title=item.title,
                 source_path=item.source_path,
                 chunk_index=item.chunk_index,
-                distance=item.distance,
-                preview=item.content[:200],
+                preview=make_preview(item.content),
+                distance=round(item.distance, 4),
             )
         )
 
