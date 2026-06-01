@@ -1,12 +1,11 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from experiments.rag_local.query_chroma import search_chroma
-from experiments.rag_local.query_rag_chroma import ask_rag
+from services.rag_service import answer_question, search_documents
 
 from typing import Optional
 
-router = APIRouter(prefix="/rag", tags=["RAG"])
+router = APIRouter(prefix="/rag", tags=["RAG"]) # 创建一个 APIRouter 实例，设置前缀为 "/rag"，所有在这个 router 中定义的路由都会自动加上这个前缀。同时给这个 router 打上 "RAG" 标签，方便在 API 文档中分类显示。
 
 class RagSearchRequest(BaseModel):
     '''
@@ -75,7 +74,7 @@ def make_preview(text: str, max_length: int = 200) -> str:
 @router.post("/search", response_model=RagSearchResponse)
 def rag_search(request: RagSearchRequest):
     try:
-        results = search_chroma(
+        results = search_documents(
             query=request.query,
             top_k=request.top_k,
         )
@@ -112,7 +111,7 @@ def rag_search(request: RagSearchRequest):
 @router.post("/ask", response_model=RagAskResponse)
 def rag_ask(request: RagAskRequest):
     try:
-        rag_result = ask_rag(
+        rag_result = answer_question(
             question=request.question,
             top_k=request.top_k,
             max_distance=request.max_distance,

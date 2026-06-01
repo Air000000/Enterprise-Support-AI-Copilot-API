@@ -20,10 +20,10 @@ def test_rag_search_returns_results(monkeypatch):
         )
     ]
 
-    def fake_search_chroma(query: str, top_k: int):
+    def fake_search_documents(query: str, top_k: int):
         return fake_results
 
-    monkeypatch.setattr(rag_router, "search_chroma", fake_search_chroma)
+    monkeypatch.setattr(rag_router, "search_documents", fake_search_documents)
 
     response = client.post(
         "/rag/search",
@@ -64,10 +64,10 @@ def test_rag_ask_returns_answer_and_sources(monkeypatch):
         sources=[fake_source],
     )
 
-    def fake_ask_rag(question: str, top_k: int, max_distance: float):
+    def fake_answer_question(question: str, top_k: int, max_distance: float):
         return fake_rag_result
 
-    monkeypatch.setattr(rag_router, "ask_rag", fake_ask_rag)
+    monkeypatch.setattr(rag_router, "answer_question", fake_answer_question)
 
     response = client.post(
         "/rag/ask",
