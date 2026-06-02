@@ -151,10 +151,12 @@ python -m experiments.evals.eval_chroma_retrieval
 
 ## 6. 当前 Eval 结果
 
+当前 retrieval eval 数据集包含 15 条 case。
+
 | Retriever         | hit@1 | hit@3 | top1 miss cases | failed cases |
 | ----------------- | ----: | ----: | --------------: | -----------: |
-| JSON cosine index |  0.90 |  1.00 |               1 |            0 |
-| Chroma            |  0.90 |  1.00 |               1 |            0 |
+| JSON cosine index |  0.93 |  1.00 |               1 |            0 |
+| Chroma            |  0.93 |  1.00 |               1 |            0 |
 
 当前 JSON index 和 Chroma 的 retrieval eval 结果一致。
 
@@ -244,8 +246,9 @@ Top2: doc_embedding_notes
 * `/rag/ask` 已在 Swagger 中手动验证通过。
 * API 响应已包含来源 metadata 和清理后的 `preview`。
 * 当前 retrieval eval 数据集包含 15 条 case。
-* JSON Index 和 Chroma 当前结果均为 `hit@1 = 0.93`，`hit@3 = 1.00`。
+* JSON index 和 Chroma 当前结果均为 `hit@1 = 0.93`，`hit@3 = 1.00`。
 
+---
 
 ## RAG API testing
 
@@ -257,10 +260,10 @@ Top2: doc_embedding_notes
 
 验证内容：
 
-- `/rag/search` 可以接收请求并返回检索结果
-- `/rag/ask` 可以接收问题并返回 answer + sources
-- 使用 `monkeypatch` mock `routers.rag.search_documents` 和 `routers.rag.answer_question`
-- 不调用真实 Chroma、embedding 或 LLM，因此不消耗 token
+* `/rag/search` 可以接收请求并返回检索结果
+* `/rag/ask` 可以接收问题并返回 answer + sources
+* 使用 `monkeypatch` mock `routers.rag.search_documents` 和 `routers.rag.answer_question`
+* 不调用真实 Chroma、embedding 或 LLM，因此不消耗 token
 
 ### Service layer tests
 
@@ -268,19 +271,20 @@ Top2: doc_embedding_notes
 
 验证内容：
 
-- `search_documents()` 会正确调用 `search_chroma()`
-- `answer_question()` 会正确调用 `ask_rag()`
-- 使用 `calls` 记录下游函数收到的参数
-- 检查返回值和参数传递是否正确
+* `search_documents()` 会正确调用 `search_chroma()`
+* `answer_question()` 会正确调用 `ask_rag()`
+* 使用 `calls` 记录下游函数收到的参数
+* 检查返回值和参数传递是否正确
 
-### Current test result
+### 当前测试结果
 
 ```text
-8 passed, 1 warning
+14 passed, 1 warning
 ```
 
-### Layer responsibility
+### 调用链与层次职责
 
+```text
 POST /rag/search
 → routers/rag.py::rag_search()
 → services/rag_service.py::search_documents()
@@ -290,8 +294,58 @@ POST /rag/ask
 → routers/rag.py::rag_ask()
 → services/rag_service.py::answer_question()
 → experiments/rag_local/query_rag_chroma.py::ask_rag()
+```
 
 分层职责：
-routers/rag.py：处理 HTTP 请求、schema、response
-services/rag_service.py：提供业务入口
-experiments/rag_local/：执行底层 RAG / Chroma / LLM 逻辑
+
+* `routers/rag.py`：处理 HTTP 请求、调用 service、组装 API response
+* `schemas/rag.py`：定义 RAG API 的 request / response schema
+* `services/rag_service.py`：提供 RAG 业务入口
+* `experiments/rag_local/`：执行底层 RAG / Chroma / embedding / LLM 逻辑
+
+- 覆盖 200 happy path、422 request validation 和 500 service error handling
+---
+
+## RAG API structure
+
+当前 `learn-rag` 分支已经将 RAG API 从单文件实现逐步拆分为 router、schema、service 和底层 RAG 实现几层。
+
+当前结构如下：
+
+```text
+main.py
+→ 创建 FastAPI app，并注册 RAG router
+
+routers/rag.py
+→ 定义 `/rag/search` 和 `/rag/ask` endpoint
+→ 接收 HTTP 请求
+→ 调用 service 层
+→ 将 service 返回结果转换为 API response
+
+schemas/rag.py
+→ 定义 RAG API 的 request / response schema
+→ 包括 RagSearchRequest、RagSearchResponse、RagAskRequest、RagAskResponse 等
+
+services/rag_service.py
+→ 提供 RAG 业务入口
+→ search_documents() 调用底层 search_chroma()
+→ answer_question() 调用底层 ask_rag()
+
+experiments/rag_local/
+→ 保留当前本地 RAG 实验实现
+→ 包括 Chroma 检索、RAG 问答、embedding 和 LLM 调用逻辑
+
+tests/
+→ 包含 API layer tests 和 service layer tests
+→ 使用 monkeypatch 隔离真实 Chroma / embedding / LLM 调用
+```
+
+这种分层的目标是让各模块职责更清楚：
+
+* `router` 负责 HTTP 请求和响应；
+* `schema` 负责 API 数据契约；
+* `service` 负责业务入口；
+* `experiments/rag_local` 负责底层 RAG 实现；
+* `tests` 负责验证 API 层和 service 层行为。
+
+当前重构保持了外部 API 行为不变，`/rag/search` 和 `/rag/ask` 的路径与响应结构保持稳定，并通过全量测试验证。
