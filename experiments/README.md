@@ -245,3 +245,53 @@ Top2: doc_embedding_notes
 * API 响应已包含来源 metadata 和清理后的 `preview`。
 * 当前 retrieval eval 数据集包含 15 条 case。
 * JSON Index 和 Chroma 当前结果均为 `hit@1 = 0.93`，`hit@3 = 1.00`。
+
+
+## RAG API testing
+
+当前 RAG API 已完成 router/service 分层，并补充了两类自动化测试。
+
+### API layer tests
+
+文件：`tests/test_rag_api.py`
+
+验证内容：
+
+- `/rag/search` 可以接收请求并返回检索结果
+- `/rag/ask` 可以接收问题并返回 answer + sources
+- 使用 `monkeypatch` mock `routers.rag.search_documents` 和 `routers.rag.answer_question`
+- 不调用真实 Chroma、embedding 或 LLM，因此不消耗 token
+
+### Service layer tests
+
+文件：`tests/test_rag_service.py`
+
+验证内容：
+
+- `search_documents()` 会正确调用 `search_chroma()`
+- `answer_question()` 会正确调用 `ask_rag()`
+- 使用 `calls` 记录下游函数收到的参数
+- 检查返回值和参数传递是否正确
+
+### Current test result
+
+```text
+8 passed, 1 warning
+```
+
+### Layer responsibility
+
+POST /rag/search
+→ routers/rag.py::rag_search()
+→ services/rag_service.py::search_documents()
+→ experiments/rag_local/query_chroma.py::search_chroma()
+
+POST /rag/ask
+→ routers/rag.py::rag_ask()
+→ services/rag_service.py::answer_question()
+→ experiments/rag_local/query_rag_chroma.py::ask_rag()
+
+分层职责：
+routers/rag.py：处理 HTTP 请求、schema、response
+services/rag_service.py：提供业务入口
+experiments/rag_local/：执行底层 RAG / Chroma / LLM 逻辑
