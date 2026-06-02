@@ -90,3 +90,85 @@ def test_rag_ask_returns_answer_and_sources(monkeypatch):
     assert data["sources"][0]["chunk_id"] == "doc_rag_notes_chunk_0"
     assert data["sources"][0]["distance"] == 0.5123
     assert "\n" not in data["sources"][0]["preview"]
+
+
+def test_rag_search_rejects_empty_query():
+    response = client.post(
+        "/rag/search",
+        json={
+            "query": "",
+            "top_k": 3,
+        },
+    )
+
+    assert response.status_code == 422  # 请求参数不合法，query 不能为空
+
+def test_rag_ask_rejects_empty_question():
+    response = client.post(
+        "/rag/ask",
+        json={
+            "question": "",
+            "top_k": 3,
+            "max_distance": 0.9,
+        },
+    )
+
+    assert response.status_code == 422  # 请求参数不合法，question 不能为空
+
+def test_rag_search_rejects_invalid_top_k():
+    response = client.post(
+        "/rag/search",
+        json={
+            "query": "RAG 为什么需要 chunk？",
+            "top_k": 0,
+        },
+    )
+
+    assert response.status_code == 422  # top_k 不合法，必须大于等于1
+
+def test_rag_ask_rejects_invalid_max_distance():
+    response = client.post(
+        "/rag/ask",
+        json={
+            "question": "RAG 为什么需要 chunk？",
+            "top_k": 3,
+            "max_distance": 0,
+        },
+    )
+
+    assert response.status_code == 422  # max_distance 不合法，必须大于0
+
+def test_rag_search_returns_500_when_service_fails(monkeypatch):
+    def fake_search_documents(query: str, top_k: int):
+        raise RuntimeError("Chroma is unavailable")
+
+    monkeypatch.setattr(rag_router, "search_documents", fake_search_documents)
+
+    response = client.post(
+        "/rag/search",
+        json={
+            "query": "RAG 为什么需要 chunk？",
+            "top_k": 3,
+        },
+    )
+
+    assert response.status_code == 500
+    assert "RAG search failed" in response.json()["detail"] 
+
+def test_rag_ask_returns_500_when_service_fails(monkeypatch):
+    def fake_answer_question(question: str, top_k: int, max_distance: float):
+        raise RuntimeError("LLM is unavailable")
+
+    monkeypatch.setattr(rag_router, "answer_question", fake_answer_question)
+
+    response = client.post(
+        "/rag/ask",
+        json={
+            "question": "RAG 为什么需要 chunk？",
+            "top_k": 3,
+            "max_distance": 0.9,
+        },
+    )
+
+    assert response.status_code == 500
+    assert "RAG ask failed" in response.json()["detail"]
