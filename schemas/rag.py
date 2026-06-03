@@ -1,3 +1,8 @@
+'''
+schema 是 API 契约，主要服务 router；
+service 不应该依赖 router，也尽量不要依赖 HTTP request schema。
+'''
+
 from pydantic import BaseModel, Field
 from typing import Optional
 

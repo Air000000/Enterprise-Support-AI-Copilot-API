@@ -265,6 +265,8 @@ Top2: doc_embedding_notes
 * 使用 `monkeypatch` mock `routers.rag.search_documents` 和 `routers.rag.answer_question`
 * 不调用真实 Chroma、embedding 或 LLM，因此不消耗 token
 
+- 覆盖 200 happy path、422 request validation 和 500 service error handling
+
 ### Service layer tests
 
 文件：`tests/test_rag_service.py`
@@ -303,7 +305,6 @@ POST /rag/ask
 * `services/rag_service.py`：提供 RAG 业务入口
 * `experiments/rag_local/`：执行底层 RAG / Chroma / embedding / LLM 逻辑
 
-- 覆盖 200 happy path、422 request validation 和 500 service error handling
 ---
 
 ## RAG API structure
