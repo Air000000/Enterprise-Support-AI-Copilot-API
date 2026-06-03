@@ -16,6 +16,8 @@ class Document:
     title: str
     source_path: str
     text: str
+    tenant_id: str
+    category: str
 
 
 def build_document_id(path: Path) -> str:
@@ -29,6 +31,15 @@ def build_document_id(path: Path) -> str:
     """
     safe_name = path.stem.strip().lower().replace(" ", "_")
     return f"doc_{safe_name}"
+
+
+def infer_category(path: Path, docs_root: Path) -> str:
+    relative_path = path.relative_to(docs_root)
+
+    if len(relative_path.parts) >= 2:
+        return relative_path.parts[0].lower()
+
+    return "general"
 
 
 def read_text_file(path: Path) -> str:
@@ -80,6 +91,8 @@ def load_documents(docs_dir: str | Path) -> list[Document]:
             title=file_path.stem,
             source_path=str(file_path),
             text=text,
+            tenant_id="tenant_demo",
+            category=infer_category(file_path, docs_path),
         )
         documents.append(document)
 
@@ -94,6 +107,8 @@ def print_documents_summary(documents: Iterable[Document]) -> None:
         print(f"source_path: {doc.source_path}")
         print(f"text_len:    {len(doc.text)}")
         print(f"preview:     {doc.text[:80].replace(chr(10), ' ')}...")
+        print(f"tenant_id:   {doc.tenant_id}")
+        print(f"category:    {doc.category}")
 
 
 def main() -> None:

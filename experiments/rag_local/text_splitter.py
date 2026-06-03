@@ -15,6 +15,8 @@ class Chunk:
     source_path: str
     chunk_index: int
     content: str
+    tenant_id: str
+    category: str
 
 
 def split_long_text_by_chars(
@@ -27,16 +29,6 @@ def split_long_text_by_chars(
 
     chunk_size 表示每个 chunk 的最大字符数。
     overlap 表示相邻 chunk 之间重叠的字符数。
-
-    举例：
-    chunk_size = 100
-    overlap = 20
-
-    第一个 chunk: 0   ~ 100
-    第二个 chunk: 80  ~ 180
-    第三个 chunk: 160 ~ 260
-
-    overlap 的意义是保留上下文，避免答案刚好被切断。
     """
     if chunk_size <= 0:
         raise ValueError("chunk_size must be greater than 0")
@@ -166,6 +158,8 @@ def split_document(
             source_path=document.source_path,
             chunk_index=index,
             content=content,
+            tenant_id=document.tenant_id,
+            category=document.category,
         )
         chunks.append(chunk)
 
@@ -200,6 +194,8 @@ def print_chunks_summary(chunks: Iterable[Chunk]) -> None:
         print(f"chunk_index:  {chunk.chunk_index}")
         print(f"content_len:  {len(chunk.content)}")
         print(f"preview:      {chunk.content[:100].replace(chr(10), ' ')}...")
+        print(f"tenant_id:    {chunk.tenant_id}")
+        print(f"category:     {chunk.category}")
 
 
 def main() -> None:
