@@ -16,6 +16,7 @@ from services.rag_service import answer_question, search_documents
 # 同时给这个 router 打上 "RAG" 标签，方便在 API 文档中分类显示。
 router = APIRouter(prefix="/rag", tags=["RAG"]) 
 
+MOCK_TENANT_ID = "tenant_demo"
 
 def make_preview(text: str, max_length: int = 200) -> str:
     """对文本进行清洗和截断，生成预览文本"""
@@ -34,6 +35,8 @@ def rag_search(request: RagSearchRequest):
         results = search_documents(
             query=request.query,
             top_k=request.top_k,
+            tenant_id=MOCK_TENANT_ID,
+            category=request.category,
         )
     except Exception as exc:
         raise HTTPException(
@@ -53,6 +56,8 @@ def rag_search(request: RagSearchRequest):
                 source_path=item.source_path,
                 chunk_index=item.chunk_index,
                 distance=round(item.distance, 4),
+                tenant_id=getattr(item, "tenant_id", None),
+                category=getattr(item, "category", None),
                 preview=make_preview(item.content),
             )
         )
@@ -72,6 +77,8 @@ def rag_ask(request: RagAskRequest):
             question=request.question,
             top_k=request.top_k,
             max_distance=request.max_distance,
+            tenant_id=MOCK_TENANT_ID,
+            category=request.category,
         )   
     except Exception as exc:
         raise HTTPException(
@@ -91,6 +98,8 @@ def rag_ask(request: RagAskRequest):
                 source_path=source.source_path,
                 chunk_index=source.chunk_index,
                 distance=round(source.distance, 4),
+                tenant_id=getattr(source, "tenant_id", None),
+                category=getattr(source, "category", None),
                 preview=make_preview(source.preview),
             )
         )

@@ -16,11 +16,24 @@ def test_rag_search_returns_results(monkeypatch):
             source_path="experiments/docs/embedding.md",
             chunk_index=0,
             distance=0.827159,
+            tenant_id="tenant_demo",
+            category="general",
             content="# Embedding Notes\n\nEmbedding 是把文本转换成向量的技术。",
         )
     ]
 
-    def fake_search_documents(query: str, top_k: int):
+    calls = {}
+
+    def fake_search_documents(
+        query: str, 
+        top_k: int,
+        tenant_id: str,
+        category: str | None,
+    ):
+        calls["query"] = query
+        calls["top_k"] = top_k
+        calls["tenant_id"] = tenant_id
+        calls["category"] = category
         return fake_results
 
     monkeypatch.setattr(rag_router, "search_documents", fake_search_documents)
@@ -30,6 +43,7 @@ def test_rag_search_returns_results(monkeypatch):
         json={
             "query": "为什么系统能判断两段文字语义相近？",
             "top_k": 3,
+            "category": "general",
         },
     )
 
@@ -42,6 +56,8 @@ def test_rag_search_returns_results(monkeypatch):
     assert data["results"][0]["document_id"] == "doc_embedding_notes"
     assert data["results"][0]["chunk_id"] == "doc_embedding_notes_chunk_0"
     assert data["results"][0]["distance"] == 0.8272
+    assert data["results"][0]["tenant_id"] == "tenant_demo"
+    assert data["results"][0]["category"] == "general"
     assert "\n" not in data["results"][0]["preview"]
 
 
@@ -53,6 +69,8 @@ def test_rag_ask_returns_answer_and_sources(monkeypatch):
         source_path="experiments/docs/rag.md",
         chunk_index=0,
         distance=0.512345,
+        tenant_id="tenant_demo",
+        category="general",
         preview="# RAG Notes\n\nRAG 通过检索外部文档，把相关上下文提供给大模型。",
     )
 
@@ -64,7 +82,20 @@ def test_rag_ask_returns_answer_and_sources(monkeypatch):
         sources=[fake_source],
     )
 
-    def fake_answer_question(question: str, top_k: int, max_distance: float):
+    calls = {}
+
+    def fake_answer_question(
+        question: str, 
+        top_k: int, 
+        max_distance: float,
+        tenant_id: str,
+        category: str | None,
+    ):
+        calls["question"] = question
+        calls["top_k"] = top_k
+        calls["max_distance"] = max_distance
+        calls["tenant_id"] = tenant_id
+        calls["category"] = category
         return fake_rag_result
 
     monkeypatch.setattr(rag_router, "answer_question", fake_answer_question)
@@ -75,6 +106,7 @@ def test_rag_ask_returns_answer_and_sources(monkeypatch):
             "question": "RAG 为什么需要 chunk？",
             "top_k": 3,
             "max_distance": 0.9,
+            "category": "general",
         },
     )
 
@@ -89,6 +121,8 @@ def test_rag_ask_returns_answer_and_sources(monkeypatch):
     assert data["sources"][0]["document_id"] == "doc_rag_notes"
     assert data["sources"][0]["chunk_id"] == "doc_rag_notes_chunk_0"
     assert data["sources"][0]["distance"] == 0.5123
+    assert data["sources"][0]["tenant_id"] == "tenant_demo"
+    assert data["sources"][0]["category"] == "general"
     assert "\n" not in data["sources"][0]["preview"]
 
 
