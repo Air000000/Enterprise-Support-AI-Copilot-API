@@ -29,6 +29,8 @@ class Source:
     chunk_index: int
     distance: float
     preview: str
+    tenant_id: str
+    category: str
 
 
 @dataclass
@@ -99,15 +101,15 @@ def build_context(results: list[ChromaSearchResult]) -> str:
 
     for index, result in enumerate(results, start=1):
         context_part = f"""
-[Source {index}]
-title: {result.title}
-document_id: {result.document_id}
-chunk_id: {result.chunk_id}
-distance: {result.distance:.4f}
+        [Source {index}]
+        title: {result.title}
+        document_id: {result.document_id}
+        chunk_id: {result.chunk_id}
+        distance: {result.distance:.4f}
 
-content:
-{result.content}
-""".strip()
+        content:
+        {result.content}
+        """.strip()
 
         context_parts.append(context_part)
 
@@ -133,6 +135,8 @@ def build_sources(results: list[ChromaSearchResult]) -> list[Source]:
             chunk_index=result.chunk_index,
             distance=result.distance,
             preview=result.content[:160].replace("\n", " "),
+            tenant_id=result.tenant_id,
+            category=result.category,
         )
         sources.append(source)
 
@@ -281,6 +285,8 @@ def print_rag_response(response: RagResponse) -> None:
         print(f"  title:       {source.title}")
         print(f"  source_path: {source.source_path}")
         print(f"  distance:    {source.distance:.4f}")
+        print(f"  tenant_id:   {source.tenant_id}")
+        print(f"  category:    {source.category}")
         print(f"  preview:     {source.preview}")
         print()
 

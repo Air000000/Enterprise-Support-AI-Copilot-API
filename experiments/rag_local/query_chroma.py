@@ -29,6 +29,8 @@ class ChromaSearchResult:
     chunk_index: int
     content: str
     distance: float
+    tenant_id: str
+    category: str
 
 
 def get_collection():
@@ -50,7 +52,12 @@ def get_collection():
     )
 
 
-def search_chroma(query: str, top_k: int = 3) -> list[ChromaSearchResult]:
+def search_chroma(
+        query: str, 
+        top_k: int = 3,
+        tenant_id: str | None = None,
+        category: str | None = None,
+    ) -> list[ChromaSearchResult]:
     """
     从 Chroma 中检索和 query 最相关的 chunks。
 
@@ -69,6 +76,20 @@ def search_chroma(query: str, top_k: int = 3) -> list[ChromaSearchResult]:
     if top_k <= 0:
         raise ValueError("top_k must be greater than 0")
 
+    where = None
+
+    if tenant_id and category:
+        where = {
+            "$and": [
+                {"tenant_id": tenant_id},
+                {"category": category},
+            ]
+        }
+    elif tenant_id:
+        where = {"tenant_id": tenant_id}
+    elif category:
+        where = {"category": category}
+
     collection = get_collection()
 
     query_embedding = embed_texts([query])[0]
@@ -76,6 +97,7 @@ def search_chroma(query: str, top_k: int = 3) -> list[ChromaSearchResult]:
     raw_results: dict[str, Any] = collection.query(
         query_embeddings=[query_embedding],
         n_results=top_k,
+        where=where,
         include=["documents", "metadatas", "distances"],
     )
 
@@ -100,6 +122,8 @@ def search_chroma(query: str, top_k: int = 3) -> list[ChromaSearchResult]:
             chunk_index=metadata["chunk_index"],
             content=document,
             distance=distance,
+            tenant_id=metadata["tenant_id"],
+            category=metadata["category"],
         )
         results.append(result)
 
@@ -119,6 +143,8 @@ def print_results(query: str, results: list[ChromaSearchResult]) -> None:
         print(f"document_id: {result.document_id}")
         print(f"title:       {result.title}")
         print(f"source_path: {result.source_path}")
+        print(f"tenant_id:   {result.tenant_id}")
+        print(f"category:    {result.category}")
         print(f"preview:     {preview}...")
         print("-" * 100)
 
@@ -136,6 +162,14 @@ def main() -> None:
         default=3,
         help="Number of chunks to return.",
     )
+    parser.add_argument(
+        "--tenant-id",
+        help="Tenant ID to filter results.",
+    )
+    parser.add_argument(
+        "--category",
+        help="Category to filter results.",
+    )
     args = parser.parse_args()
 
     if args.query:
@@ -150,7 +184,12 @@ def main() -> None:
         ]
 
     for query in queries:
-        results = search_chroma(query=query, top_k=args.top_k)
+        results = search_chroma(
+            query=query,
+            top_k=args.top_k,
+            tenant_id=args.tenant_id,
+            category=args.category
+        )
         print_results(query, results)
 
 

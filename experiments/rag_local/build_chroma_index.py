@@ -163,6 +163,8 @@ def chunk_to_metadata(chunk: Chunk) -> dict:
         "title": chunk.title,
         "source_path": chunk.source_path,
         "chunk_index": chunk.chunk_index,
+        "tenant_id": chunk.tenant_id,
+        "category": chunk.category,
     }
 
 
@@ -262,7 +264,8 @@ def build_chroma_index(
     print(f"title:        {first_chunk.title}")
     print(f"source_path:  {first_chunk.source_path}")
     print(f"content_len:  {len(first_chunk.content)}")
-
+    print(f"tenant_id:    {first_chunk.tenant_id}")
+    print(f"category:     {first_chunk.category}")
 
 def main() -> None:
     build_chroma_index()
