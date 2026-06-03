@@ -134,9 +134,9 @@ def build_sources(results: list[ChromaSearchResult]) -> list[Source]:
             source_path=result.source_path,
             chunk_index=result.chunk_index,
             distance=result.distance,
-            preview=result.content[:160].replace("\n", " "),
             tenant_id=result.tenant_id,
             category=result.category,
+            preview=result.content[:160].replace("\n", " "),
         )
         sources.append(source)
 

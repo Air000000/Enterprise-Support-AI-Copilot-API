@@ -90,9 +90,9 @@ def load_documents(docs_dir: str | Path) -> list[Document]:
             document_id=build_document_id(file_path),
             title=file_path.stem,
             source_path=str(file_path),
-            text=text,
             tenant_id="tenant_demo",
             category=infer_category(file_path, docs_path),
+            text=text,
         )
         documents.append(document)
 
@@ -106,9 +106,9 @@ def print_documents_summary(documents: Iterable[Document]) -> None:
         print(f"title:       {doc.title}")
         print(f"source_path: {doc.source_path}")
         print(f"text_len:    {len(doc.text)}")
-        print(f"preview:     {doc.text[:80].replace(chr(10), ' ')}...")
         print(f"tenant_id:   {doc.tenant_id}")
         print(f"category:    {doc.category}")
+        print(f"preview:     {doc.text[:80].replace(chr(10), ' ')}...")
 
 
 def main() -> None:

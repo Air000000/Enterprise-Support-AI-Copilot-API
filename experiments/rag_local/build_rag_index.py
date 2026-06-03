@@ -22,7 +22,7 @@ from experiments.rag_local.text_splitter import Chunk, split_documents
 # - index/ 里面是机器检索用的 JSON
 DEFAULT_DOCS_DIR = Path("experiments/docs") 
 DEFAULT_INDEX_PATH = Path("experiments/index/rag_index.json")
-
+EMBEDDING_BATCH_SIZE = 10
 
 @dataclass
 class IndexItem:
@@ -88,18 +88,24 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
     """
     if not texts:
         return []
+    
+    all_embeddings: list[list[float]] = []
 
-    client = get_client()
+    for start in range(0, len(texts), EMBEDDING_BATCH_SIZE):
+        end = start + EMBEDDING_BATCH_SIZE
+        batch = texts[start:end]
 
-    model = os.getenv("EMBEDDING_MODEL", "text-embedding-v4")
-
-    response = client.embeddings.create(
-        model=model,
-        input=texts,
-        encoding_format="float",
-    )   # 调用 OpenAI-compatible API 来生成 embedding。我们传入一个文本列表，API 会返回一个包含对应 embedding 的响应对象。我们从响应对象里提取出每个文本的 embedding 向量，并返回一个嵌套列表，其中每个子列表都是一个文本的 embedding 向量。
-
-    return [item.embedding for item in response.data]
+        response = get_client().embeddings.create(
+            model=os.getenv("EMBEDDING_MODEL", "text-embedding-v4"),
+            input=batch,
+            encoding_format="float",
+        )
+        
+        batch_embeddings = [item.embedding for item in response.data]
+        
+        all_embeddings.extend(batch_embeddings)
+    
+    return all_embeddings
 
 
 def chunk_to_embedding_text(chunk: Chunk) -> str:

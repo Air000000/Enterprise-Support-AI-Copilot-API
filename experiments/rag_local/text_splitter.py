@@ -6,6 +6,9 @@ from typing import Iterable
 
 from experiments.rag_local.document_loader import Document, load_documents
 
+DEFAULT_CHUNK_SIZE = 800
+DEFAULT_CHUNK_OVERLAP = 120
+MIN_CHUNK_SIZE = 150
 
 @dataclass
 class Chunk:
@@ -57,11 +60,80 @@ def split_long_text_by_chars(
 
     return chunks
 
+def merge_small_chunks(
+    chunks: list[str],
+    min_chunk_size: int,
+    chunk_size: int,
+) -> list[str]:
+    """
+    合并过短的 chunk，避免标题或残句单独入库。
+
+    规则：
+    1. 标题类短 chunk 优先和后面的 chunk 合并。
+    2. 普通短 chunk 优先合并到前一个 chunk。
+    3. 允许合并后略微超过 chunk_size，但不超过 chunk_size + min_chunk_size。
+    """
+    if min_chunk_size <= 0:
+        raise ValueError("min_chunk_size must be greater than 0")
+
+    if min_chunk_size >= chunk_size:
+        raise ValueError("min_chunk_size must be smaller than chunk_size")
+
+    merged: list[str] = []  # 最终结果列表；每个元素都是一个合并后的 chunk。
+    pending: str | None = None  # pending 是等待合并的短 chunk，可能是标题或残句。
+    soft_limit = chunk_size + min_chunk_size
+
+    for chunk in chunks:
+        chunk = chunk.strip()
+
+        if not chunk:
+            continue
+
+        if pending:
+            candidate = f"{pending}\n\n{chunk}".strip()
+
+            if len(candidate) <= soft_limit:
+                chunk = candidate
+                pending = None
+            else:
+                merged.append(pending)
+                pending = None
+
+        is_small = len(chunk) < min_chunk_size
+        is_heading = chunk.lstrip().startswith("#")
+
+        if is_small and is_heading: # 标题类短 chunk 优先和后面 chunk 合并
+            pending = chunk
+            continue
+
+        if is_small and merged: # 普通短 chunk 优先合并到前一个 chunk
+            candidate = f"{merged[-1]}\n\n{chunk}".strip()
+
+            if len(candidate) <= soft_limit:
+                merged[-1] = candidate
+            else:
+                pending = chunk
+
+            continue
+
+        if is_small:    
+            continue
+
+        merged.append(chunk)
+
+    if pending:
+        if merged:
+            merged[-1] = f"{merged[-1]}\n\n{pending}".strip()
+        else:
+            merged.append(pending)
+
+    return merged
 
 def split_text(
     text: str,
-    chunk_size: int = 500,
-    overlap: int = 100,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
+    overlap: int = DEFAULT_CHUNK_OVERLAP,
+    min_chunk_size: int = MIN_CHUNK_SIZE,
 ) -> list[str]:
     """
     把一篇文档切成多个文本 chunk。
@@ -79,6 +151,12 @@ def split_text(
 
     if overlap >= chunk_size:
         raise ValueError("overlap must be smaller than chunk_size")
+    
+    if min_chunk_size <= 0:
+        raise ValueError("min_chunk_size must be greater than 0")
+    
+    if min_chunk_size >= chunk_size:
+        raise ValueError("min_chunk_size must be smaller than chunk_size")
 
     # 统一 Windows / Linux / macOS 换行符，避免分段逻辑在不同系统上表现不一致。
     normalized_text = text.replace("\r\n", "\n").replace("\r", "\n").strip()
@@ -130,7 +208,11 @@ def split_text(
     if current_parts:
         chunks.append("\n\n".join(current_parts).strip())
 
-    return chunks
+    return merge_small_chunks(
+        chunks=chunks,
+        min_chunk_size=min_chunk_size,
+        chunk_size=chunk_size,
+    )
 
 
 def build_chunk_id(document_id: str, chunk_index: int) -> str:
@@ -139,13 +221,15 @@ def build_chunk_id(document_id: str, chunk_index: int) -> str:
 
 def split_document(
     document: Document,
-    chunk_size: int = 500,
-    overlap: int = 100,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
+    overlap: int = DEFAULT_CHUNK_OVERLAP,
+    min_chunk_size: int = MIN_CHUNK_SIZE,
 ) -> list[Chunk]:
     texts = split_text(
         text=document.text,
         chunk_size=chunk_size,
         overlap=overlap,
+        min_chunk_size=min_chunk_size,
     )
 
     chunks: list[Chunk] = []
@@ -168,8 +252,9 @@ def split_document(
 
 def split_documents(
     documents: Iterable[Document],
-    chunk_size: int = 500,
-    overlap: int = 100,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
+    overlap: int = DEFAULT_CHUNK_OVERLAP,
+    min_chunk_size: int = MIN_CHUNK_SIZE,
 ) -> list[Chunk]:
     all_chunks: list[Chunk] = []
 
@@ -178,6 +263,7 @@ def split_documents(
             document=document,
             chunk_size=chunk_size,
             overlap=overlap,
+            min_chunk_size=min_chunk_size,
         )
         all_chunks.extend(document_chunks)
 
@@ -206,8 +292,9 @@ def main() -> None:
     # 真实 RAG 里可以调大，例如 500、800、1000。
     chunks = split_documents(
         documents=documents,
-        chunk_size=120,
-        overlap=30,
+        chunk_size=DEFAULT_CHUNK_SIZE,
+        overlap=DEFAULT_CHUNK_OVERLAP,
+        min_chunk_size=MIN_CHUNK_SIZE,
     )
 
     print(f"Loaded documents: {len(documents)}")

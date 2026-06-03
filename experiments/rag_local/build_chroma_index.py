@@ -6,8 +6,13 @@ import chromadb
 
 from experiments.rag_local.build_rag_index import embed_texts
 from experiments.rag_local.document_loader import load_documents
-from experiments.rag_local.text_splitter import Chunk, split_documents
-
+from experiments.rag_local.text_splitter import (
+    Chunk,
+    DEFAULT_CHUNK_OVERLAP,
+    DEFAULT_CHUNK_SIZE,
+    MIN_CHUNK_SIZE,
+    split_documents,
+)
 
 # 学习点：
 # CHROMA_DIR 是 Chroma 的本地持久化目录。
@@ -194,8 +199,9 @@ def build_chroma_index(
     print("Splitting documents...")
     chunks = split_documents(
         documents=documents,
-        chunk_size=chunk_size,
-        overlap=overlap,
+        chunk_size=DEFAULT_CHUNK_SIZE,
+        overlap=DEFAULT_CHUNK_OVERLAP,
+        min_chunk_size=MIN_CHUNK_SIZE,
     )
     print(f"Generated chunks: {len(chunks)}")
 
@@ -263,9 +269,9 @@ def build_chroma_index(
     print(f"document_id:  {first_chunk.document_id}")
     print(f"title:        {first_chunk.title}")
     print(f"source_path:  {first_chunk.source_path}")
-    print(f"content_len:  {len(first_chunk.content)}")
     print(f"tenant_id:    {first_chunk.tenant_id}")
     print(f"category:     {first_chunk.category}")
+    print(f"content_len:  {len(first_chunk.content)}")
 
 def main() -> None:
     build_chroma_index()
