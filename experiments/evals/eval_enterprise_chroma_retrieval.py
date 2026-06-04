@@ -199,7 +199,7 @@ def print_report(
     print("-" * 100)
     print(f"Total cases:      {total}")
     print(f"hit@1:            {hit_at_1_count / total:.2f} ({hit_at_1_count}/{total})")
-    print(f"hit@{top_k}:            {hit_at_k_count / total:.2f} ({hit_at_k_count}/{total})")
+    print(f"hit@{top_k}:      {hit_at_k_count / total:.2f} ({hit_at_k_count}/{total})")
     print(f"top1_miss_cases:  {len(top1_miss_cases)}")
     print(f"failed_cases:     {len(failed_cases)}")
 
