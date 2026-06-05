@@ -19,6 +19,7 @@ from experiments.rag_local.query_chroma import search_chroma
 from experiments.rag_local.query_rag_chroma import ask_rag
 
 from routers.rag import router as rag_router
+from routers.tickets import router as tickets_router
 
 from models.ticket import Ticket  # noqa: F401
 
@@ -80,6 +81,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="FastAPI Todo API", lifespan= lifespan) # 把 lifespan 传给 FastAPI 实例，应用启动时自动调用 create_db_and_tables() 来创建数据库表格。
 
 app.include_router(rag_router)  
+app.include_router(tickets_router)
 
 """ todos = [
     {
