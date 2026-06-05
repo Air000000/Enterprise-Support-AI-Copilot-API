@@ -20,6 +20,9 @@ from experiments.rag_local.query_rag_chroma import ask_rag
 
 from routers.rag import router as rag_router
 
+from models.ticket import Ticket  # noqa: F401
+
+
 load_dotenv()   # 从 .env 文件加载环境变量
 
 
