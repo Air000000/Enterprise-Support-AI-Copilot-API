@@ -56,7 +56,7 @@ def list_tickets(
 
 def get_ticket(
     ticket_id: int,
-    tenant_id: str,
+    tenant_id: str, 
 ) -> Ticket:
     with Session(engine) as session:
         ticket = session.get(Ticket, ticket_id)

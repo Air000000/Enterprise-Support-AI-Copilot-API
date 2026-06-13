@@ -1,6 +1,6 @@
 from __future__ import annotations
-
 from typing import cast
+import json
 
 from experiments.rag_local.query_chroma import search_chroma
 from schemas.agent_ticket import (
@@ -13,6 +13,23 @@ from schemas.agent_ticket import (
 )
 from schemas.ticket import TicketCategory, TicketCreate, TicketPriority, TicketResponse
 from services.ticket_service import create_ticket as create_ticket_service
+from schemas.agent_ops import (
+    AgentRunCreate,
+    AgentRunUpdate,
+    ApprovalRequestCreate,
+    ApprovalRequestUpdate,
+    ToolCallCreate,
+    ToolCallUpdate,
+)
+from services.agent_ops_service import (
+    create_agent_run,
+    create_approval_request,
+    create_tool_call,
+    update_agent_run,
+    update_approval_request,
+    update_tool_call,
+)
+
 
 
 SEARCHABLE_CATEGORIES = {
@@ -208,8 +225,20 @@ def build_reason(
 def preview_ticket(
     request: TicketAgentPreviewRequest,
     tenant_id: str,
+    user_id: str = "user_demo",
     top_k: int = 3,
 ) -> TicketAgentPreviewResponse:
+    agent_run = create_agent_run(
+        AgentRunCreate(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            agent_name="ticket_agent",
+            input_message=request.message,
+            category=request.category,
+            status="running",
+        )
+    )
+
     rag_category = normalize_rag_category(request.category)
 
     search_results = search_chroma(
@@ -235,7 +264,18 @@ def preview_ticket(
     )
 
     if not should_create:
+        update_agent_run(
+            agent_run_id=agent_run.id,
+            tenant_id=tenant_id,
+            agent_run_update=AgentRunUpdate(
+                status="completed",
+                result_summary=reason,
+            ),
+        )
+
         return TicketAgentPreviewResponse(
+            agent_run_id=agent_run.id,
+            approval_request_id=None,
             should_create_ticket=False,
             reason=reason,
             draft=None,
@@ -259,7 +299,31 @@ def preview_ticket(
         priority=priority,
     )
 
+    approval_request = create_approval_request(
+        ApprovalRequestCreate(
+            agent_run_id=agent_run.id,
+            tenant_id=tenant_id,
+            approval_type="ticket_creation",
+            status="pending",
+            draft_json=json.dumps(
+                draft.model_dump(),
+                ensure_ascii=False,
+            ),
+        )
+    )
+
+    update_agent_run(
+        agent_run_id=agent_run.id,
+        tenant_id=tenant_id,
+        agent_run_update=AgentRunUpdate(
+            status="completed",
+            result_summary=reason,
+        ),
+    )
+
     return TicketAgentPreviewResponse(
+        agent_run_id=agent_run.id,
+        approval_request_id=approval_request.id,
         should_create_ticket=True,
         reason=reason,
         draft=draft,
@@ -272,6 +336,15 @@ def confirm_ticket(
     tenant_id: str,
     created_by: str,
 ) -> TicketAgentConfirmResponse:
+    update_approval_request(
+        approval_request_id=request.approval_request_id,
+        tenant_id=tenant_id,
+        approval_request_update=ApprovalRequestUpdate(
+            status="approved",
+            approved_by=created_by,
+        ),
+    )
+
     ticket_create = TicketCreate(
         title=request.draft.title,
         description=request.draft.description,
@@ -279,12 +352,74 @@ def confirm_ticket(
         priority=request.draft.priority,
     )
 
-    ticket = create_ticket_service(
-        ticket_create=ticket_create,
-        tenant_id=tenant_id,
-        created_by=created_by,
+    tool_call = create_tool_call(
+        ToolCallCreate(
+            agent_run_id=request.agent_run_id,
+            tenant_id=tenant_id,
+            tool_name="create_ticket",
+            tool_input_json=json.dumps(
+                ticket_create.model_dump(),
+                ensure_ascii=False,
+            ),
+            status="pending",
+        )
     )
 
-    return TicketAgentConfirmResponse(
-        ticket=TicketResponse.model_validate(ticket),
-    )
+    try:
+        ticket = create_ticket_service(
+            ticket_create=ticket_create,
+            tenant_id=tenant_id,
+            created_by=created_by,
+        )
+
+        update_tool_call(
+            tool_call_id=tool_call.id,
+            tenant_id=tenant_id,
+            tool_call_update=ToolCallUpdate(
+                status="success",
+                tool_output_json=json.dumps(
+                    {
+                        "ticket_id": ticket.id,
+                        "status": ticket.status,
+                    },
+                    ensure_ascii=False,
+                ),
+            ),
+        )
+
+        update_agent_run(
+            agent_run_id=request.agent_run_id,
+            tenant_id=tenant_id,
+            agent_run_update=AgentRunUpdate(
+                status="completed",
+                result_summary=f"Ticket created: {ticket.id}",
+            ),
+        )
+
+        return TicketAgentConfirmResponse(
+            agent_run_id=request.agent_run_id,
+            approval_request_id=request.approval_request_id,
+            tool_call_id=tool_call.id,
+            ticket=TicketResponse.model_validate(ticket),
+        )
+
+    except Exception as exc:
+        update_tool_call(
+            tool_call_id=tool_call.id,
+            tenant_id=tenant_id,
+            tool_call_update=ToolCallUpdate(
+                status="failed",
+                error_message=str(exc),
+            ),
+        )
+
+        update_agent_run(
+            agent_run_id=request.agent_run_id,
+            tenant_id=tenant_id,
+            agent_run_update=AgentRunUpdate(
+                status="failed",
+                result_summary=str(exc),
+            ),
+        )
+
+        raise
