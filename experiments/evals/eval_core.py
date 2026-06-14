@@ -1,11 +1,13 @@
 from pathlib import Path
 import json
+import time
 
 
 LEARNING_EVAL_FILE = Path("experiments/evals/eval_learning_questions.jsonl")
 ENTERPRISE_EVAL_FILE = Path("experiments/evals/eval_enterprise_questions.jsonl")
 
 EVAL_FILE = LEARNING_EVAL_FILE
+
 
 def load_eval_cases(path: Path = EVAL_FILE) -> list[dict]:
     '''
@@ -17,7 +19,7 @@ def load_eval_cases(path: Path = EVAL_FILE) -> list[dict]:
     cases: list[dict] = []
 
     with path.open("r", encoding="utf-8") as f:
-        for line_no, line in enumerate(f, start=1): 
+        for line_no, line in enumerate(f, start=1):
             line = line.strip()
 
             if not line:
@@ -25,7 +27,7 @@ def load_eval_cases(path: Path = EVAL_FILE) -> list[dict]:
 
             case = json.loads(line)
 
-            if "question" not in case:  
+            if "question" not in case:
                 raise ValueError(f"Line {line_no}: missing field 'question'")
 
             if "expected_document_id" not in case:
@@ -33,37 +35,42 @@ def load_eval_cases(path: Path = EVAL_FILE) -> list[dict]:
 
             cases.append(case)
 
-    if not cases:   
+    if not cases:
         raise ValueError(f"No eval cases found in: {path}")
 
     return cases
 
+
 def evaluate_retriever(
-        retriever,
-        result_to_preview,
-        top_k: int = 3,
-        eval_file: Path = EVAL_FILE,
-    ) -> dict:
+    retriever,
+    result_to_preview,
+    top_k: int = 3,
+    eval_file: Path = EVAL_FILE,
+) -> dict:
     cases = load_eval_cases(eval_file)
 
     hit_at_1 = 0
     hit_at_k = 0
+    reciprocal_ranks: list[float] = []
+    latencies_ms: list[float] = []
     top1_miss_cases = []
     failed_cases: list[dict] = []
-    
 
     for case in cases:
         question = case["question"]
         expected_document_id = case["expected_document_id"]
 
+        start_time = time.perf_counter()
         results = retriever(query=question, top_k=top_k)
+        latency_ms = (time.perf_counter() - start_time) * 1000
+        latencies_ms.append(latency_ms)
 
         retrieved_document_ids = [result.document_id for result in results]
 
         is_hit_1 = (
-            len(retrieved_document_ids) > 0 # 确保至少有一个结果
+            len(retrieved_document_ids) > 0
             and retrieved_document_ids[0] == expected_document_id
-        )   
+        )
         is_hit_k = expected_document_id in retrieved_document_ids
 
         if is_hit_1:
@@ -71,9 +78,14 @@ def evaluate_retriever(
 
         if is_hit_k:
             hit_at_k += 1
-            
+            rank = retrieved_document_ids.index(expected_document_id) + 1
+            reciprocal_ranks.append(1 / rank)
+        else:
+            reciprocal_ranks.append(0)
+
         if not is_hit_1 and is_hit_k:
-            top1_miss_cases.append({
+            top1_miss_cases.append(
+                {
                     "question": question,
                     "expected_document_id": expected_document_id,
                     "retrieved_document_ids": retrieved_document_ids,
@@ -88,17 +100,20 @@ def evaluate_retriever(
                     "retrieved_document_ids": retrieved_document_ids,
                     "top_results": [result_to_preview(result) for result in results],
                 }
-            )   
+            )
 
-    total = len(cases)  
+    total = len(cases)
 
     return {
         "total": total,
         "hit@1": hit_at_1 / total,
         f"hit@{top_k}": hit_at_k / total,
+        f"mrr@{top_k}": sum(reciprocal_ranks) / total,
+        "avg_latency_ms": sum(latencies_ms) / total,
         "top1_miss_cases": top1_miss_cases,
         "failed_cases": failed_cases,
     }
+
 
 def print_retrieval_report(
     report: dict,
@@ -112,6 +127,8 @@ def print_retrieval_report(
     print(f"Total: {report['total']}")
     print(f"hit@1: {report['hit@1']:.2f}")
     print(f"hit@{top_k}: {report[f'hit@{top_k}']:.2f}")
+    print(f"mrr@{top_k}: {report[f'mrr@{top_k}']:.2f}")
+    print(f"avg_latency_ms: {report['avg_latency_ms']:.2f}")
 
     print()
     print(f"top1_miss_cases: {len(report['top1_miss_cases'])}")
@@ -129,7 +146,7 @@ def print_retrieval_report(
                 f"{metric_key}={item[metric_key]:.4f}"
             )
             print(f"    preview={item['preview']}")
-            
+
     print()
     print("Failed cases:")
     failed_cases = report["failed_cases"]
