@@ -165,6 +165,41 @@ The invoice rules document focuses more specifically on supplier invoices, procu
 The top two distances are nearly identical, so this is effectively a near-tie between two semantically close finance documents.
 ```
 
+### Category Breakdown
+
+The expanded enterprise Chroma eval also reports metrics by category.
+
+Latest Chroma eval summary:
+
+```text
+Total: 30
+hit@1: 0.97
+hit@3: 1.00
+mrr@3: 0.98
+avg_latency_ms: 2137.20
+```
+
+Category-level metrics:
+
+| Category | Total cases | hit@1 | hit@3 | mrr@3 | avg_latency_ms |
+| -------- | ----------: | ----: | ----: | ----: | -------------: |
+| admin    |           6 |  1.00 |  1.00 |  1.00 |        2106.01 |
+| finance  |           6 |  0.83 |  1.00 |  0.92 |        2118.36 |
+| hr       |           6 |  1.00 |  1.00 |  1.00 |        2133.44 |
+| it       |           6 |  1.00 |  1.00 |  1.00 |        2211.43 |
+| security |           6 |  1.00 |  1.00 |  1.00 |        2116.75 |
+
+Interpretation:
+
+```text
+The only category with a top-1 miss is finance.
+```
+
+The finance category has lower hit@1 and mrr@3 because of the known ambiguity between `doc_invoice_rules` and `doc_travel_reimbursement`.
+
+This is expected at the current stage. Both documents discuss invoice-related reimbursement or payment requirements, so finance is the category most likely to expose document-boundary overlap.
+
+
 Current conclusion:
 
 ```text
@@ -419,6 +454,7 @@ Known limitations:
 5. The invoice-related top1 miss shows that semantically close finance documents can still compete with each other.
 6. tenant_id is currently provided by a server-side mock tenant context rather than a real authentication or tenant-resolution system.
 7. The current tests validate metadata propagation and filter construction, but not a full production multi-tenant authorization model.
+8. Category-level eval shows that finance is currently the most ambiguous category because invoice rules and travel reimbursement policies overlap semantically.
 ```
 
 These are acceptable at the current stage because the goal of this step is baseline validation and Enterprise RAG cleanup, not final RAG optimization.
