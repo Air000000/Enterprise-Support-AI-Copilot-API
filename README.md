@@ -2,22 +2,42 @@
 
 企业内部知识库与工单 AgentOps 后端系统。
 
-本项目最初由 FastAPI Todo / AI Todo API 演进而来，当前 `learn-rag` 分支正在逐步升级为面向企业内部支持场景的 AI Copilot 后端项目。现阶段核心工作是构建一套可评测、可追踪、可扩展的企业 RAG Core，为后续工单系统、Ticket Agent、人工确认、工具调用审计和 AgentOps 能力打基础。
+本项目最初由 FastAPI Todo / AI Todo API 演进而来，当前 `learn-rag` 分支已经升级为面向企业内部支持场景的 AI Copilot 后端项目。
+
+当前系统已经完成 Enterprise RAG Core、Ticket CRUD、Ticket Agent preview / confirm，以及 AgentOps 审计记录的 MVP 闭环。项目重点从单纯知识库问答扩展为“知识检索 → 工单预览 → 人工确认 → 工单创建 → AgentOps 审计”的企业支持 Copilot 后端。
+
 
 当前版本定位：
 
 ```text
 Enterprise Support AI Copilot
-└── RAG Core v0.2
-    ├── 企业内部支持文档集
-    ├── 文档加载与切块
-    ├── embedding 批处理
-    ├── Chroma 向量库
-    ├── tenant/category metadata filter
-    ├── /rag/search
-    ├── /rag/ask
-    ├── answer + structured sources
-    └── API / service 自动化测试
+├── Enterprise RAG Core
+│   ├── 企业内部支持文档集
+│   ├── 文档加载与切块
+│   ├── embedding 批处理
+│   ├── Chroma 向量库
+│   ├── tenant/category metadata filter
+│   ├── /rag/search
+│   ├── /rag/ask
+│   ├── answer + structured sources
+│   ├── retrieval eval
+│   ├── hit@1 / hit@3 / mrr@3
+│   └── category breakdown
+├── Ticket CRUD
+│   ├── create ticket
+│   ├── list ticket
+│   ├── get ticket
+│   └── update ticket
+├── Ticket Agent
+│   ├── /agent/ticket/preview
+│   ├── /agent/ticket/confirm
+│   ├── TicketDraft
+│   ├── TicketAgentSource
+│   └── approval ownership validation
+└── AgentOps
+    ├── agent_runs
+    ├── approval_requests
+    └── tool_calls
 ```
 
 ------
@@ -26,7 +46,7 @@ Enterprise Support AI Copilot
 
 本项目模拟企业内部支持场景。员工可以围绕 IT、HR、财务、行政、安全等内部制度和流程提出问题，系统基于企业知识库进行检索，并返回带来源依据的回答。
 
-后续项目会继续扩展到工单场景：当知识库无法充分解决问题时，系统生成工单预览，由用户确认后再创建工单，同时记录 Agent 执行过程、工具调用参数、审批状态和运行指标。
+当前项目已经扩展到工单场景：当知识库无法充分解决问题时，系统可以生成工单预览，由用户确认后再创建真实工单，并记录 Agent 执行过程、工具调用参数和审批状态。
 
 目标链路如下：
 
@@ -73,43 +93,50 @@ tool_calls / agent_runs audit
 ## 2. 当前阶段
 
 当前阶段：
+Enterprise Support AI Copilot MVP
 
-```text
-RAG Core v0.2
-```
 
 已完成能力：
 
-| 模块                | 当前状态                                          |
-| ------------------- | ------------------------------------------------- |
-| FastAPI 基础后端    | 已完成                                            |
-| Todo CRUD           | 已保留，作为早期基础后端能力                      |
-| AI Todo / LLM 调用  | 已保留，作为早期 LLM API 调用练习                 |
-| RAG API             | 已完成 `/rag/search`、`/rag/ask`                  |
-| 企业文档集          | 已完成 10 份企业内部支持文档                      |
-| 文档分类            | 已支持 `it`、`hr`、`finance`、`admin`、`security` |
-| 文档 metadata       | 已支持 `tenant_id`、`category`                    |
-| Chunk metadata      | 已支持 `tenant_id`、`category`                    |
-| Chunk 策略          | 已针对企业长文档调优                              |
-| Embedding           | 已支持分批请求                                    |
-| Vector store        | 使用 Chroma 持久化向量库                          |
-| Metadata filter     | 已支持 tenant/category 过滤                       |
-| API category filter | 已支持 request.category + mock tenant context     |
-| Sources             | RAG response 返回结构化来源信息                   |
-| 测试                | 当前 `14 passed`                                  |
+| 模块                | 当前状态                                                   |
+| ------------------- | --------------------------------------------------------  |
+| FastAPI 基础后端    | 已完成                                                     |
+| Todo CRUD           | 已保留，作为早期基础后端能力                                |
+| AI Todo / LLM 调用  | 已保留，作为早期 LLM API 调用练习                           |
+| RAG API             | 已完成 `/rag/search`、`/rag/ask`                           |
+| 企业文档集          | 已完成 10 份企业内部支持文档                                |
+| 文档分类            | 已支持 `it`、`hr`、`finance`、`admin`、`security`           |
+| 文档 metadata       | 已支持 `tenant_id`、`category`                             |
+| Chunk metadata      | 已支持 `tenant_id`、`category`                             |
+| Chunk 策略          | 已针对企业长文档调优                                        |
+| Embedding           | 已支持分批请求                                             |
+| Vector store        | 使用 Chroma 持久化向量库                                   |
+| Metadata filter     | 已支持 tenant/category 过滤                                |
+| API category filter | 已支持 request.category + mock tenant context              |
+| Sources             | RAG response 返回结构化来源信息                             |
+| 测试                | RAG / Ticket / AgentOps / Todo 测试均已覆盖                 |
+| Retrieval eval      | 已支持 hit@1、hit@3、mrr@3、avg latency、category breakdown |
+| Ticket CRUD         | 已完成 create / list / get / update                         |
+| Ticket Agent        | 已完成 preview / confirm 两阶段流程                         |
+| Human approval      | 已通过 approval_requests 表记录                             |
+| Tool calls audit    | 已通过 tool_calls 表记录                                    |
+| AgentOps records    | 已支持 agent_runs / approval_requests / tool_calls          |
 
 后续开发重点：
 
 | 模块                      | 状态   |
 | ------------------------- | ------ |
-| 企业 RAG eval v1          | 下一步 |
-| Retrieval logs            | 待开发 |
-| Token / latency metrics   | 待开发 |
+| Enterprise RAG eval v1    | 已完成 |
+| Retrieval metrics         | 已完成 hit@1 / hit@3 / mrr@3 / avg latency |
+| Category breakdown        | 已完成 |
+| Ticket CRUD               | 已完成 |
+| Ticket Agent              | 已完成 MVP |
+| Human approval            | 已完成 MVP |
+| Tool calls audit          | 已完成 MVP |
+| AgentOps records          | 已完成 MVP |
+| AgentOps 查询 API         | 下一步 |
+| rejected / cancelled flow | 下一步 |
 | Document upload API       | 待开发 |
-| Ticket CRUD               | 待开发 |
-| Ticket Agent              | 待开发 |
-| Human approval            | 待开发 |
-| Tool calls audit          | 待开发 |
 | Docker Compose 最终部署版 | 待整理 |
 
 ------
@@ -376,13 +403,20 @@ POST /rag/ask
 运行测试：
 
 ```bash
-pytest tests/test_rag_api.py tests/test_rag_service.py tests/test_todos.py
+pytest tests/test_query_chroma.py
+pytest tests/test_rag_api.py
+pytest tests/test_rag_service.py
+pytest tests/test_todos.py
+pytest tests/test_tickets.py
+pytest tests/test_agent_ops_service.py
+pytest tests/test_ticket_agent_service.py
+pytest tests/test_agent_ticket_api.py
 ```
 
 当前结果：
 
 ```text
-14 passed, 1 warning
+RAG / Ticket / AgentOps / Todo focused test suites are passing.
 ```
 
 测试覆盖：
