@@ -51,6 +51,25 @@ def get_collection():
         embedding_function=None,
     )
 
+def build_where_filter(
+    tenant_id: str | None = None,
+    category: str | None = None,
+) -> dict | None:
+    if tenant_id and category:
+        return {
+            "$and": [
+                {"tenant_id": tenant_id},
+                {"category": category},
+            ]
+        }
+
+    if tenant_id:
+        return {"tenant_id": tenant_id}
+
+    if category:
+        return {"category": category}
+
+    return None
 
 def search_chroma(
         query: str, 
@@ -76,19 +95,7 @@ def search_chroma(
     if top_k <= 0:
         raise ValueError("top_k must be greater than 0")
 
-    where = None
-
-    if tenant_id and category:
-        where = {
-            "$and": [
-                {"tenant_id": tenant_id},
-                {"category": category},
-            ]
-        }
-    elif tenant_id:
-        where = {"tenant_id": tenant_id}
-    elif category:
-        where = {"category": category}
+    where = build_where_filter(tenant_id=tenant_id, category=category)
 
     collection = get_collection()
 
