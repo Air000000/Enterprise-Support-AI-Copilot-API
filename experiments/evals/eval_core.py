@@ -40,6 +40,56 @@ def load_eval_cases(path: Path = EVAL_FILE) -> list[dict]:
 
     return cases
 
+def update_category_stats(
+    category_stats: dict,
+    category: str,
+    is_hit_1: bool,
+    is_hit_k: bool,
+    reciprocal_rank: float,
+    latency_ms: float,
+) -> None:
+    """
+    更新指定类别的统计数据。
+    """
+    if category not in category_stats:
+        category_stats[category] = {
+            "total": 0,
+            "hit_at_1": 0,
+            "hit_at_k": 0,
+            "reciprocal_ranks": [],
+            "latencies_ms": [],
+        }
+
+    stats = category_stats[category]
+    stats["total"] += 1
+
+    if is_hit_1:
+        stats["hit_at_1"] += 1
+
+    if is_hit_k:
+        stats["hit_at_k"] += 1
+
+    stats["reciprocal_ranks"].append(reciprocal_rank)
+    stats["latencies_ms"].append(latency_ms)
+
+def build_category_metrics(category_stats: dict, top_k: int) -> dict:
+    """
+    根据统计数据计算每个类别的评测指标。
+    """
+    category_metrics = {}
+
+    for category, stats in sorted(category_stats.items()):
+        total = stats["total"]
+
+        category_metrics[category] = {
+            "total": total,
+            "hit@1": stats["hit_at_1"] / total,
+            f"hit@{top_k}": stats["hit_at_k"] / total,
+            f"mrr@{top_k}": sum(stats["reciprocal_ranks"]) / total,
+            "avg_latency_ms": sum(stats["latencies_ms"]) / total,
+        }
+
+    return category_metrics
 
 def evaluate_retriever(
     retriever,
@@ -47,6 +97,7 @@ def evaluate_retriever(
     top_k: int = 3,
     eval_file: Path = EVAL_FILE,
 ) -> dict:
+    category_stats = {}
     cases = load_eval_cases(eval_file)
 
     hit_at_1 = 0
@@ -58,6 +109,7 @@ def evaluate_retriever(
 
     for case in cases:
         question = case["question"]
+        category = case.get("category", "uncategorized")
         expected_document_id = case["expected_document_id"]
 
         start_time = time.perf_counter()
@@ -79,9 +131,20 @@ def evaluate_retriever(
         if is_hit_k:
             hit_at_k += 1
             rank = retrieved_document_ids.index(expected_document_id) + 1
-            reciprocal_ranks.append(1 / rank)
+            reciprocal_rank = 1 / rank
         else:
-            reciprocal_ranks.append(0)
+            reciprocal_rank = 0
+
+        reciprocal_ranks.append(reciprocal_rank)
+
+        update_category_stats(
+            category_stats=category_stats,
+            category=category,
+            is_hit_1=is_hit_1,
+            is_hit_k=is_hit_k,
+            reciprocal_rank=reciprocal_rank,
+            latency_ms=latency_ms,
+        )
 
         if not is_hit_1 and is_hit_k:
             top1_miss_cases.append(
@@ -112,6 +175,7 @@ def evaluate_retriever(
         "avg_latency_ms": sum(latencies_ms) / total,
         "top1_miss_cases": top1_miss_cases,
         "failed_cases": failed_cases,
+        "category_metrics": build_category_metrics(category_stats, top_k),
     }
 
 
@@ -129,6 +193,21 @@ def print_retrieval_report(
     print(f"hit@{top_k}: {report[f'hit@{top_k}']:.2f}")
     print(f"mrr@{top_k}: {report[f'mrr@{top_k}']:.2f}")
     print(f"avg_latency_ms: {report['avg_latency_ms']:.2f}")
+
+    category_metrics = report.get("category_metrics", {})
+
+    if category_metrics:
+        print()
+        print("Category breakdown:")
+        for category, metrics in category_metrics.items():
+            print(
+                f"- {category}: "
+                f"total={metrics['total']}, "
+                f"hit@1={metrics['hit@1']:.2f}, "
+                f"hit@{top_k}={metrics[f'hit@{top_k}']:.2f}, "
+                f"mrr@{top_k}={metrics[f'mrr@{top_k}']:.2f}, "
+                f"avg_latency_ms={metrics['avg_latency_ms']:.2f}"
+            )
 
     print()
     print(f"top1_miss_cases: {len(report['top1_miss_cases'])}")
