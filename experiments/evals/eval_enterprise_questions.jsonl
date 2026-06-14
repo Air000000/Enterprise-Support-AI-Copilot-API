@@ -8,3 +8,23 @@
 {"question":"设备借用后丢失或损坏怎么办？","expected_document_id":"doc_device_borrowing","tenant_id":"tenant_demo","category":"admin"}
 {"question":"跨部门共享数据前应该确认什么？","expected_document_id":"doc_data_access_policy","tenant_id":"tenant_demo","category":"security"}
 {"question":"外包账号是否可以访问生产系统？","expected_document_id":"doc_outsource_account","tenant_id":"tenant_demo","category":"security"}
+{"question":"VPN 连接成功后应该如何确认内网访问正常？","expected_document_id":"doc_vpn_guide","tenant_id":"tenant_demo","category":"it"}
+{"question":"是否可以把 VPN 连接分享给外包同事使用？","expected_document_id":"doc_vpn_guide","tenant_id":"tenant_demo","category":"it"}
+{"question":"邮箱附件太大无法发送时应该怎么办？","expected_document_id":"doc_email_login_faq","tenant_id":"tenant_demo","category":"it"}
+{"question":"出差时收不到 MFA 推送应该如何处理？","expected_document_id":"doc_email_login_faq","tenant_id":"tenant_demo","category":"it"}
+{"question":"请假前如果自己有审批职责应该怎么安排？","expected_document_id":"doc_leave_policy","tenant_id":"tenant_demo","category":"hr"}
+{"question":"休假期间团队是否应该要求员工处理日常消息？","expected_document_id":"doc_leave_policy","tenant_id":"tenant_demo","category":"hr"}
+{"question":"远程入职员工需要重点关注哪些融入问题？","expected_document_id":"doc_onboarding_process","tenant_id":"tenant_demo","category":"hr"}
+{"question":"新员工第一天需要完成哪些 IT 和安全检查？","expected_document_id":"doc_onboarding_process","tenant_id":"tenant_demo","category":"hr"}
+{"question":"差旅期间遇到交通中断或健康安全问题时应该怎么处理？","expected_document_id":"doc_travel_reimbursement","tenant_id":"tenant_demo","category":"finance"}
+{"question":"报销前不确定费用是否合规时应该怎么办？","expected_document_id":"doc_travel_reimbursement","tenant_id":"tenant_demo","category":"finance"}
+{"question":"供应商付款前为什么需要确认合同和采购审批？","expected_document_id":"doc_invoice_rules","tenant_id":"tenant_demo","category":"finance"}
+{"question":"供应商发票提交时税务信息和验收责任为什么重要？","expected_document_id":"doc_invoice_rules","tenant_id":"tenant_demo","category":"finance"}
+{"question":"会议室预约发生冲突时应该如何协调？","expected_document_id":"doc_meeting_room","tenant_id":"tenant_demo","category":"admin"}
+{"question":"会议室使用后需要注意哪些行政事项？","expected_document_id":"doc_meeting_room","tenant_id":"tenant_demo","category":"admin"}
+{"question":"设备需要寄送到异地办公室时应该保留什么信息？","expected_document_id":"doc_device_borrowing","tenant_id":"tenant_demo","category":"admin"}
+{"question":"借用含有数据的设备时为什么要注意归还和清理？","expected_document_id":"doc_device_borrowing","tenant_id":"tenant_demo","category":"admin"}
+{"question":"跨部门发送报表前为什么要确认数据权限？","expected_document_id":"doc_data_access_policy","tenant_id":"tenant_demo","category":"security"}
+{"question":"生产环境排查问题时为什么不能随意扩大权限？","expected_document_id":"doc_data_access_policy","tenant_id":"tenant_demo","category":"security"}
+{"question":"供应商人员参加内部会议时需要确认什么？","expected_document_id":"doc_outsource_account","tenant_id":"tenant_demo","category":"security"}
+{"question":"项目结束后外包人员的账号和资料应该如何处理？","expected_document_id":"doc_outsource_account","tenant_id":"tenant_demo","category":"security"}
