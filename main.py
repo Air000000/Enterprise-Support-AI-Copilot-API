@@ -21,6 +21,7 @@ from experiments.rag_local.query_rag_chroma import ask_rag
 from routers.rag import router as rag_router
 from routers.tickets import router as tickets_router
 from routers.agent_ticket import router as agent_ticket_router
+from routers.agent_ops import router as agent_ops_router
 
 from models.ticket import Ticket  # noqa: F401
 from models.agent_ops import AgentRun, ApprovalRequest, ToolCall  # noqa: F401
@@ -85,6 +86,7 @@ app = FastAPI(title="FastAPI Todo API", lifespan= lifespan) # 把 lifespan 传�
 app.include_router(rag_router)  
 app.include_router(tickets_router)
 app.include_router(agent_ticket_router)
+app.include_router(agent_ops_router)
 
 """ todos = [
     {
