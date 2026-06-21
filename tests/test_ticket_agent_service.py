@@ -1,5 +1,6 @@
 from datetime import datetime
 from types import SimpleNamespace
+import json
 import pytest
 from fastapi import HTTPException
 
@@ -32,6 +33,89 @@ def make_search_result(
         distance=distance,
         content=content,
         category=category,
+    )
+
+
+def make_ticket_draft(
+    title: str = "VPN 连不上",
+    description: str = "用户远程办公时 VPN 连不上。",
+    category: str = "it",
+    priority: str = "high",
+) -> TicketDraft:
+    return TicketDraft(
+        title=title,
+        description=description,
+        category=category,
+        priority=priority,
+    )
+
+
+def make_ticket_draft_json(**overrides) -> str:
+    return json.dumps(
+        make_ticket_draft(**overrides).model_dump(),
+        ensure_ascii=False,
+    )
+
+
+def fake_create_agent_run(agent_run_create):
+    return SimpleNamespace(
+        id=1,
+        tenant_id=agent_run_create.tenant_id,
+        user_id=agent_run_create.user_id,
+        agent_name=agent_run_create.agent_name,
+        input_message=agent_run_create.input_message,
+        category=agent_run_create.category,
+        status=agent_run_create.status,
+        result_summary=agent_run_create.result_summary,
+        latency_ms=agent_run_create.latency_ms,
+        retrieval_summary_json=agent_run_create.retrieval_summary_json,
+    )
+
+def fake_update_agent_run(agent_run_id, tenant_id, agent_run_update):
+    return SimpleNamespace(
+        id=agent_run_id,
+        tenant_id=tenant_id,
+        status=agent_run_update.status,
+        result_summary=agent_run_update.result_summary,
+        latency_ms=agent_run_update.latency_ms,
+        retrieval_summary_json=agent_run_update.retrieval_summary_json,
+    )
+
+def fake_create_approval_request(approval_request_create):
+    return SimpleNamespace(
+        id=10,
+        agent_run_id=approval_request_create.agent_run_id,
+        tenant_id=approval_request_create.tenant_id,
+        approval_type=approval_request_create.approval_type,
+        status=approval_request_create.status,
+        draft_json=approval_request_create.draft_json,
+        approved_by=approval_request_create.approved_by,
+    )
+
+def fake_create_tool_call(tool_call_create):
+    tool_call_ids = {
+        "search_kb": 200,
+        "classify_ticket": 201,
+        "create_ticket": 300,
+    }
+
+    return SimpleNamespace(
+        id=tool_call_ids.get(tool_call_create.tool_name, 999),
+        agent_run_id=tool_call_create.agent_run_id,
+        tenant_id=tool_call_create.tenant_id,
+        tool_name=tool_call_create.tool_name,
+        tool_input_json=tool_call_create.tool_input_json,
+        status=tool_call_create.status,
+    )
+
+
+def fake_update_tool_call(tool_call_id, tenant_id, tool_call_update):
+    return SimpleNamespace(
+        id=tool_call_id,
+        tenant_id=tenant_id,
+        status=tool_call_update.status,
+        tool_output_json=tool_call_update.tool_output_json,
+        error_message=tool_call_update.error_message,
     )
 
 
@@ -68,9 +152,76 @@ def test_infer_priority_production_incident_should_be_urgent():
 
 def test_preview_ticket_returns_high_priority_for_common_vpn_issue(monkeypatch):
     """
-    普通 VPN 故障应是 high
+    普通 VPN 故障应是 high，并记录 search_kb / classify_ticket 两个 preview tool_call。
     """
     calls = {}
+
+    def fake_update_agent_run(agent_run_id, tenant_id, agent_run_update):
+        calls["updated_agent_run_id"] = agent_run_id
+        calls["updated_agent_tenant_id"] = tenant_id
+        calls["agent_run_status"] = agent_run_update.status
+        calls["agent_result_summary"] = agent_run_update.result_summary
+        calls["latency_ms"] = agent_run_update.latency_ms
+        calls["retrieval_summary_json"] = agent_run_update.retrieval_summary_json
+
+        return SimpleNamespace(
+            id=agent_run_id,
+            tenant_id=tenant_id,
+            status=agent_run_update.status,
+            result_summary=agent_run_update.result_summary,
+            latency_ms=agent_run_update.latency_ms,
+            retrieval_summary_json=agent_run_update.retrieval_summary_json,
+        )
+
+    def fake_create_tool_call_for_preview(tool_call_create):
+        if tool_call_create.tool_name == "search_kb":
+            calls["search_tool_agent_run_id"] = tool_call_create.agent_run_id
+            calls["search_tool_tenant_id"] = tool_call_create.tenant_id
+            calls["search_tool_name"] = tool_call_create.tool_name
+            calls["search_tool_input_json"] = tool_call_create.tool_input_json
+            calls["search_tool_status"] = tool_call_create.status
+            tool_call_id = 200
+
+        elif tool_call_create.tool_name == "classify_ticket":
+            calls["classify_tool_agent_run_id"] = tool_call_create.agent_run_id
+            calls["classify_tool_tenant_id"] = tool_call_create.tenant_id
+            calls["classify_tool_name"] = tool_call_create.tool_name
+            calls["classify_tool_input_json"] = tool_call_create.tool_input_json
+            calls["classify_tool_status"] = tool_call_create.status
+            tool_call_id = 201
+
+        else:
+            tool_call_id = 999
+
+        return SimpleNamespace(
+            id=tool_call_id,
+            agent_run_id=tool_call_create.agent_run_id,
+            tenant_id=tool_call_create.tenant_id,
+            tool_name=tool_call_create.tool_name,
+            tool_input_json=tool_call_create.tool_input_json,
+            status=tool_call_create.status,
+        )
+
+    def fake_update_tool_call_for_preview(tool_call_id, tenant_id, tool_call_update):
+        if tool_call_id == 200:
+            calls["updated_search_tool_call_id"] = tool_call_id
+            calls["updated_search_tool_tenant_id"] = tenant_id
+            calls["updated_search_tool_status"] = tool_call_update.status
+            calls["search_tool_output_json"] = tool_call_update.tool_output_json
+
+        elif tool_call_id == 201:
+            calls["updated_classify_tool_call_id"] = tool_call_id
+            calls["updated_classify_tool_tenant_id"] = tenant_id
+            calls["updated_classify_tool_status"] = tool_call_update.status
+            calls["classify_tool_output_json"] = tool_call_update.tool_output_json
+
+        return SimpleNamespace(
+            id=tool_call_id,
+            tenant_id=tenant_id,
+            status=tool_call_update.status,
+            tool_output_json=tool_call_update.tool_output_json,
+            error_message=tool_call_update.error_message,
+        )
 
     def fake_search_chroma(query: str, top_k: int, tenant_id: str, category: str | None):
         calls["query"] = query
@@ -91,6 +242,31 @@ def test_preview_ticket_returns_high_priority_for_common_vpn_issue(monkeypatch):
         fake_search_chroma,
     )
 
+    monkeypatch.setattr(
+        "services.ticket_agent_service.update_agent_run",
+        fake_update_agent_run,
+    )
+
+    monkeypatch.setattr(
+        "services.ticket_agent_service.create_agent_run",
+        fake_create_agent_run,
+    )
+
+    monkeypatch.setattr(
+        "services.ticket_agent_service.create_approval_request",
+        fake_create_approval_request,
+    )
+
+    monkeypatch.setattr(
+        "services.ticket_agent_service.create_tool_call",
+        fake_create_tool_call_for_preview,
+    )
+
+    monkeypatch.setattr(
+        "services.ticket_agent_service.update_tool_call",
+        fake_update_tool_call_for_preview,
+    )
+
     response = preview_ticket(
         request=TicketAgentPreviewRequest(
             message="VPN 连不上，重启客户端也没用",
@@ -109,6 +285,57 @@ def test_preview_ticket_returns_high_priority_for_common_vpn_issue(monkeypatch):
     assert calls["tenant_id"] == "tenant_demo"
     assert calls["category"] == "it"
 
+    assert calls["agent_run_status"] == "completed"
+    assert calls["latency_ms"] is not None
+    assert calls["latency_ms"] >= 0
+
+    retrieval_summary = json.loads(calls["retrieval_summary_json"])
+
+    assert retrieval_summary["top_k"] == 3
+    assert retrieval_summary["request_category"] == "it"
+    assert retrieval_summary["rag_category"] == "it"
+    assert retrieval_summary["sources_count"] == 1
+    assert retrieval_summary["top_distance"] == 0.52
+    assert retrieval_summary["source_document_ids"] == ["doc_vpn_guide"]
+
+    assert calls["search_tool_agent_run_id"] == 1
+    assert calls["search_tool_tenant_id"] == "tenant_demo"
+    assert calls["search_tool_name"] == "search_kb"
+    assert calls["search_tool_status"] == "pending"
+    assert calls["updated_search_tool_call_id"] == 200
+    assert calls["updated_search_tool_status"] == "success"
+
+    search_input = json.loads(calls["search_tool_input_json"])
+    assert search_input["query"] == "VPN 连不上，重启客户端也没用"
+    assert search_input["top_k"] == 3
+    assert search_input["tenant_id"] == "tenant_demo"
+    assert search_input["category"] == "it"
+
+    search_output = json.loads(calls["search_tool_output_json"])
+    assert search_output["results_count"] == 1
+    assert search_output["document_ids"] == ["doc_vpn_guide"]
+    assert search_output["top_distance"] == 0.52
+
+    assert calls["classify_tool_agent_run_id"] == 1
+    assert calls["classify_tool_tenant_id"] == "tenant_demo"
+    assert calls["classify_tool_name"] == "classify_ticket"
+    assert calls["classify_tool_status"] == "pending"
+    assert calls["updated_classify_tool_call_id"] == 201
+    assert calls["updated_classify_tool_status"] == "success"
+
+    classify_input = json.loads(calls["classify_tool_input_json"])
+    assert classify_input["message"] == "VPN 连不上，重启客户端也没用"
+    assert classify_input["requested_category"] == "it"
+    assert classify_input["sources_count"] == 1
+    assert classify_input["source_categories"] == ["it"]
+    assert classify_input["source_document_ids"] == ["doc_vpn_guide"]
+
+    classify_output = json.loads(calls["classify_tool_output_json"])
+    assert classify_output["should_create_ticket"] is True
+    assert classify_output["category"] == "it"
+    assert classify_output["priority"] == "high"
+    assert classify_output["reason"]
+
 
 def test_preview_ticket_with_other_category_does_not_filter_rag_by_other(monkeypatch):
     """
@@ -125,6 +352,31 @@ def test_preview_ticket_with_other_category_does_not_filter_rag_by_other(monkeyp
     monkeypatch.setattr(
         "services.ticket_agent_service.search_chroma",
         fake_search_chroma,
+    )
+
+    monkeypatch.setattr(
+        "services.ticket_agent_service.create_agent_run",
+        fake_create_agent_run,
+    )
+
+    monkeypatch.setattr(
+        "services.ticket_agent_service.update_agent_run",
+        fake_update_agent_run,
+    )
+
+    monkeypatch.setattr(
+        "services.ticket_agent_service.create_approval_request",
+        fake_create_approval_request,
+    )
+
+    monkeypatch.setattr(
+        "services.ticket_agent_service.create_tool_call",
+        fake_create_tool_call,
+    )
+
+    monkeypatch.setattr(
+        "services.ticket_agent_service.update_tool_call",
+        fake_update_tool_call,
     )
 
     response = preview_ticket(
@@ -162,6 +414,31 @@ def test_preview_ticket_infers_category_from_top_source_when_category_missing(mo
         fake_search_chroma,
     )
 
+    monkeypatch.setattr(
+        "services.ticket_agent_service.create_agent_run",
+        fake_create_agent_run,
+    )
+
+    monkeypatch.setattr(
+        "services.ticket_agent_service.update_agent_run",
+        fake_update_agent_run,
+    )
+
+    monkeypatch.setattr(
+        "services.ticket_agent_service.create_approval_request",
+        fake_create_approval_request,
+    )
+
+    monkeypatch.setattr(
+        "services.ticket_agent_service.create_tool_call",
+        fake_create_tool_call,
+    )
+
+    monkeypatch.setattr(
+        "services.ticket_agent_service.update_tool_call",
+        fake_update_tool_call,
+    )
+
     response = preview_ticket(
         request=TicketAgentPreviewRequest(
             message="申请客户数据访问权限失败了",
@@ -197,6 +474,31 @@ def test_preview_ticket_can_return_no_ticket_for_knowledge_question(monkeypatch)
         fake_search_chroma,
     )
 
+    monkeypatch.setattr(
+        "services.ticket_agent_service.create_agent_run",
+        fake_create_agent_run,
+    )
+
+    monkeypatch.setattr(
+        "services.ticket_agent_service.update_agent_run",
+        fake_update_agent_run,
+    )
+
+    monkeypatch.setattr(
+        "services.ticket_agent_service.create_approval_request",
+        fake_create_approval_request,
+    )
+
+    monkeypatch.setattr(
+        "services.ticket_agent_service.create_tool_call",
+        fake_create_tool_call,
+    )
+
+    monkeypatch.setattr(
+        "services.ticket_agent_service.update_tool_call",
+        fake_update_tool_call,
+    )
+
     response = preview_ticket(
         request=TicketAgentPreviewRequest(
             message="请问请假怎么申请？",
@@ -224,6 +526,7 @@ def test_confirm_ticket_calls_create_ticket_service(monkeypatch):
             agent_run_id=1,
             tenant_id=tenant_id,
             status="pending",
+            draft_json=make_ticket_draft_json(),
         )
 
     def fake_update_approval_request(approval_request_id, tenant_id, approval_request_update):
@@ -364,6 +667,7 @@ def test_confirm_ticket_calls_create_ticket_service(monkeypatch):
     assert calls["agent_run_status"] == "completed"
 
     assert calls["title"] == "VPN 连不上"
+    assert calls["description"] == "用户远程办公时 VPN 连不上。"
     assert calls["category"] == "it"
     assert calls["priority"] == "high"
     assert calls["tenant_id"] == "tenant_demo"
@@ -380,6 +684,7 @@ def test_confirm_ticket_rejects_mismatched_approval_request(monkeypatch):
             agent_run_id=999,
             tenant_id=tenant_id,
             status="pending",
+            draft_json=make_ticket_draft_json(),
         )
 
     def fake_update_approval_request(*args, **kwargs):
@@ -432,3 +737,209 @@ def test_confirm_ticket_rejects_mismatched_approval_request(monkeypatch):
     assert "update_approval_request_called" not in calls
     assert "create_tool_call_called" not in calls
     assert "create_ticket_service_called" not in calls
+
+@pytest.mark.parametrize("approval_status", ["rejected", "cancelled", "approved"])
+def test_confirm_ticket_rejects_non_pending_approval_request(
+    monkeypatch,
+    approval_status,
+):
+    calls = {}
+
+    def fake_get_approval_request(approval_request_id, tenant_id):
+        return SimpleNamespace(
+            id=approval_request_id,
+            agent_run_id=1,
+            tenant_id=tenant_id,
+            status=approval_status,
+            draft_json=make_ticket_draft_json(),
+        )
+
+    def fake_update_approval_request(*args, **kwargs):
+        calls["update_approval_request_called"] = True
+
+    def fake_create_tool_call(*args, **kwargs):
+        calls["create_tool_call_called"] = True
+
+    def fake_create_ticket_service(*args, **kwargs):
+        calls["create_ticket_service_called"] = True
+
+    monkeypatch.setattr(
+        "services.ticket_agent_service.get_approval_request",
+        fake_get_approval_request,
+    )
+    monkeypatch.setattr(
+        "services.ticket_agent_service.update_approval_request",
+        fake_update_approval_request,
+    )
+    monkeypatch.setattr(
+        "services.ticket_agent_service.create_tool_call",
+        fake_create_tool_call,
+    )
+    monkeypatch.setattr(
+        "services.ticket_agent_service.create_ticket_service",
+        fake_create_ticket_service,
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        confirm_ticket(
+            request=TicketAgentConfirmRequest(
+                agent_run_id=1,
+                approval_request_id=10,
+                draft=make_ticket_draft(),
+            ),
+            tenant_id="tenant_demo",
+            created_by="user_demo",
+        )
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "Approval request is not pending"
+    assert "update_approval_request_called" not in calls
+    assert "create_tool_call_called" not in calls
+    assert "create_ticket_service_called" not in calls
+
+def test_confirm_ticket_rejects_tampered_draft(monkeypatch):
+    calls = {}
+
+    def fake_get_approval_request(approval_request_id, tenant_id):
+        return SimpleNamespace(
+            id=approval_request_id,
+            agent_run_id=1,
+            tenant_id=tenant_id,
+            status="pending",
+            draft_json=make_ticket_draft_json(
+                title="VPN 连不上",
+                category="it",
+                priority="high",
+            ),
+        )
+
+    def fake_update_approval_request(*args, **kwargs):
+        calls["update_approval_request_called"] = True
+
+    def fake_create_tool_call(*args, **kwargs):
+        calls["create_tool_call_called"] = True
+
+    def fake_create_ticket_service(*args, **kwargs):
+        calls["create_ticket_service_called"] = True
+
+    monkeypatch.setattr(
+        "services.ticket_agent_service.get_approval_request",
+        fake_get_approval_request,
+    )
+    monkeypatch.setattr(
+        "services.ticket_agent_service.update_approval_request",
+        fake_update_approval_request,
+    )
+    monkeypatch.setattr(
+        "services.ticket_agent_service.create_tool_call",
+        fake_create_tool_call,
+    )
+    monkeypatch.setattr(
+        "services.ticket_agent_service.create_ticket_service",
+        fake_create_ticket_service,
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        confirm_ticket(
+            request=TicketAgentConfirmRequest(
+                agent_run_id=1,
+                approval_request_id=10,
+                draft=make_ticket_draft(title="被篡改的标题"),
+            ),
+            tenant_id="tenant_demo",
+            created_by="user_demo",
+        )
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "Confirm draft does not match approval draft"
+    assert "update_approval_request_called" not in calls
+    assert "create_tool_call_called" not in calls
+    assert "create_ticket_service_called" not in calls
+
+
+def test_preview_ticket_marks_search_kb_tool_call_failed_when_search_fails(monkeypatch):
+    calls = {}
+
+    def fake_search_chroma(query: str, top_k: int, tenant_id: str, category: str | None):
+        raise RuntimeError("chroma unavailable")
+
+    def fake_create_tool_call_for_search(tool_call_create):
+        calls["search_tool_name"] = tool_call_create.tool_name
+        calls["search_tool_status"] = tool_call_create.status
+        calls["search_tool_input_json"] = tool_call_create.tool_input_json
+
+        return SimpleNamespace(
+            id=200,
+            agent_run_id=tool_call_create.agent_run_id,
+            tenant_id=tool_call_create.tenant_id,
+            tool_name=tool_call_create.tool_name,
+            status=tool_call_create.status,
+        )
+
+    def fake_update_tool_call_for_search(tool_call_id, tenant_id, tool_call_update):
+        calls["updated_search_tool_call_id"] = tool_call_id
+        calls["updated_search_tool_status"] = tool_call_update.status
+        calls["search_tool_error_message"] = tool_call_update.error_message
+
+        return SimpleNamespace(
+            id=tool_call_id,
+            tenant_id=tenant_id,
+            status=tool_call_update.status,
+            error_message=tool_call_update.error_message,
+        )
+
+    def fake_update_agent_run_for_failure(agent_run_id, tenant_id, agent_run_update):
+        calls["failed_agent_run_id"] = agent_run_id
+        calls["failed_agent_run_status"] = agent_run_update.status
+        calls["failed_agent_result_summary"] = agent_run_update.result_summary
+
+        return SimpleNamespace(
+            id=agent_run_id,
+            tenant_id=tenant_id,
+            status=agent_run_update.status,
+            result_summary=agent_run_update.result_summary,
+            latency_ms=agent_run_update.latency_ms,
+            retrieval_summary_json=agent_run_update.retrieval_summary_json,
+        )
+
+    monkeypatch.setattr(
+        "services.ticket_agent_service.search_chroma",
+        fake_search_chroma,
+    )
+    monkeypatch.setattr(
+        "services.ticket_agent_service.create_agent_run",
+        fake_create_agent_run,
+    )
+    monkeypatch.setattr(
+        "services.ticket_agent_service.update_agent_run",
+        fake_update_agent_run_for_failure,
+    )
+    monkeypatch.setattr(
+        "services.ticket_agent_service.create_tool_call",
+        fake_create_tool_call_for_search,
+    )
+    monkeypatch.setattr(
+        "services.ticket_agent_service.update_tool_call",
+        fake_update_tool_call_for_search,
+    )
+
+    with pytest.raises(RuntimeError) as exc_info:
+        preview_ticket(
+            request=TicketAgentPreviewRequest(
+                message="VPN 连不上",
+                category="it",
+            ),
+            tenant_id="tenant_demo",
+        )
+
+    assert str(exc_info.value) == "chroma unavailable"
+
+    assert calls["search_tool_name"] == "search_kb"
+    assert calls["search_tool_status"] == "pending"
+    assert calls["updated_search_tool_call_id"] == 200
+    assert calls["updated_search_tool_status"] == "failed"
+    assert calls["search_tool_error_message"] == "chroma unavailable"
+
+    assert calls["failed_agent_run_id"] == 1
+    assert calls["failed_agent_run_status"] == "failed"
+    assert calls["failed_agent_result_summary"] == "search_kb failed: chroma unavailable"
