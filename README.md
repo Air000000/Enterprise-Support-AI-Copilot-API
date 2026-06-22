@@ -1,5 +1,7 @@
 # Enterprise Support AI Copilot
 
+[![Tests](https://github.com/Air000000/fastapi-todo-api/actions/workflows/tests.yml/badge.svg?branch=learn-rag)](https://github.com/Air000000/fastapi-todo-api/actions/workflows/tests.yml)
+
 企业内部知识库与工单 AgentOps 后端系统。
 
 本项目最初由 FastAPI Todo / AI Todo API 演进而来，当前 `learn-rag` 分支已经升级为面向企业内部支持场景的 AI Copilot 后端项目。
