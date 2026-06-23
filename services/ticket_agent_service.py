@@ -375,6 +375,7 @@ def preview_ticket(
             tenant_id=tenant_id,
             tool_call_update=ToolCallUpdate(
                 status="failed",
+                error_type="search_kb_failed",
                 error_message=str(exc),
             ),
         )
@@ -484,6 +485,7 @@ def preview_ticket(
             tenant_id=tenant_id,
             tool_call_update=ToolCallUpdate(
                 status="failed",
+                error_type="classify_ticket_failed",
                 error_message=str(exc),
             ),
         )
@@ -636,6 +638,7 @@ def confirm_ticket(
             tenant_id=tenant_id,
             tool_call_update=ToolCallUpdate(
                 status="failed",
+                error_type="create_ticket_failed",
                 error_message=str(exc),
             ),
         )

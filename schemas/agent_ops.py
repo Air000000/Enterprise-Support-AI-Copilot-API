@@ -74,12 +74,14 @@ class ToolCallCreate(BaseModel):
     tool_input_json: str = "{}"
     tool_output_json: str | None = None
     status: ToolCallStatus = "pending"
+    error_type: str | None = Field(default=None, max_length=100)
     error_message: str | None = Field(default=None, max_length=2000)
 
 
 class ToolCallUpdate(BaseModel):
     tool_output_json: str | None = None
     status: ToolCallStatus | None = None
+    error_type: str | None = Field(default=None, max_length=100)
     error_message: str | None = Field(default=None, max_length=2000)
 
 
@@ -93,6 +95,7 @@ class ToolCallResponse(BaseModel):
     tool_input_json: str
     tool_output_json: str | None
     status: str
+    error_type: str | None
     error_message: str | None
     created_at: datetime
     finished_at: datetime | None

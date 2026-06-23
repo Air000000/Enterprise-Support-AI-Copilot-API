@@ -139,6 +139,7 @@ def test_list_tool_calls_by_run(monkeypatch):
                 tool_input_json='{"title":"VPN 连不上"}',
                 tool_output_json='{"ticket_id":100,"status":"open"}',
                 status="success",
+                error_type=None,
                 error_message=None,
                 created_at=datetime(2026, 1, 1, 10, 0, 10),
                 finished_at=datetime(2026, 1, 1, 10, 0, 20),
@@ -165,6 +166,7 @@ def test_list_tool_calls_by_run(monkeypatch):
     assert data[0]["agent_run_id"] == 1
     assert data[0]["tool_name"] == "create_ticket"
     assert data[0]["status"] == "success"
+    assert data[0]["error_type"] is None
     assert data[0]["error_message"] is None
 
 

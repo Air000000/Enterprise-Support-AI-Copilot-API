@@ -200,12 +200,38 @@ def test_create_and_update_tool_call(agent_ops_test_engine):
     assert updated.finished_at is not None
     assert json.loads(updated.tool_output_json)["ticket_id"] == 1
 
+
+    failed_tool_call = agent_ops_service.create_tool_call(
+        ToolCallCreate(
+            agent_run_id=agent_run.id,
+            tenant_id="tenant_demo",
+            tool_name="search_kb",
+            tool_input_json='{"query":"VPN 连不上"}',
+        )
+    )
+
+    failed_updated = agent_ops_service.update_tool_call(
+        tool_call_id=failed_tool_call.id,
+        tenant_id="tenant_demo",
+        tool_call_update=ToolCallUpdate(
+            status="failed",
+            error_type="search_kb_failed",
+            error_message="Chroma search failed",
+        ),
+    )
+
+    assert failed_updated.status == "failed"
+    assert failed_updated.error_type == "search_kb_failed"
+    assert failed_updated.error_message == "Chroma search failed"
+    assert failed_updated.finished_at is not None
+
+
     tool_calls = agent_ops_service.list_tool_calls_by_run(
         agent_run_id=agent_run.id,
         tenant_id="tenant_demo",
     )
 
-    assert len(tool_calls) == 1
+    assert len(tool_calls) == 2
     assert tool_calls[0].id == tool_call.id
 
 

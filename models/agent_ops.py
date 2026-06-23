@@ -45,6 +45,7 @@ class ToolCall(SQLModel, table=True):
     tool_output_json: Optional[str] = None
 
     status: str = Field(default="pending", index=True)
+    error_type: Optional[str] = Field(default=None, max_length=100, index=True)
     error_message: Optional[str] = Field(default=None, max_length=2000)
 
     created_at: datetime = Field(default_factory=utc_now)
