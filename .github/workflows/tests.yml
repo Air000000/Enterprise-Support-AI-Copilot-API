@@ -48,3 +48,4 @@ jobs:
             tests/test_agent_ops_api.py \
             tests/test_ticket_agent_service.py \
             tests/test_agent_ticket_api.py
+            tests/test_agentops_smoke_api.py
