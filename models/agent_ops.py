@@ -64,6 +64,7 @@ class ApprovalRequest(SQLModel, table=True):
 
     draft_json: str
     approved_by: Optional[str] = Field(default=None, index=True)
+    decision_reason: Optional[str] = Field(default=None, max_length=2000)
 
     created_at: datetime = Field(default_factory=utc_now)
     decided_at: Optional[datetime] = None

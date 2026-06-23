@@ -301,11 +301,13 @@ def test_create_and_update_approval_request(agent_ops_test_engine):
         approval_request_update=ApprovalRequestUpdate(
             status="approved",
             approved_by="user_demo",
+            decision_reason="该请求需要主管审批，暂不创建工单。",
         ),
     )
 
     assert updated.status == "approved"
     assert updated.approved_by == "user_demo"
+    assert updated.decision_reason == "该请求需要主管审批，暂不创建工单。"
     assert updated.decided_at is not None
 
     approval_requests = agent_ops_service.list_approval_requests_by_run(

@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from schemas.agent_ops import (
     AgentOpsMetricsSummaryResponse,
     AgentRunResponse,
+    ApprovalDecisionRequest,
     ApprovalRequestResponse,
     ApprovalRequestUpdate,
     ToolCallResponse,
@@ -101,6 +102,7 @@ def get_agent_ops_metrics_summary() -> AgentOpsMetricsSummaryResponse:
 )
 def reject_approval_request(
     approval_request_id: int,
+    request: ApprovalDecisionRequest,
 ) -> ApprovalRequestResponse:
     approval_request = update_approval_request_service(
         approval_request_id=approval_request_id,
@@ -108,6 +110,7 @@ def reject_approval_request(
         approval_request_update=ApprovalRequestUpdate(
             status="rejected",
             approved_by=MOCK_USER_ID,
+            decision_reason=request.reason,
         ),
     )
 
@@ -120,6 +123,7 @@ def reject_approval_request(
 )
 def cancel_approval_request(
     approval_request_id: int,
+    request: ApprovalDecisionRequest,
 ) -> ApprovalRequestResponse:
     approval_request = update_approval_request_service(
         approval_request_id=approval_request_id,
@@ -127,6 +131,7 @@ def cancel_approval_request(
         approval_request_update=ApprovalRequestUpdate(
             status="cancelled",
             approved_by=MOCK_USER_ID,
+            decision_reason=request.reason,
         ),
     )
 

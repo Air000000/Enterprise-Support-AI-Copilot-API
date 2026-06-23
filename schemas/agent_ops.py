@@ -110,6 +110,11 @@ class ApprovalRequestCreate(BaseModel):
 class ApprovalRequestUpdate(BaseModel):
     status: ApprovalRequestStatus
     approved_by: str | None = Field(default=None, max_length=100)
+    decision_reason: str | None = Field(default=None, max_length=2000)
+
+
+class ApprovalDecisionRequest(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=2000)
 
 
 class ApprovalRequestResponse(BaseModel):
@@ -124,6 +129,7 @@ class ApprovalRequestResponse(BaseModel):
     approved_by: str | None
     created_at: datetime
     decided_at: datetime | None
+    decision_reason: str | None
 
 class AgentOpsMetricsSummaryResponse(BaseModel):
     total_agent_runs: int

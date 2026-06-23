@@ -187,6 +187,7 @@ def test_list_approval_requests_by_run(monkeypatch):
                 status="approved",
                 draft_json='{"title":"VPN 连不上"}',
                 approved_by="user_demo",
+                decision_reason="用户已确认创建工单。",
                 created_at=datetime(2026, 1, 1, 10, 0, 5),
                 decided_at=datetime(2026, 1, 1, 10, 0, 8),
             )
@@ -213,6 +214,7 @@ def test_list_approval_requests_by_run(monkeypatch):
     assert data[0]["approval_type"] == "ticket_creation"
     assert data[0]["status"] == "approved"
     assert data[0]["approved_by"] == "user_demo"
+    assert data[0]["decision_reason"] == "用户已确认创建工单。"
 
 def test_reject_approval_request(monkeypatch):
     calls = {}
@@ -226,6 +228,7 @@ def test_reject_approval_request(monkeypatch):
         calls["tenant_id"] = tenant_id
         calls["status"] = approval_request_update.status
         calls["approved_by"] = approval_request_update.approved_by
+        calls["decision_reason"] = approval_request_update.decision_reason
 
         return SimpleNamespace(
             id=approval_request_id,
@@ -235,6 +238,7 @@ def test_reject_approval_request(monkeypatch):
             status=approval_request_update.status,
             draft_json='{"title":"VPN 连不上"}',
             approved_by=approval_request_update.approved_by,
+            decision_reason=approval_request_update.decision_reason,
             created_at=datetime(2026, 1, 1, 10, 0, 5),
             decided_at=datetime(2026, 1, 1, 10, 0, 8),
         )
@@ -245,7 +249,12 @@ def test_reject_approval_request(monkeypatch):
         fake_update_approval_request_service,
     )
 
-    response = client.post("/agent-ops/approval-requests/10/reject")
+    response = client.post(
+        "/agent-ops/approval-requests/10/reject",
+        json={
+            "reason": "该请求需要主管审批，暂不创建工单。",
+        },
+    )
 
     assert response.status_code == 200
 
@@ -255,6 +264,7 @@ def test_reject_approval_request(monkeypatch):
     assert calls["tenant_id"] == "tenant_demo"
     assert calls["status"] == "rejected"
     assert calls["approved_by"] == "user_demo"
+    assert calls["decision_reason"] == "该请求需要主管审批，暂不创建工单。"
 
     assert data["id"] == 10
     assert data["agent_run_id"] == 1
@@ -262,6 +272,8 @@ def test_reject_approval_request(monkeypatch):
     assert data["approval_type"] == "ticket_creation"
     assert data["status"] == "rejected"
     assert data["approved_by"] == "user_demo"
+    assert data["decision_reason"] == "该请求需要主管审批，暂不创建工单。"
+    assert data["decided_at"] is not None
 
 def test_cancel_approval_request(monkeypatch):
     calls = {}
@@ -275,6 +287,7 @@ def test_cancel_approval_request(monkeypatch):
         calls["tenant_id"] = tenant_id
         calls["status"] = approval_request_update.status
         calls["approved_by"] = approval_request_update.approved_by
+        calls["decision_reason"] = approval_request_update.decision_reason
 
         return SimpleNamespace(
             id=approval_request_id,
@@ -284,6 +297,7 @@ def test_cancel_approval_request(monkeypatch):
             status=approval_request_update.status,
             draft_json='{"title":"VPN 连不上"}',
             approved_by=approval_request_update.approved_by,
+            decision_reason=approval_request_update.decision_reason,
             created_at=datetime(2026, 1, 1, 10, 0, 5),
             decided_at=datetime(2026, 1, 1, 10, 0, 8),
         )
@@ -294,7 +308,12 @@ def test_cancel_approval_request(monkeypatch):
         fake_update_approval_request_service,
     )
 
-    response = client.post("/agent-ops/approval-requests/10/cancel")
+    response = client.post(
+        "/agent-ops/approval-requests/10/cancel",
+        json={
+            "reason": "用户撤回了该请求。",
+        },
+    )
 
     assert response.status_code == 200
 
@@ -304,6 +323,7 @@ def test_cancel_approval_request(monkeypatch):
     assert calls["tenant_id"] == "tenant_demo"
     assert calls["status"] == "cancelled"
     assert calls["approved_by"] == "user_demo"
+    assert calls["decision_reason"] == "用户撤回了该请求。"
 
     assert data["id"] == 10
     assert data["agent_run_id"] == 1
@@ -311,7 +331,8 @@ def test_cancel_approval_request(monkeypatch):
     assert data["approval_type"] == "ticket_creation"
     assert data["status"] == "cancelled"
     assert data["approved_by"] == "user_demo"
-
+    assert data["decision_reason"] == "用户撤回了该请求。"
+    assert data["decided_at"] is not None
 
 def test_get_agent_ops_metrics_summary(monkeypatch):
     calls = {}
