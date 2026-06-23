@@ -204,6 +204,16 @@ ticket_id
 ticket status
 ```
 
+### AgentOps 审计增强
+
+当前版本的 AgentOps 不只记录 Agent Run、Tool Call 和 Approval Request 的基础状态，还补充了更细的审计字段：
+
+* `approval_requests.decision_reason`：记录审批通过、拒绝或取消的原因。
+* `tool_calls.error_type`：记录工具调用失败类型，例如 `search_kb_failed`、`classify_ticket_failed`、`create_ticket_failed`。
+* `metrics summary.tool_call_error_types`：按失败类型统计 tool call，便于观察 Agent 执行链路中最常见的失败来源。
+
+这使系统从“能记录执行结果”进一步升级为“能解释失败原因，并支持后续运维分析”。
+
 ---
 
 ## 4. Ticket Agent 安全边界

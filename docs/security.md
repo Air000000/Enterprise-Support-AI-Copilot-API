@@ -517,7 +517,30 @@ Cancelled approval_request 不允许再次 confirm。
 
 ---
 
-## 12. Metrics Summary
+## 12. Approval Decision Reason
+
+审批请求现在会记录 `decision_reason`，用于说明审批结果背后的原因。
+
+当用户拒绝或取消审批请求时，系统会保存：
+
+* 审批状态：`rejected` 或 `cancelled`
+* 操作人：`approved_by`
+* 决策原因：`decision_reason`
+* 决策时间：`decided_at`
+
+这避免了审批记录只包含状态、缺少上下文的问题，也方便后续审计和复盘。
+
+## Tool Call Error Type
+
+工具调用失败时，系统会记录两个层级的信息：
+
+* `error_type`：机器可聚合的失败类型。
+* `error_message`：具体错误信息。
+
+这种分层设计可以避免只依赖自由文本错误信息，也能支持 metrics summary 对失败类型进行聚合统计。
+
+
+## 13. Metrics Summary
 
 AgentOps metrics summary 用于查看当前系统运行统计。
 
@@ -559,7 +582,7 @@ approval_request 是否仍有 pending
 
 ---
 
-## 13. Current Limitations
+## 14. Current Limitations
 
 当前 MVP 仍有以下限制：
 
@@ -575,7 +598,7 @@ approval_request 是否仍有 pending
 
 ---
 
-## 14. Planned Improvements
+## 15. Planned Improvements
 
 后续安全增强方向：
 
@@ -594,7 +617,7 @@ approval_request 是否仍有 pending
 
 ---
 
-## 15. Security Summary
+## 16. Security Summary
 
 当前 Ticket Agent 的安全边界可以概括为：
 

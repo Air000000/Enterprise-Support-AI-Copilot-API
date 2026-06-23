@@ -598,7 +598,32 @@ GET /agent-ops/metrics/summary
 
 ---
 
-## 14. 手动 Demo 流程
+## 14. Tool Call 失败类型统计
+
+在 AgentOps 中，`tool_calls` 表不仅记录每次工具调用的输入、输出、状态和错误信息，还通过 `error_type` 字段记录失败类别。
+
+当前约定的失败类型包括：
+
+* `search_kb_failed`：知识库检索失败。
+* `classify_ticket_failed`：工单分类或草稿生成失败。
+* `create_ticket_failed`：确认后创建工单失败。
+
+`/agent-ops/metrics/summary` 会返回 `tool_call_error_types`，用于按失败类型聚合统计。例如：
+
+```json
+{
+  "failed_tool_calls": 1,
+  "tool_call_error_types": {
+    "create_ticket_failed": 1
+  }
+}
+```
+
+这个设计让 AgentOps 不只具备审计能力，也具备基础的故障归因能力。
+
+---
+
+## 15. 手动 Demo 流程
 
 ### Step 1: Preview
 
@@ -699,7 +724,7 @@ approved_approval_requests = 1
 
 ---
 
-## 15. 失败场景与防护
+## 16. 失败场景与防护
 
 ### 场景 1：RAG 检索失败
 
@@ -750,7 +775,7 @@ error_message 记录异常原因
 
 ---
 
-## 16. 当前设计取舍
+## 17. 当前设计取舍
 
 ### 为什么不用全自动 Agent 直接创建工单？
 
@@ -796,7 +821,7 @@ Agent 为什么认为需要创建工单？
 
 ---
 
-## 17. 面试表达
+## 18. 面试表达
 
 可以这样介绍本模块：
 
