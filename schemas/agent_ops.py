@@ -171,6 +171,17 @@ class RetrievalLogResponse(BaseModel):
     created_at: datetime
 
 
+class RetrievalMetricsSummaryResponse(BaseModel):
+    total_retrieval_logs: int
+    ok_retrieval_logs: int
+    no_context_retrieval_logs: int
+    failed_retrieval_logs: int
+    average_latency_ms: float | None = None
+    average_top_distance: float | None = None
+    endpoint_counts: dict[str, int]
+    category_counts: dict[str, int]
+
+
 class AgentOpsMetricsSummaryResponse(BaseModel):
     total_agent_runs: int
     running_agent_runs: int

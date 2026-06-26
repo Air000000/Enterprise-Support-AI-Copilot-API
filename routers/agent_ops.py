@@ -9,12 +9,14 @@ from schemas.agent_ops import (
     ApprovalRequestResponse,
     ApprovalRequestUpdate,
     RetrievalLogResponse,
+    RetrievalMetricsSummaryResponse,
     ToolCallResponse,
 )
 from services.agent_ops_service import (
     get_agent_ops_metrics_summary as get_agent_ops_metrics_summary_service,
     get_agent_run as get_agent_run_service,
     get_agent_run_trace as get_agent_run_trace_service,
+    get_retrieval_metrics_summary as get_retrieval_metrics_summary_service,
     list_agent_runs as list_agent_runs_service,
     list_approval_requests as list_approval_requests_service,
     list_approval_requests_by_run as list_approval_requests_by_run_service,
@@ -245,6 +247,21 @@ def list_retrieval_logs(
 def get_agent_ops_metrics_summary() -> AgentOpsMetricsSummaryResponse:
     return get_agent_ops_metrics_summary_service(
         tenant_id=MOCK_TENANT_ID,
+    )
+
+
+@router.get(
+    "/metrics/retrieval",
+    response_model=RetrievalMetricsSummaryResponse,
+)
+def get_retrieval_metrics_summary(
+    endpoint: RetrievalEndpointQuery | None = None,
+    category: str | None = None,
+) -> RetrievalMetricsSummaryResponse:
+    return get_retrieval_metrics_summary_service(
+        tenant_id=MOCK_TENANT_ID,
+        endpoint=endpoint,
+        category=category,
     )
 
 

@@ -1006,3 +1006,105 @@ def test_create_and_list_retrieval_logs(agent_ops_test_engine):
     assert logs[0].top_distance == 0.3123
     assert logs[0].source_documents_json == '[{"document_id":"doc_vpn"}]'
     assert logs[0].scores_json == "[0.3123, 0.4567]"
+
+
+def test_get_retrieval_metrics_summary(agent_ops_test_engine):
+    agent_ops_service.create_retrieval_log(
+        RetrievalLogCreate(
+            tenant_id="tenant_demo",
+            endpoint="search",
+            query_text="VPN 连不上怎么办？",
+            top_k=3,
+            category="it",
+            retrieval_status="ok",
+            total_hits=2,
+            top_distance=0.3,
+            latency_ms=100,
+        )
+    )
+
+    agent_ops_service.create_retrieval_log(
+        RetrievalLogCreate(
+            tenant_id="tenant_demo",
+            endpoint="ask",
+            query_text="邮箱无法登录怎么办？",
+            top_k=3,
+            category="it",
+            retrieval_status="no_context",
+            total_hits=0,
+            top_distance=None,
+            latency_ms=200,
+        )
+    )
+
+    agent_ops_service.create_retrieval_log(
+        RetrievalLogCreate(
+            tenant_id="tenant_demo",
+            endpoint="ask",
+            query_text="报销流程是什么？",
+            top_k=3,
+            category="hr",
+            retrieval_status="failed",
+            total_hits=0,
+            top_distance=None,
+            latency_ms=300,
+            error_message="LLM is unavailable",
+        )
+    )
+
+    agent_ops_service.create_retrieval_log(
+        RetrievalLogCreate(
+            tenant_id="other_tenant",
+            endpoint="search",
+            query_text="其他租户问题",
+            top_k=3,
+            category="it",
+            retrieval_status="ok",
+            total_hits=1,
+            top_distance=0.1,
+            latency_ms=50,
+        )
+    )
+
+    summary = agent_ops_service.get_retrieval_metrics_summary(
+        tenant_id="tenant_demo",
+    )
+
+    assert summary.total_retrieval_logs == 3
+    assert summary.ok_retrieval_logs == 1
+    assert summary.no_context_retrieval_logs == 1
+    assert summary.failed_retrieval_logs == 1
+    assert summary.average_latency_ms == 200
+    assert summary.average_top_distance == 0.3
+    assert summary.endpoint_counts == {
+        "search": 1,
+        "ask": 2,
+    }
+    assert summary.category_counts == {
+        "it": 2,
+        "hr": 1,
+    }
+
+    ask_summary = agent_ops_service.get_retrieval_metrics_summary(
+        tenant_id="tenant_demo",
+        endpoint="ask",
+    )
+
+    assert ask_summary.total_retrieval_logs == 2
+    assert ask_summary.ok_retrieval_logs == 0
+    assert ask_summary.no_context_retrieval_logs == 1
+    assert ask_summary.failed_retrieval_logs == 1
+    assert ask_summary.endpoint_counts == {
+        "ask": 2,
+    }
+
+    it_summary = agent_ops_service.get_retrieval_metrics_summary(
+        tenant_id="tenant_demo",
+        category="it",
+    )
+
+    assert it_summary.total_retrieval_logs == 2
+    assert it_summary.category_counts == {
+        "it": 2,
+    }
+    

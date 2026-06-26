@@ -826,3 +826,79 @@ def test_list_retrieval_logs_rejects_invalid_status():
     )
 
     assert response.status_code == 422
+
+
+def test_get_retrieval_metrics_summary(monkeypatch):
+    calls = {}
+
+    def fake_get_retrieval_metrics_summary_service(
+        tenant_id: str,
+        endpoint: str | None = None,
+        category: str | None = None,
+    ):
+        calls["tenant_id"] = tenant_id
+        calls["endpoint"] = endpoint
+        calls["category"] = category
+
+        return SimpleNamespace(
+            total_retrieval_logs=3,
+            ok_retrieval_logs=1,
+            no_context_retrieval_logs=1,
+            failed_retrieval_logs=1,
+            average_latency_ms=200,
+            average_top_distance=0.3,
+            endpoint_counts={
+                "search": 1,
+                "ask": 2,
+            },
+            category_counts={
+                "it": 2,
+                "hr": 1,
+            },
+        )
+
+    monkeypatch.setattr(
+        agent_ops_router,
+        "get_retrieval_metrics_summary_service",
+        fake_get_retrieval_metrics_summary_service,
+    )
+
+    response = client.get(
+        "/agent-ops/metrics/retrieval",
+        params={
+            "endpoint": "ask",
+            "category": "it",
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert calls["tenant_id"] == "tenant_demo"
+    assert calls["endpoint"] == "ask"
+    assert calls["category"] == "it"
+
+    assert data["total_retrieval_logs"] == 3
+    assert data["ok_retrieval_logs"] == 1
+    assert data["no_context_retrieval_logs"] == 1
+    assert data["failed_retrieval_logs"] == 1
+    assert data["average_latency_ms"] == 200
+    assert data["average_top_distance"] == 0.3
+    assert data["endpoint_counts"] == {
+        "search": 1,
+        "ask": 2,
+    }
+    assert data["category_counts"] == {
+        "it": 2,
+        "hr": 1,
+    }
+
+
+def test_get_retrieval_metrics_summary_rejects_invalid_endpoint():
+    response = client.get(
+        "/agent-ops/metrics/retrieval",
+        params={"endpoint": "chat"},
+    )
+
+    assert response.status_code == 422
