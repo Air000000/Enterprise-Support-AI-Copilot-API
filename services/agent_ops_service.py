@@ -14,6 +14,7 @@ from schemas.agent_ops import (
     ApprovalRequestCreate,
     ApprovalRequestUpdate,
     RetrievalLogCreate,
+    RetrievalMetricsSummaryResponse,
     ToolCallCreate,
     ToolCallUpdate,
 )
@@ -462,6 +463,43 @@ def list_retrieval_logs(
 def count_status(items, status: str) -> int:
     return sum(1 for item in items if item.status == status)
 
+def count_status(
+    items,
+    status: str,
+    field_name: str = "status",
+) -> int:
+    return sum(
+        1
+        for item in items
+        if getattr(item, field_name) == status
+    )
+
+def count_field_values(items, field_name: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+
+    for item in items:
+        field_value = getattr(item, field_name, None)
+
+        if field_value is None:
+            continue
+
+        counts[field_value] = counts.get(field_value, 0) + 1
+
+    return counts
+
+
+def average_optional_numbers(values: list[float | int | None]) -> float | None:
+    valid_values = [
+        value
+        for value in values
+        if value is not None
+    ]
+
+    if not valid_values:
+        return None
+
+    return round(sum(valid_values) / len(valid_values), 4)
+
 
 def count_tool_call_error_types(tool_calls: list[ToolCall]) -> dict[str, int]:
     error_types: dict[str, int] = {}
@@ -527,4 +565,62 @@ def get_agent_ops_metrics_summary(
         approved_approval_requests=count_status(approval_requests, "approved"),
         rejected_approval_requests=count_status(approval_requests, "rejected"),
         cancelled_approval_requests=count_status(approval_requests, "cancelled"),
+    )
+
+
+def get_retrieval_metrics_summary(
+    tenant_id: str,
+    endpoint: str | None = None,
+    category: str | None = None,
+) -> RetrievalMetricsSummaryResponse:
+    with Session(engine) as session:
+        statement = select(RetrievalLog).where(
+            RetrievalLog.tenant_id == tenant_id
+        )
+
+        if endpoint is not None:
+            statement = statement.where(RetrievalLog.endpoint == endpoint)
+
+        if category is not None:
+            statement = statement.where(RetrievalLog.category == category)
+
+        retrieval_logs = list(session.exec(statement).all())
+
+    return RetrievalMetricsSummaryResponse(
+        total_retrieval_logs=len(retrieval_logs),
+        ok_retrieval_logs=count_status(
+            retrieval_logs,
+            "ok",
+            field_name="retrieval_status",
+        ),
+        no_context_retrieval_logs=count_status(
+            retrieval_logs,
+            "no_context",
+            field_name="retrieval_status",
+        ),
+        failed_retrieval_logs=count_status(
+            retrieval_logs,
+            "failed",
+            field_name="retrieval_status",
+        ),
+        average_latency_ms=average_optional_numbers(
+            [
+                retrieval_log.latency_ms
+                for retrieval_log in retrieval_logs
+            ]
+        ),
+        average_top_distance=average_optional_numbers(
+            [
+                retrieval_log.top_distance
+                for retrieval_log in retrieval_logs
+            ]
+        ),
+        endpoint_counts=count_field_values(
+            retrieval_logs,
+            "endpoint",
+        ),
+        category_counts=count_field_values(
+            retrieval_logs,
+            "category",
+        ),
     )
