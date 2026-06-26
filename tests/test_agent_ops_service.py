@@ -753,3 +753,121 @@ def test_get_agent_ops_metrics_summary_counts_by_tenant(agent_ops_test_engine):
     assert summary.approved_approval_requests == 1
     assert summary.rejected_approval_requests == 1
     assert summary.cancelled_approval_requests == 1
+
+
+def test_list_approval_requests_with_global_filters(agent_ops_test_engine):
+    agent_run = agent_ops_service.create_agent_run(
+        AgentRunCreate(
+            tenant_id="tenant_demo",
+            user_id="user_demo",
+            input_message="VPN 连不上",
+            category="it",
+        )
+    )
+
+    other_run = agent_ops_service.create_agent_run(
+        AgentRunCreate(
+            tenant_id="tenant_demo",
+            user_id="user_demo",
+            input_message="邮箱无法登录",
+            category="it",
+        )
+    )
+
+    other_tenant_run = agent_ops_service.create_agent_run(
+        AgentRunCreate(
+            tenant_id="other_tenant",
+            user_id="user_demo",
+            input_message="其他租户问题",
+            category="it",
+        )
+    )
+
+    agent_ops_service.create_approval_request(
+        ApprovalRequestCreate(
+            agent_run_id=agent_run.id,
+            tenant_id="tenant_demo",
+            approval_type="ticket_creation",
+            status="pending",
+            draft_json='{"title":"VPN 连不上"}',
+        )
+    )
+
+    agent_ops_service.create_approval_request(
+        ApprovalRequestCreate(
+            agent_run_id=other_run.id,
+            tenant_id="tenant_demo",
+            approval_type="ticket_creation",
+            status="rejected",
+            draft_json='{"title":"邮箱无法登录"}',
+        )
+    )
+
+    agent_ops_service.create_approval_request(
+        ApprovalRequestCreate(
+            agent_run_id=other_run.id,
+            tenant_id="tenant_demo",
+            approval_type="ticket_creation",
+            status="pending",
+            draft_json='{"ticket_id":1}',
+        )
+    )
+
+    agent_ops_service.create_approval_request(
+        ApprovalRequestCreate(
+            agent_run_id=other_tenant_run.id,
+            tenant_id="other_tenant",
+            approval_type="ticket_creation",
+            status="pending",
+            draft_json='{"title":"其他租户问题"}',
+        )
+    )
+
+    pending_approval_requests = agent_ops_service.list_approval_requests(
+        tenant_id="tenant_demo",
+        status="pending",
+    )
+
+    assert len(pending_approval_requests) == 2
+    assert {
+        approval_request.tenant_id
+        for approval_request in pending_approval_requests
+    } == {"tenant_demo"}
+    assert {
+        approval_request.status
+        for approval_request in pending_approval_requests
+    } == {"pending"}
+
+    ticket_creation_approval_requests = agent_ops_service.list_approval_requests(
+        tenant_id="tenant_demo",
+        approval_type="ticket_creation",
+    )
+
+    assert len(ticket_creation_approval_requests) == 3
+    assert {
+        approval_request.approval_type
+        for approval_request in ticket_creation_approval_requests
+    } == {"ticket_creation"}
+
+    run_filtered_approval_requests = agent_ops_service.list_approval_requests(
+        tenant_id="tenant_demo",
+        agent_run_id=other_run.id,
+    )
+
+    assert len(run_filtered_approval_requests) == 2
+    assert {
+        approval_request.agent_run_id
+        for approval_request in run_filtered_approval_requests
+    } == {other_run.id}
+
+    combined_filtered_approval_requests = agent_ops_service.list_approval_requests(
+        tenant_id="tenant_demo",
+        agent_run_id=other_run.id,
+        status="rejected",
+        approval_type="ticket_creation",
+    )
+
+    assert len(combined_filtered_approval_requests) == 1
+    assert combined_filtered_approval_requests[0].agent_run_id == other_run.id
+    assert combined_filtered_approval_requests[0].status == "rejected"
+    assert combined_filtered_approval_requests[0].approval_type == "ticket_creation"

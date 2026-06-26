@@ -12,6 +12,7 @@ from services.agent_ops_service import (
     get_agent_ops_metrics_summary as get_agent_ops_metrics_summary_service,
     get_agent_run as get_agent_run_service,
     list_agent_runs as list_agent_runs_service,
+    list_approval_requests as list_approval_requests_service,
     list_approval_requests_by_run as list_approval_requests_by_run_service,
     list_tool_calls as list_tool_calls_service,
     list_tool_calls_by_run as list_tool_calls_by_run_service,
@@ -93,6 +94,28 @@ def list_tool_calls_by_run(
     return [
         ToolCallResponse.model_validate(tool_call)
         for tool_call in tool_calls
+    ]
+
+
+@router.get(
+    "/approval-requests",
+    response_model=list[ApprovalRequestResponse],
+)
+def list_approval_requests(
+    agent_run_id: int | None = None,
+    status: str | None = None,
+    approval_type: str | None = None,
+) -> list[ApprovalRequestResponse]:
+    approval_requests = list_approval_requests_service(
+        tenant_id=MOCK_TENANT_ID,
+        agent_run_id=agent_run_id,
+        status=status,
+        approval_type=approval_type,
+    )
+
+    return [
+        ApprovalRequestResponse.model_validate(approval_request)
+        for approval_request in approval_requests
     ]
 
 

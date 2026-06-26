@@ -534,3 +534,64 @@ def test_list_tool_calls_with_filters(monkeypatch):
     assert data[0]["tool_name"] == "create_ticket"
     assert data[0]["status"] == "failed"
     assert data[0]["error_type"] == "create_ticket_failed"
+
+
+def test_list_approval_requests_with_filters(monkeypatch):
+    calls = {}
+
+    def fake_list_approval_requests_service(
+        tenant_id: str,
+        agent_run_id: int | None = None,
+        status: str | None = None,
+        approval_type: str | None = None,
+    ):
+        calls["tenant_id"] = tenant_id
+        calls["agent_run_id"] = agent_run_id
+        calls["status"] = status
+        calls["approval_type"] = approval_type
+
+        return [
+            SimpleNamespace(
+                id=401,
+                agent_run_id=1,
+                tenant_id=tenant_id,
+                approval_type="ticket_creation",
+                status="pending",
+                draft_json='{"title":"VPN 连不上"}',
+                approved_by=None,
+                decision_reason=None,
+                created_at=datetime(2026, 1, 1, 10, 0, 10),
+                decided_at=None,
+            )
+        ]
+
+    monkeypatch.setattr(
+        agent_ops_router,
+        "list_approval_requests_service",
+        fake_list_approval_requests_service,
+    )
+
+    response = client.get(
+        "/agent-ops/approval-requests",
+        params={
+            "agent_run_id": 1,
+            "status": "pending",
+            "approval_type": "ticket_creation",
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert calls["tenant_id"] == "tenant_demo"
+    assert calls["agent_run_id"] == 1
+    assert calls["status"] == "pending"
+    assert calls["approval_type"] == "ticket_creation"
+
+    assert len(data) == 1
+    assert data[0]["id"] == 401
+    assert data[0]["agent_run_id"] == 1
+    assert data[0]["approval_type"] == "ticket_creation"
+    assert data[0]["status"] == "pending"
+    assert data[0]["decision_reason"] is None

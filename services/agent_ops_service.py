@@ -289,6 +289,34 @@ def list_approval_requests_by_run(
         return list(approval_requests)
 
 
+def list_approval_requests(
+    tenant_id: str,
+    agent_run_id: int | None = None,
+    status: str | None = None,
+    approval_type: str | None = None,
+) -> list[ApprovalRequest]:
+    with Session(engine) as session:
+        statement = select(ApprovalRequest).where(
+            ApprovalRequest.tenant_id == tenant_id
+        )
+
+        if agent_run_id is not None:
+            statement = statement.where(
+                ApprovalRequest.agent_run_id == agent_run_id
+            )
+
+        if status is not None:
+            statement = statement.where(ApprovalRequest.status == status)
+
+        if approval_type is not None:
+            statement = statement.where(
+                ApprovalRequest.approval_type == approval_type
+            )
+
+        approval_requests = session.exec(statement).all()
+        return list(approval_requests)
+
+
 def update_approval_request(
     approval_request_id: int,
     tenant_id: str,
