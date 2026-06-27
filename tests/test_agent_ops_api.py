@@ -1030,3 +1030,67 @@ def test_get_retrieval_no_context_query_metrics_rejects_invalid_endpoint():
     )
 
     assert response.status_code == 422
+
+
+def test_get_retrieval_failure_metrics(monkeypatch):
+    calls = {}
+
+    def fake_get_retrieval_failure_metrics_service(
+        tenant_id: str,
+        endpoint: str | None = None,
+        category: str | None = None,
+        limit: int = 10,
+    ):
+        calls["tenant_id"] = tenant_id
+        calls["endpoint"] = endpoint
+        calls["category"] = category
+        calls["limit"] = limit
+
+        return [
+            SimpleNamespace(
+                error_message="LLM is unavailable",
+                endpoint="ask",
+                category="it",
+                failed_count=2,
+                latest_latency_ms=200,
+            )
+        ]
+
+    monkeypatch.setattr(
+        agent_ops_router,
+        "get_retrieval_failure_metrics_service",
+        fake_get_retrieval_failure_metrics_service,
+    )
+
+    response = client.get(
+        "/agent-ops/metrics/retrieval/failures",
+        params={
+            "endpoint": "ask",
+            "category": "it",
+            "limit": 5,
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert calls["tenant_id"] == "tenant_demo"
+    assert calls["endpoint"] == "ask"
+    assert calls["category"] == "it"
+    assert calls["limit"] == 5
+
+    assert len(data) == 1
+    assert data[0]["error_message"] == "LLM is unavailable"
+    assert data[0]["endpoint"] == "ask"
+    assert data[0]["category"] == "it"
+    assert data[0]["failed_count"] == 2
+    assert data[0]["latest_latency_ms"] == 200
+
+def test_get_retrieval_failure_metrics_rejects_invalid_endpoint():
+    response = client.get(
+        "/agent-ops/metrics/retrieval/failures",
+        params={"endpoint": "chat"},
+    )
+
+    assert response.status_code == 422

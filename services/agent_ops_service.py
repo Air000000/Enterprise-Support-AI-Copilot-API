@@ -14,6 +14,7 @@ from schemas.agent_ops import (
     AgentRunUpdate,
     ApprovalRequestCreate,
     ApprovalRequestUpdate,
+    RetrievalFailureMetricResponse,
     RetrievalLogCreate,
     RetrievalMetricsSummaryResponse,
     RetrievalNoContextQueryMetricResponse,
@@ -778,5 +779,73 @@ def get_retrieval_no_context_query_metrics(
     return sorted(
         results,
         key=lambda item: item.no_context_count,
+        reverse=True,
+    )[:limit]
+
+
+def get_retrieval_failure_metrics(
+    tenant_id: str,
+    endpoint: str | None = None,
+    category: str | None = None,
+    limit: int = 10,
+) -> list[RetrievalFailureMetricResponse]:
+    with Session(engine) as session:
+        statement = (
+            select(RetrievalLog)
+            .where(RetrievalLog.tenant_id == tenant_id)
+            .where(RetrievalLog.retrieval_status == "failed")
+        )
+
+        if endpoint is not None:
+            statement = statement.where(RetrievalLog.endpoint == endpoint)
+
+        if category is not None:
+            statement = statement.where(RetrievalLog.category == category)
+
+        retrieval_logs = list(session.exec(statement).all())
+
+    failure_metrics: dict[tuple[str, str, str | None], dict] = {}
+
+    for retrieval_log in retrieval_logs:
+        error_message = retrieval_log.error_message or "unknown_error"
+
+        key = (
+            error_message,
+            retrieval_log.endpoint,
+            retrieval_log.category,
+        )
+
+        metric = failure_metrics.setdefault(
+            key,
+            {
+                "error_message": error_message,
+                "endpoint": retrieval_log.endpoint,
+                "category": retrieval_log.category,
+                "failed_count": 0,
+                "latest_latency_ms": None,
+                "latest_id": 0,
+            },
+        )
+
+        metric["failed_count"] += 1
+
+        if retrieval_log.id is not None and retrieval_log.id > metric["latest_id"]:
+            metric["latest_id"] = retrieval_log.id
+            metric["latest_latency_ms"] = retrieval_log.latency_ms
+
+    results = [
+        RetrievalFailureMetricResponse(
+            error_message=metric["error_message"],
+            endpoint=metric["endpoint"],
+            category=metric["category"],
+            failed_count=metric["failed_count"],
+            latest_latency_ms=metric["latest_latency_ms"],
+        )
+        for metric in failure_metrics.values()
+    ]
+
+    return sorted(
+        results,
+        key=lambda item: item.failed_count,
         reverse=True,
     )[:limit]

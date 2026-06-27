@@ -1307,3 +1307,111 @@ def test_get_retrieval_no_context_query_metrics(agent_ops_test_engine):
 
     assert len(limited_metrics) == 1
     assert limited_metrics[0].query_text == "VPN 怎么配置？"
+
+
+def test_get_retrieval_failure_metrics(agent_ops_test_engine):
+    agent_ops_service.create_retrieval_log(
+        RetrievalLogCreate(
+            tenant_id="tenant_demo",
+            endpoint="ask",
+            query_text="VPN 怎么配置？",
+            top_k=3,
+            category="it",
+            retrieval_status="failed",
+            total_hits=0,
+            latency_ms=100,
+            error_message="LLM is unavailable",
+        )
+    )
+
+    agent_ops_service.create_retrieval_log(
+        RetrievalLogCreate(
+            tenant_id="tenant_demo",
+            endpoint="ask",
+            query_text="邮箱怎么登录？",
+            top_k=3,
+            category="it",
+            retrieval_status="failed",
+            total_hits=0,
+            latency_ms=200,
+            error_message="LLM is unavailable",
+        )
+    )
+
+    agent_ops_service.create_retrieval_log(
+        RetrievalLogCreate(
+            tenant_id="tenant_demo",
+            endpoint="search",
+            query_text="打印机驱动怎么下载？",
+            top_k=3,
+            category="it",
+            retrieval_status="failed",
+            total_hits=0,
+            latency_ms=150,
+            error_message="Chroma search failed",
+        )
+    )
+
+    agent_ops_service.create_retrieval_log(
+        RetrievalLogCreate(
+            tenant_id="tenant_demo",
+            endpoint="ask",
+            query_text="VPN 怎么配置？",
+            top_k=3,
+            category="it",
+            retrieval_status="no_context",
+            total_hits=0,
+            latency_ms=80,
+        )
+    )
+
+    agent_ops_service.create_retrieval_log(
+        RetrievalLogCreate(
+            tenant_id="other_tenant",
+            endpoint="ask",
+            query_text="VPN 怎么配置？",
+            top_k=3,
+            category="it",
+            retrieval_status="failed",
+            total_hits=0,
+            latency_ms=50,
+            error_message="LLM is unavailable",
+        )
+    )
+
+    metrics = agent_ops_service.get_retrieval_failure_metrics(
+        tenant_id="tenant_demo",
+        limit=10,
+    )
+
+    assert len(metrics) == 2
+
+    assert metrics[0].error_message == "LLM is unavailable"
+    assert metrics[0].endpoint == "ask"
+    assert metrics[0].category == "it"
+    assert metrics[0].failed_count == 2
+    assert metrics[0].latest_latency_ms == 200
+
+    assert metrics[1].error_message == "Chroma search failed"
+    assert metrics[1].endpoint == "search"
+    assert metrics[1].category == "it"
+    assert metrics[1].failed_count == 1
+    assert metrics[1].latest_latency_ms == 150
+
+    ask_metrics = agent_ops_service.get_retrieval_failure_metrics(
+        tenant_id="tenant_demo",
+        endpoint="ask",
+        limit=10,
+    )
+
+    assert len(ask_metrics) == 1
+    assert ask_metrics[0].error_message == "LLM is unavailable"
+    assert ask_metrics[0].endpoint == "ask"
+
+    limited_metrics = agent_ops_service.get_retrieval_failure_metrics(
+        tenant_id="tenant_demo",
+        limit=1,
+    )
+
+    assert len(limited_metrics) == 1
+    assert limited_metrics[0].error_message == "LLM is unavailable"

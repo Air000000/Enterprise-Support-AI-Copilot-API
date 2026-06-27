@@ -8,6 +8,7 @@ from schemas.agent_ops import (
     ApprovalDecisionRequest,
     ApprovalRequestResponse,
     ApprovalRequestUpdate,
+    RetrievalFailureMetricResponse,
     RetrievalLogResponse,
     RetrievalMetricsSummaryResponse,
     RetrievalNoContextQueryMetricResponse,
@@ -18,6 +19,7 @@ from services.agent_ops_service import (
     get_agent_ops_metrics_summary as get_agent_ops_metrics_summary_service,
     get_agent_run as get_agent_run_service,
     get_agent_run_trace as get_agent_run_trace_service,
+    get_retrieval_failure_metrics as get_retrieval_failure_metrics_service,
     get_retrieval_metrics_summary as get_retrieval_metrics_summary_service,
     get_retrieval_no_context_query_metrics as get_retrieval_no_context_query_metrics_service,
     get_retrieval_source_metrics as get_retrieval_source_metrics_service,
@@ -102,6 +104,23 @@ def get_retrieval_no_context_query_metrics(
     limit: int = Query(default=10, ge=1, le=100),
 ) -> list[RetrievalNoContextQueryMetricResponse]:
     return get_retrieval_no_context_query_metrics_service(
+        tenant_id=MOCK_TENANT_ID,
+        endpoint=endpoint,
+        category=category,
+        limit=limit,
+    )
+
+
+@router.get(
+    "/metrics/retrieval/failures",
+    response_model=list[RetrievalFailureMetricResponse],
+)
+def get_retrieval_failure_metrics(
+    endpoint: RetrievalEndpointQuery | None = None,
+    category: str | None = None,
+    limit: int = Query(default=10, ge=1, le=100),
+) -> list[RetrievalFailureMetricResponse]:
+    return get_retrieval_failure_metrics_service(
         tenant_id=MOCK_TENANT_ID,
         endpoint=endpoint,
         category=category,

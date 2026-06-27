@@ -198,6 +198,14 @@ class RetrievalNoContextQueryMetricResponse(BaseModel):
     latest_latency_ms: int | None = None
 
 
+class RetrievalFailureMetricResponse(BaseModel):
+    error_message: str
+    endpoint: str
+    category: str | None = None
+    failed_count: int
+    latest_latency_ms: int | None = None
+
+
 class AgentOpsMetricsSummaryResponse(BaseModel):
     total_agent_runs: int
     running_agent_runs: int
