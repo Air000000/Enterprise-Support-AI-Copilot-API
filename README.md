@@ -130,10 +130,10 @@ AgentOps metrics summary
 | 模块 | 状态 |
 |---|---|
 | AgentRun latency / retrieval summary | 已完成 MVP，后续补充时间窗口统计 |
+| Retrieval logs / metrics | 已完成 MVP，已支持日志明细、summary、sources、no-context queries 和 failures |
 | ToolCall 错误记录 | 已完成 MVP，后续细化 error_type |
-| AgentOps dashboard / 时间窗口筛选 | 下一步 |
+| AgentOps dashboard / 时间窗口筛选 | 后续增强 |
 | Document upload API | 待开发 |
-| Retrieval logs 后端化 | 待开发 |
 | Docker Compose 最终部署版 | 待整理 |
 | 真实 tenant / user auth context | 待开发 |
 | 真实前端审批界面 | 待开发 |
@@ -354,12 +354,13 @@ fastapi-todo-api/
 │   └── evals/
 ├── docs/
 │   ├── agent_workflow.md
-    ├── demo_script.md
-    ├── security.md
+│   ├── demo_script.md
+│   ├── security.md
 │   ├── rag_v0.1_report.md
 │   ├── rag_core_v1_report.md
 │   ├── ticket_crud_mvp_report.md
-│   └── ticket_agent_mvp_report.md
+│   ├── ticket_agent_mvp_report.md
+│   └── retrieval_metrics.md
 ├── tests/
 │   ├── test_todos.py
 │   ├── test_query_chroma.py
@@ -382,14 +383,15 @@ fastapi-todo-api/
 
 ## 8. 文档索引
 
-| 文档                                                                   | 说明                                                                                           |
-| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| [`docs/agent_workflow.md`](docs/agent_workflow.md)                   | Ticket Agent preview / confirm 流程、tool_calls 链路、AgentOps 查询方式                                |
+| 文档                                                                   | 说明                                                                                                   |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------|
+| [`docs/agent_workflow.md`](docs/agent_workflow.md)                   | Ticket Agent preview / confirm 流程、tool_calls 链路、AgentOps 查询方式                                   |
 | [`docs/demo_script.md`](docs/demo_script.md)                         | Swagger / API 手动演示脚本，用于展示 RAG、Ticket Agent、approval 和 metrics                                |
-| [`docs/security.md`](docs/security.md)                               | Ticket Agent 安全边界，包括 approval ownership、pending 校验、draft consistency check 和 tool call audit |
-| [`docs/rag_core_v1_report.md`](docs/rag_core_v1_report.md)           | Enterprise RAG Core 阶段报告                                                                     |
-| [`docs/ticket_crud_mvp_report.md`](docs/ticket_crud_mvp_report.md)   | Ticket CRUD MVP 阶段报告                                                                         |
-| [`docs/ticket_agent_mvp_report.md`](docs/ticket_agent_mvp_report.md) | Ticket Agent MVP 阶段报告                                                                        |
+| [`docs/security.md`](docs/security.md)                               | Ticket Agent 安全边界，包括 approval ownership、pending 校验、draft consistency check 和 tool call audit   |
+| [`docs/rag_core_v1_report.md`](docs/rag_core_v1_report.md)           | Enterprise RAG Core 阶段报告                                                                              |
+| [`docs/ticket_crud_mvp_report.md`](docs/ticket_crud_mvp_report.md)   | Ticket CRUD MVP 阶段报告                                                                                  |
+| [`docs/ticket_agent_mvp_report.md`](docs/ticket_agent_mvp_report.md) | Ticket Agent MVP 阶段报告                                                                                 |
+| [`docs/retrieval_metrics.md`](docs/retrieval_metrics.md)             | Retrieval Logs / Metrics 阶段报告，说明 RAG 检索日志、summary、sources、no-context queries 和 failures 指标 |
 
 ------
 
