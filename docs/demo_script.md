@@ -55,18 +55,46 @@ AgentOps 记录 agent_run / tool_calls / approval_request
 
 ## 2. Prerequisites
 
-确保已安装依赖：
+本 demo 支持两种运行方式：
 
-```bash
-pip install -r requirements.txt
+```text
+方式 A：本地开发运行
+uvicorn main:app --reload
+
+方式 B：Docker Compose 本地运行
+docker compose up --build
 ```
 
-确保 `.env` 已配置：
+### 2.1 通用环境变量
+
+项目根目录需要存在 `.env` 文件。可以从 `.env.example` 复制：
+
+```powershell
+Copy-Item .env.example .env
+```
+
+然后配置模型参数：
 
 ```env
 DASHSCOPE_API_KEY=your_dashscope_api_key_here
 DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 DASHSCOPE_MODEL=qwen3.5-plus
+EMBEDDING_MODEL=text-embedding-v4
+```
+
+注意：
+
+```text
+.env 只用于本地运行，不应提交到 GitHub。
+不要把包含真实 API key 的 docker compose config 完整输出粘贴到公开位置。
+```
+
+### 2.2 本地开发运行前置条件
+
+如果使用本地开发方式，需要先安装依赖：
+
+```bash
+pip install -r requirements.txt
 ```
 
 如果本地 SQLite 表结构较旧，可以在开发环境中删除本地数据库后重新启动服务。
@@ -81,14 +109,42 @@ dir *.sqlite -Recurse
 找到本地开发数据库后删除，例如：
 
 ```powershell
-Remove-Item .\app.db
+Remove-Item .pp.db
 ```
 
 实际文件名以本地项目为准。
 
+### 2.3 Docker Compose 运行前置条件
+
+如果使用 Docker Compose 方式，需要先启动 Docker Desktop，并确认 Docker Engine 正常运行：
+
+```powershell
+docker info
+```
+
+当前 Compose 配置只绑定本机地址：
+
+```text
+127.0.0.1:8000
+```
+
+因此服务只在本机可访问，不会直接暴露给局域网或公网。
+
+Docker Compose 使用独立运行目录：
+
+```text
+docker_data/
+docker_storage/
+docker_chroma_db/
+```
+
+这些目录用于保存容器运行产生的 SQLite 数据库、上传文档和 Chroma 向量库，不会污染本地开发数据目录。
+
 ---
 
 ## 3. Start API Server
+
+### 3.1 方式 A：本地开发启动
 
 启动 FastAPI 服务：
 
@@ -104,8 +160,8 @@ http://127.0.0.1:8000/docs
 
 先检查健康接口：
 
-```http
-GET /health
+```powershell
+curl.exe http://127.0.0.1:8000/health
 ```
 
 预期结果：
@@ -114,6 +170,98 @@ GET /health
 {
   "status": "ok"
 }
+```
+
+### 3.2 方式 B：Docker Compose 启动
+
+先检查 Compose 配置：
+
+```powershell
+docker compose config
+```
+
+如果配置正常，构建并启动服务：
+
+```powershell
+docker compose up --build
+```
+
+另开一个 PowerShell 窗口检查健康接口：
+
+```powershell
+curl.exe http://127.0.0.1:8000/health
+```
+
+预期结果：
+
+```json
+{
+  "status": "ok"
+}
+```
+
+Swagger UI：
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+停止服务：
+
+```powershell
+docker compose down
+```
+
+如果 `docker compose up --build` 运行在前台，也可以在对应窗口按：
+
+```text
+Ctrl + C
+```
+
+### 3.3 Docker 常见问题
+
+#### 端口 8000 被占用
+
+如果启动时报错：
+
+```text
+ports are not available
+```
+
+说明本机已有进程占用 `127.0.0.1:8000`，常见原因是本地 `uvicorn main:app --reload` 还在运行。
+
+查看占用进程：
+
+```powershell
+netstat -ano | findstr :8000
+```
+
+根据 PID 停止进程：
+
+```powershell
+Stop-Process -Id <PID> -Force
+```
+
+然后重新启动：
+
+```powershell
+docker compose up --build
+```
+
+#### Docker Chroma index 为空
+
+Docker 使用独立目录 `docker_chroma_db/`，第一次运行时可能还没有 Chroma index。
+
+可以在 Docker 环境中构建索引：
+
+```powershell
+docker compose run --rm api python -m experiments.rag_local.build_chroma_index
+```
+
+然后重新启动服务：
+
+```powershell
+docker compose up --build
 ```
 
 ---
@@ -1152,14 +1300,55 @@ Metrics summary
 
 ## 20. Optional: Run Smoke Script
 
-如果不想手动通过 Swagger 点击完整流程，可以运行 smoke script：
+如果不想手动通过 Swagger 点击完整流程，可以运行 smoke script。
+
+### 20.1 本地开发方式运行
+
+先启动服务：
+
+```bash
+uvicorn main:app --reload
+```
+
+然后运行：
 
 ```bash
 python scripts/smoke_agentops_flow.py
 ```
 
+如需指定 API 地址：
+
+```powershell
+$env:API_BASE_URL="http://127.0.0.1:8000"
+python scripts/smoke_agentops_flow.py
+```
+
+### 20.2 Docker Compose 方式运行
+
+先启动容器：
+
+```powershell
+docker compose up --build
+```
+
+另开一个 PowerShell 窗口，确认服务可访问：
+
+```powershell
+curl.exe http://127.0.0.1:8000/health
+```
+
+然后在宿主机运行 smoke script：
+
+```powershell
+$env:API_BASE_URL="http://127.0.0.1:8000"
+python scripts/smoke_agentops_flow.py
+```
+
+### 20.3 Smoke Script 验证内容
+
 该脚本会自动验证：
 
+```text
 preview
 search_kb tool_call
 classify_ticket tool_call
@@ -1168,3 +1357,11 @@ confirm
 create_ticket tool_call
 approved approval_request
 metrics summary
+```
+
+预期输出：
+
+```text
+Smoke test passed.
+Validated: preview -> search_kb/classify_ticket -> approval -> confirm -> create_ticket -> metrics
+```
