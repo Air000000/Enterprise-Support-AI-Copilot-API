@@ -1,12 +1,12 @@
 # Enterprise Support AI Copilot
 
-[![Tests](https://github.com/Air000000/fastapi-todo-api/actions/workflows/tests.yml/badge.svg?branch=learn-rag)](https://github.com/Air000000/fastapi-todo-api/actions/workflows/tests.yml)
+[![Tests](https://github.com/Air000000/fastapi-todo-api/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/Air000000/fastapi-todo-api/actions/workflows/tests.yml)
 
 企业内部知识库与工单 AgentOps 后端系统。
 
-本项目最初由 FastAPI Todo / AI Todo API 演进而来，当前 `learn-rag` 分支已经升级为面向企业内部支持场景的 AI Copilot 后端项目。
+本项目最初由 FastAPI Todo / AI Todo API 演进而来，当前 `main` 分支已经升级为面向企业内部支持场景的 AI Copilot 后端项目。
 
-当前系统已经完成 Enterprise RAG Core、Ticket CRUD、Ticket Agent preview / confirm，以及 AgentOps 审计记录的 MVP 闭环。项目重点从单纯知识库问答扩展为“知识检索 → 工单预览 → 人工确认 → 工单创建 → AgentOps 审计”的企业支持 Copilot 后端。
+当前系统已经完成 Enterprise RAG Core、Ticket CRUD、Ticket Agent preview / confirm、AgentOps 审计记录、Retrieval Logs / Metrics，以及 Document Backend MVP 闭环。项目重点从单纯知识库问答扩展为“知识检索 → 工单预览 → 人工确认 → 工单创建 → AgentOps 审计 → 文档生命周期管理”的企业支持 Copilot 后端。
 
 当前版本定位：
 
@@ -24,6 +24,14 @@ Enterprise Support AI Copilot
 │   ├── retrieval eval
 │   ├── hit@1 / hit@3 / mrr@3
 │   └── category breakdown
+├── Document Backend
+│   ├── /documents/upload
+│   ├── /documents
+│   ├── /documents/{document_id}
+│   ├── /documents/{document_id}/index
+│   ├── DELETE /documents/{document_id}
+│   ├── documents / document_chunks
+│   └── upload → index → search → delete lifecycle
 ├── Ticket CRUD
 │   ├── create ticket
 │   ├── list ticket
@@ -59,7 +67,9 @@ Enterprise Support AI Copilot
 核心链路如下：
 
 ```text
-企业内部文档
+企业内部文档 / 上传文档
+↓
+Document Backend 登记与生命周期管理
 ↓
 文档加载与切块
 ↓
@@ -87,6 +97,7 @@ AgentOps metrics summary
 | 层级    | 模块                         | 说明                                                             |
 | ----- | -------------------------- | -------------------------------------------------------------- |
 | 知识访问层 | Enterprise RAG Core        | 负责企业文档检索、引用来源返回、无依据拒答和 retrieval eval                          |
+| 文档管理层 | Document Backend           | 负责 md/txt 上传、documents/document_chunks 登记、手动索引、Chroma 写入和删除下架 |
 | 业务执行层 | Ticket CRUD / Ticket Agent | 负责工单创建、查询、更新，以及 preview / confirm 两阶段流程                        |
 | 审计观测层 | AgentOps                   | 负责记录 agent_runs、tool_calls、approval_requests 和 metrics summary |
 
@@ -123,7 +134,9 @@ AgentOps metrics summary
 | AgentOps 查询 API          | 已完成 MVP                                              |
 | Approval reject / cancel | 已完成 MVP                                              |
 | AgentOps metrics summary | 已完成 MVP                                              |
-| 测试                       | RAG / Ticket / AgentOps / Todo focused tests 均已覆盖    |
+| Retrieval logs / metrics | 已完成 MVP，已支持日志明细、summary、sources、no-context queries 和 failures |
+| Document Backend MVP      | 已完成 MVP，支持 md/txt 上传、文档登记、手动索引、Chroma 写入、删除后清理 embeddings |
+| 测试                       | RAG / Ticket / AgentOps / Document / Todo focused tests 均已覆盖    |
 
 后续开发重点：
 
@@ -133,7 +146,7 @@ AgentOps metrics summary
 | Retrieval logs / metrics | 已完成 MVP，已支持日志明细、summary、sources、no-context queries 和 failures |
 | ToolCall 错误记录 | 已完成 MVP，后续细化 error_type |
 | AgentOps dashboard / 时间窗口筛选 | 后续增强 |
-| Document upload API | 待开发 |
+| Document Backend MVP | 已完成 MVP，支持 md/txt 上传、文档登记、手动索引、Chroma 写入、删除后清理 embeddings |
 | Docker Compose 最终部署版 | 待整理 |
 | 真实 tenant / user auth context | 待开发 |
 | 真实前端审批界面 | 待开发 |
@@ -326,22 +339,26 @@ fastapi-todo-api/
 ├── database.py
 ├── models/
 │   ├── ticket.py
-│   └── agent_ops.py
+│   ├── agent_ops.py
+│   └── document.py
 ├── routers/
 │   ├── rag.py
 │   ├── tickets.py
 │   ├── agent_ticket.py
-│   └── agent_ops.py
+│   ├── agent_ops.py
+│   └── documents.py
 ├── schemas/
 │   ├── rag.py
 │   ├── ticket.py
 │   ├── agent_ticket.py
-│   └── agent_ops.py
+│   ├── agent_ops.py
+│   └── document.py
 ├── services/
 │   ├── rag_service.py
 │   ├── ticket_service.py
 │   ├── ticket_agent_service.py
-│   └── agent_ops_service.py
+│   ├── agent_ops_service.py
+│   └── document_service.py
 ├── experiments/
 │   ├── docs/
 │   │   ├── admin/
@@ -360,12 +377,16 @@ fastapi-todo-api/
 │   ├── rag_core_v1_report.md
 │   ├── ticket_crud_mvp_report.md
 │   ├── ticket_agent_mvp_report.md
-│   └── retrieval_metrics.md
+│   ├── retrieval_metrics.md
+│   └── document_backend_mvp_report.md
 ├── tests/
 │   ├── test_todos.py
 │   ├── test_query_chroma.py
 │   ├── test_rag_api.py
 │   ├── test_rag_service.py
+│   ├── test_document_models.py
+│   ├── test_document_service.py
+│   ├── test_document_api.py
 │   ├── test_tickets.py
 │   ├── test_agent_ops_service.py
 │   ├── test_agent_ops_api.py
@@ -392,6 +413,7 @@ fastapi-todo-api/
 | [`docs/ticket_crud_mvp_report.md`](docs/ticket_crud_mvp_report.md)   | Ticket CRUD MVP 阶段报告                                                                                  |
 | [`docs/ticket_agent_mvp_report.md`](docs/ticket_agent_mvp_report.md) | Ticket Agent MVP 阶段报告                                                                                 |
 | [`docs/retrieval_metrics.md`](docs/retrieval_metrics.md)             | Retrieval Logs / Metrics 阶段报告，说明 RAG 检索日志、summary、sources、no-context queries 和 failures 指标 |
+| [`docs/document_backend_mvp_report.md`](docs/document_backend_mvp_report.md) | Document Backend MVP 阶段报告，说明 md/txt 上传、documents/document_chunks 表、手动索引、Chroma 写入、删除与 RAG 检索联动 |
 
 ------
 
@@ -604,7 +626,100 @@ tenant_demo
 
 ------
 
-## 15. 当前 API 分层
+## 15. Document Backend API
+
+Document Backend 负责把上传文档纳入后端知识库生命周期管理。当前支持 md/txt 文件上传、文档登记、手动索引、Chroma 写入和删除下架。
+
+### POST `/documents/upload`
+
+功能：上传 md/txt 文档，保存到本地 storage，并写入 `documents` 表。
+
+请求类型：
+
+```text
+multipart/form-data
+```
+
+字段：
+
+| 字段 | 含义 |
+|---|---|
+| `file` | 上传的 `.md` 或 `.txt` 文件 |
+| `category` | 文档分类，例如 `it`、`hr`、`finance`、`admin`、`security`、`other` |
+
+上传成功后：
+
+```text
+documents.status = uploaded
+chunk_count = 0
+```
+
+这表示文档已经进入后端系统，但还没有进入向量库。
+
+### GET `/documents`
+
+功能：查询当前 tenant 下的文档列表。
+
+支持过滤：
+
+```text
+category
+status
+limit
+offset
+```
+
+默认不返回 `deleted` 文档。
+
+### GET `/documents/{document_id}`
+
+功能：查询单个文档的 metadata 和当前状态。
+
+该接口只读，不会触发索引，也不会改变数据库状态。
+
+### POST `/documents/{document_id}/index`
+
+功能：触发文档索引。
+
+索引流程：
+
+```text
+读取 source_path
+↓
+切分 chunk
+↓
+生成 embedding
+↓
+写入 Chroma
+↓
+写入 document_chunks
+↓
+documents.status = indexed
+```
+
+索引成功后，上传文档可以被 `/rag/search` 和 `/rag/ask` 检索到。
+
+### DELETE `/documents/{document_id}`
+
+功能：下架文档。
+
+删除流程：
+
+```text
+读取 document_chunks.embedding_id
+↓
+删除 Chroma embeddings
+↓
+清理 document_chunks
+↓
+documents.status = deleted
+```
+
+删除后，`GET /documents/{document_id}` 返回 404，后续 RAG 检索不再返回该文档。
+
+------
+
+## 16. 当前 API 分层
 
 ```text
 POST /rag/search
@@ -616,21 +731,43 @@ POST /rag/ask
 → routers/rag.py::rag_ask()
 → services/rag_service.py::answer_question()
 → experiments/rag_local/query_rag_chroma.py::ask_rag()
+
+POST /documents/upload
+→ routers/documents.py::upload_document()
+→ services/document_service.py::create_document_from_bytes()
+→ models/document.py::Document
+
+POST /documents/{document_id}/index
+→ routers/documents.py::index_document()
+→ services/document_service.py::index_document()
+→ experiments/rag_local/text_splitter.py::split_text()
+→ Chroma collection.add()
+→ models/document.py::DocumentChunk
+
+DELETE /documents/{document_id}
+→ routers/documents.py::delete_document()
+→ services/document_service.py::delete_document()
+→ Chroma collection.delete()
+→ documents.status = deleted
 ```
 
 各层职责：
 
 | 层                        | 职责                                            |
 | ------------------------- | ----------------------------------------------- |
-| `routers/rag.py`          | 处理 HTTP 请求、调用 service、组装 API response |
-| `schemas/rag.py`          | 定义 request / response schema                  |
+| `routers/rag.py`          | 处理 RAG HTTP 请求、调用 service、组装 API response |
+| `routers/documents.py`    | 处理文档上传、列表、读取、索引和删除 HTTP 请求 |
+| `schemas/rag.py`          | 定义 RAG request / response schema                  |
+| `schemas/document.py`     | 定义 Document Backend response schema |
 | `services/rag_service.py` | 提供 RAG 业务入口                               |
-| `experiments/rag_local/`  | 执行底层 RAG、Chroma、embedding、LLM 逻辑       |
+| `services/document_service.py` | 提供文档保存、查询、索引、删除和 Chroma 写入逻辑 |
+| `models/document.py`      | 定义 documents / document_chunks 表 |
+| `experiments/rag_local/`  | 执行底层 RAG、Chroma、embedding、LLM 和文本切分逻辑       |
 | `tests/`                  | 验证 API 层和 service 层行为                    |
 
 ------
 
-## 16. 测试
+## 17. 测试
 
 运行测试：
 
@@ -638,6 +775,9 @@ POST /rag/ask
 pytest tests/test_query_chroma.py
 pytest tests/test_rag_api.py
 pytest tests/test_rag_service.py
+pytest tests/test_document_models.py
+pytest tests/test_document_service.py
+pytest tests/test_document_api.py
 pytest tests/test_todos.py
 pytest tests/test_tickets.py
 pytest tests/test_agent_ops_service.py
@@ -649,7 +789,7 @@ pytest tests/test_agent_ticket_api.py
 当前结果：
 
 ```text
-RAG / Ticket / AgentOps / Todo focused test suites are passing.
+RAG / Document / Ticket / AgentOps / Todo focused test suites are passing.
 ```
 
 测试覆盖：
@@ -660,6 +800,9 @@ RAG / Ticket / AgentOps / Todo focused test suites are passing.
 | `tests/test_query_chroma.py` | Chroma metadata filter |
 | `tests/test_rag_api.py` | RAG API happy path、validation、service error |
 | `tests/test_rag_service.py` | RAG service 层参数透传和下游调用 |
+| `tests/test_document_models.py` | Document / DocumentChunk model 和 DocumentResponse schema |
+| `tests/test_document_service.py` | Document service 的上传、列表、读取、索引、删除和 tenant 隔离 |
+| `tests/test_document_api.py` | Document API 的上传、列表、读取、索引和删除 |
 | `tests/test_tickets.py` | Ticket CRUD |
 | `tests/test_agent_ops_service.py` | AgentRun / ToolCall / ApprovalRequest service + metrics summary |
 | `tests/test_agent_ops_api.py` | AgentOps read API + approval reject / cancel API + metrics summary API |
@@ -670,13 +813,14 @@ RAG 测试使用 `monkeypatch` 隔离真实 Chroma、embedding 和 LLM 调用，
 
 ------
 
-## 17. 当前版本记录
+## 18. 当前版本记录
 
 | Version                         | Documents | Categories                           | Chunks | Vector Store  | Eval |
 | ------------------------------- | --------- | ------------------------------------ | ------ | ------------- | ---- |
 | RAG v0.1 learning-doc baseline  | 5         | general                              | 5      | JSON / Chroma | 15 条 learning eval |
 | Enterprise RAG Core             | 10        | it / hr / finance / admin / security | 40     | Chroma        | 30 条 enterprise eval |
 | Ticket Agent MVP                | 10        | it / hr / finance / admin / security | 40     | Chroma + SQLite | preview / confirm / AgentOps tests |
+| Document Backend MVP            | 10 + uploaded docs | it / hr / finance / admin / security / other | 40 + uploaded chunks | Chroma + SQLite | upload / index / search / delete lifecycle |
 
 旧 learning-doc baseline 的 eval 结果：
 
@@ -700,37 +844,37 @@ RAG 测试使用 `monkeypatch` 隔离真实 Chroma、embedding 和 LLM 调用，
 ------
 
 
-## 18. 下一步计划
+## 19. 下一步计划
 
 短期下一步：
 
 ```text
-AgentOps demo and presentation cleanup
+Docker + README + Demo packaging
 ```
 
 计划包括：
-1. 端到端 API smoke test
-2. README / demo script 补充完整演示流程
-3. AgentOps dashboard / 时间窗口筛选
-4. ToolCall error_type 细化
-5. 真实 tenant / user auth context
-6. Docker Compose 最终部署版
+1. 补充 demo script 中的 Document Backend 演示流程。
+2. 整理端到端 API smoke test。
+3. 更新架构图和项目说明。
+4. 整理 Docker Compose 最终部署版。
+5. 保留 AgentOps dashboard / 时间窗口筛选作为后续增强。
+6. 保留真实 tenant / user auth context 作为后续增强。
 
 中期计划：
-1. retrieval logs 后端化
-2. documents / chunks 后端化
-3. document upload API
-4. 真实 tenant / user auth context
-5. AgentOps dashboard
-6. Docker Compose 最终部署版
+1. indexing job logs。
+2. 文档版本管理。
+3. PDF / Word 等复杂文档解析。
+4. 真实 tenant / user auth context。
+5. AgentOps dashboard。
+6. Docker Compose 最终部署版。
 
 最终目标：
-企业内部知识库 RAG + 受控 Ticket Agent + AgentOps 审计与评测
+企业内部知识库 RAG + Document Backend + 受控 Ticket Agent + AgentOps 审计与评测
 ------
 
-## 19. 项目说明
+## 20. 项目说明
 
-仓库名保留为 `fastapi-todo-api`，因为项目最初从 FastAPI Todo API 开始演进。当前 `learn-rag` 分支是 `Enterprise Support AI Copilot` 的开发分支。
+仓库名保留为 `fastapi-todo-api`，因为项目最初从 FastAPI Todo API 开始演进。当前 `main` 分支是 `Enterprise Support AI Copilot` 的主开发分支。
 
-当前 `learn-rag` 分支已经完成 Enterprise RAG Core v1、Ticket CRUD MVP、Ticket Agent MVP、AgentOps read API、approval reject / cancel API 和 AgentOps metrics summary API。后续可以在该分支继续推进 AgentRun latency / retrieval summary、ToolCall 错误类型细化、真实 tenant / user auth context、真实前端审批界面、AgentOps dashboard / 时间窗口筛选和 Docker Compose 最终部署版。
+当前 `main` 分支已经完成 Enterprise RAG Core v1、Ticket CRUD MVP、Ticket Agent MVP、AgentOps read API、Retrieval Logs / Metrics、Document Backend MVP、approval reject / cancel API 和 AgentOps metrics summary API。后续可以继续推进 Docker Compose 最终部署版、demo script 整理、真实 tenant / user auth context、真实前端审批界面、AgentOps dashboard / 时间窗口筛选和文档版本管理。
 
