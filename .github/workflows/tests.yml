@@ -46,7 +46,7 @@ jobs:
             tests/test_query_chroma.py \
             tests/test_document_models.py \
             tests/test_document_service.py \
-            tests/test_documents_api.py \
+            tests/test_document_api.py \
             tests/test_tickets.py \
             tests/test_agent_ops_service.py \
             tests/test_agent_ops_api.py \
