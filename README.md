@@ -370,6 +370,7 @@ fastapi-todo-api/
 │   ├── rag_local/
 │   └── evals/
 ├── docs/
+│   ├── architecture.md
 │   ├── agent_workflow.md
 │   ├── demo_script.md
 │   ├── security.md
@@ -410,9 +411,10 @@ fastapi-todo-api/
 
 | 文档                                                                   | 说明                                                                                                   |
 | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------|
+| [`docs/architecture.md`](docs/architecture.md)                       | 系统总览架构文档，说明模块分层、数据存储、RAG / Document / Agent / AgentOps 请求链路、Docker 运行布局和 MVP 边界 |
 | [`docs/agent_workflow.md`](docs/agent_workflow.md)                   | Ticket Agent preview / confirm 流程、tool_calls 链路、AgentOps 查询方式                                   |
 | [`docs/demo_script.md`](docs/demo_script.md)                         | Swagger / API 手动演示脚本，用于展示 RAG、Ticket Agent、approval 和 metrics                                |
-| [`docs/security.md`](docs/security.md)                               | Ticket Agent 安全边界，包括 approval ownership、pending 校验、draft consistency check 和 tool call audit   |
+| [`docs/security.md`](docs/security.md)                               | 安全边界文档，说明 Ticket Agent、Document Backend、RAG tenant mock、Docker、本地密钥、成本和生产化限制 |
 | [`docs/rag_core_v1_report.md`](docs/rag_core_v1_report.md)           | Enterprise RAG Core 阶段报告                                                                              |
 | [`docs/ticket_crud_mvp_report.md`](docs/ticket_crud_mvp_report.md)   | Ticket CRUD MVP 阶段报告                                                                                  |
 | [`docs/ticket_agent_mvp_report.md`](docs/ticket_agent_mvp_report.md) | Ticket Agent MVP 阶段报告                                                                                 |
@@ -1113,11 +1115,10 @@ Security boundary and final project packaging
 ```
 
 计划包括：
-1. 在 `docs/security.md` 中补充 Document Backend、公网暴露、API key 和模型调用成本风险边界。
-2. 保持 README / demo_script / smoke scripts 与当前实现同步。
-3. 补充最终架构说明和项目边界说明。
-4. 保留 AgentOps dashboard / 时间窗口筛选作为后续增强。
-5. 保留真实 tenant / user auth context 作为后续增强。
+1. 保持 README / architecture / security / demo_script / smoke scripts 与当前实现同步。
+2. 补充最终项目交付说明和简洁版项目总结。
+3. 保留 AgentOps dashboard / 时间窗口筛选作为后续增强。
+4. 保留真实 tenant / user auth context 作为后续增强。
 
 中期计划：
 1. indexing job logs。
@@ -1135,5 +1136,5 @@ Security boundary and final project packaging
 
 仓库名保留为 `fastapi-todo-api`，因为项目最初从 FastAPI Todo API 开始演进。当前 `main` 分支是 `Enterprise Support AI Copilot` 的主开发分支。
 
-当前 `main` 分支已经完成 Enterprise RAG Core v1、Ticket CRUD MVP、Ticket Agent MVP、AgentOps read API、Retrieval Logs / Metrics、Document Backend MVP、Docker Compose 本地运行、Document Backend smoke test、approval reject / cancel API 和 AgentOps metrics summary API。后续可以继续推进安全边界文档、真实 tenant / user auth context、真实前端审批界面、AgentOps dashboard / 时间窗口筛选和文档版本管理。
+当前 `main` 分支已经完成 Enterprise RAG Core v1、Ticket CRUD MVP、Ticket Agent MVP、AgentOps read API、Retrieval Logs / Metrics、Document Backend MVP、Docker Compose 本地运行、Document Backend smoke test、approval reject / cancel API 和 AgentOps metrics summary API。后续可以继续推进最终项目总结、真实 tenant / user auth context、真实前端审批界面、AgentOps dashboard / 时间窗口筛选和文档版本管理。
 
