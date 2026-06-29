@@ -7,6 +7,7 @@ from fastapi import APIRouter, File, Form, Query, UploadFile
 
 from schemas.document import (
     DocumentCategory,
+    DocumentIndexResponse,
     DocumentListResponse,
     DocumentResponse,
     DocumentStatus,
@@ -14,6 +15,7 @@ from schemas.document import (
 from services.document_service import (
     create_document_from_bytes,
     get_document as get_document_service,
+    index_document as index_document_service,
     list_documents as list_documents_service,
 )
 
@@ -73,6 +75,20 @@ def list_documents(
         total=total,
         limit=limit,
         offset=offset,
+    )
+
+
+@router.post("/{document_id}/index", response_model=DocumentIndexResponse)
+def index_document(document_id: str) -> DocumentIndexResponse:
+    document = index_document_service(
+        document_id=document_id,
+        tenant_id=MOCK_TENANT_ID,
+    )
+
+    return DocumentIndexResponse(
+        document_id=document.id,
+        status=document.status,
+        chunk_count=document.chunk_count,
     )
 
 

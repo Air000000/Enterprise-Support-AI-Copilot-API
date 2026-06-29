@@ -6,11 +6,15 @@ from uuid import uuid4
 import pytest
 from fastapi import HTTPException
 
-from database import create_db_and_tables
+from sqlmodel import Session, select
+
+from database import create_db_and_tables, engine
+from models.document import DocumentChunk
 from services.document_service import (
     calculate_checksum,
     create_document_from_bytes,
     get_document,
+    index_document,
     list_documents,
 )
 
@@ -140,3 +144,131 @@ def test_get_document_requires_matching_tenant(tmp_path: Path):
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Document not found"
+
+
+class FakeChromaCollection:
+    def __init__(self) -> None:
+        self.added_ids: list[str] = []
+        self.added_documents: list[str] = []
+        self.added_metadatas: list[dict] = []
+        self.deleted_ids: list[str] = []
+
+    def add(self, *, ids, documents, embeddings, metadatas):
+        self.added_ids.extend(ids)
+        self.added_documents.extend(documents)
+        self.added_metadatas.extend(metadatas)
+
+    def delete(self, *, ids):
+        self.deleted_ids.extend(ids)
+
+
+def fake_embed_texts(texts: list[str]) -> list[list[float]]:
+    return [
+        [float(index), 0.0, 1.0]
+        for index, _ in enumerate(texts)
+    ]
+
+
+def test_index_document_creates_chunks_and_updates_status(tmp_path: Path):
+    create_db_and_tables()
+
+    content = (
+        "# VPN Guide\n\n"
+        "When VPN connection fails, users should first check local network, "
+        "account status, MFA status, and VPN client configuration.\n\n"
+        "If the problem still exists, users should collect error screenshots "
+        "and submit an IT support ticket."
+    ).encode("utf-8")
+
+    tenant_id = unique_name("tenant_demo")
+    document = create_document_from_bytes(
+        filename="vpn_guide.md",
+        content=content,
+        tenant_id=tenant_id,
+        uploaded_by="user_demo",
+        category="it",
+        storage_root=tmp_path,
+    )
+
+    fake_collection = FakeChromaCollection()
+
+    indexed_document = index_document(
+        document_id=document.id,
+        tenant_id=tenant_id,
+        embedding_function=fake_embed_texts,
+        chroma_collection=fake_collection,
+    )
+
+    assert indexed_document.id == document.id
+    assert indexed_document.status == "indexed"
+    assert indexed_document.chunk_count >= 1
+    assert indexed_document.error_message is None
+
+    with Session(engine) as session:
+        chunks = list(
+            session.exec(
+                select(DocumentChunk).where(
+                    DocumentChunk.document_id == document.id
+                )
+            ).all()
+        )
+
+    assert len(chunks) == indexed_document.chunk_count
+    assert len(fake_collection.added_ids) == indexed_document.chunk_count
+    assert fake_collection.added_ids[0].startswith(f"doc:{document.id}:v1:chunk:")
+    assert fake_collection.added_metadatas[0]["document_id"] == document.id
+    assert fake_collection.added_metadatas[0]["tenant_id"] == tenant_id
+    assert fake_collection.added_metadatas[0]["category"] == "it"
+    assert fake_collection.added_metadatas[0]["source_type"] == "uploaded_document"
+
+
+def test_reindex_document_replaces_existing_chunks(tmp_path: Path):
+    create_db_and_tables()
+
+    content = (
+        "# Leave Policy\n\n"
+        "Annual leave should be submitted in the HR system before approval. "
+        "Managers should review the leave request according to team workload."
+    ).encode("utf-8")
+
+    tenant_id = unique_name("tenant_demo")
+    document = create_document_from_bytes(
+        filename="leave_policy.md",
+        content=content,
+        tenant_id=tenant_id,
+        uploaded_by="user_demo",
+        category="hr",
+        storage_root=tmp_path,
+    )
+
+    fake_collection = FakeChromaCollection()
+
+    first_indexed = index_document(
+        document_id=document.id,
+        tenant_id=tenant_id,
+        embedding_function=fake_embed_texts,
+        chroma_collection=fake_collection,
+    )
+
+    first_ids = list(fake_collection.added_ids)
+
+    second_indexed = index_document(
+        document_id=document.id,
+        tenant_id=tenant_id,
+        embedding_function=fake_embed_texts,
+        chroma_collection=fake_collection,
+    )
+
+    with Session(engine) as session:
+        chunks = list(
+            session.exec(
+                select(DocumentChunk).where(
+                    DocumentChunk.document_id == document.id
+                )
+            ).all()
+        )
+
+    assert second_indexed.status == "indexed"
+    assert second_indexed.chunk_count == first_indexed.chunk_count
+    assert len(chunks) == second_indexed.chunk_count
+    assert fake_collection.deleted_ids == first_ids

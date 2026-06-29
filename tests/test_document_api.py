@@ -5,6 +5,8 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from main import app
+from models.document import Document
+from routers import documents as documents_router
 
 
 def test_upload_document_api_success(monkeypatch, tmp_path: Path):
@@ -130,3 +132,56 @@ def test_get_missing_document_api_returns_404():
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Document not found"
+
+
+def test_index_document_api_success(monkeypatch, tmp_path: Path):
+    monkeypatch.setenv("DOCUMENT_STORAGE_ROOT", str(tmp_path))
+
+    with TestClient(app) as client:
+        upload_response = client.post(
+            "/documents/upload",
+            data={"category": "it"},
+            files={
+                "file": (
+                    "api_index_vpn.md",
+                    b"# VPN Guide\n\nCheck network and VPN client configuration.",
+                    "text/markdown",
+                ),
+            },
+        )
+
+        assert upload_response.status_code == 201
+        uploaded = upload_response.json()
+
+        def fake_index_document(*, document_id: str, tenant_id: str) -> Document:
+            assert document_id == uploaded["id"]
+            assert tenant_id == "tenant_demo"
+
+            return Document(
+                id=document_id,
+                tenant_id=tenant_id,
+                uploaded_by=uploaded["uploaded_by"],
+                filename=uploaded["filename"],
+                file_type=uploaded["file_type"],
+                category=uploaded["category"],
+                source_path=uploaded["source_path"],
+                status="indexed",
+                version=uploaded["version"],
+                checksum=uploaded["checksum"],
+                chunk_count=2,
+            )
+
+        monkeypatch.setattr(
+            documents_router,
+            "index_document_service",
+            fake_index_document,
+        )
+
+        index_response = client.post(f"/documents/{uploaded['id']}/index")
+
+    assert index_response.status_code == 200
+
+    data = index_response.json()
+    assert data["document_id"] == uploaded["id"]
+    assert data["status"] == "indexed"
+    assert data["chunk_count"] == 2

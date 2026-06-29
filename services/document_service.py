@@ -1,14 +1,33 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from pathlib import Path
+from typing import Any, Callable
 
 from fastapi import HTTPException
 from sqlmodel import Session, select
 
 from database import engine
-from models.document import Document, generate_document_id
+from experiments.rag_local.build_chroma_index import (
+    DEFAULT_CHROMA_DIR,
+    DEFAULT_COLLECTION_NAME,
+    embed_texts,
+    get_chroma_client,
+)
+from experiments.rag_local.text_splitter import (
+    DEFAULT_CHUNK_OVERLAP,
+    DEFAULT_CHUNK_SIZE,
+    MIN_CHUNK_SIZE,
+    split_text,
+)
+from models.document import (
+    Document,
+    DocumentChunk,
+    generate_document_id,
+    utc_now,
+)
 
 
 ALLOWED_FILE_TYPES = {"md", "txt"}
@@ -166,3 +185,247 @@ def get_document(
             raise HTTPException(status_code=404, detail="Document not found")
 
         return document
+    
+
+EmbeddingFunction = Callable[[list[str]], list[list[float]]]
+
+
+def build_embedding_id(
+    *,
+    document_id: str,
+    version: int,
+    chunk_index: int,
+) -> str:
+    return f"doc:{document_id}:v{version}:chunk:{chunk_index}"
+
+
+def build_chunk_metadata(
+    *,
+    document: Document,
+    chunk_index: int,
+    embedding_id: str,
+) -> dict[str, Any]:
+    return {
+        "chunk_id": embedding_id,
+        "document_id": document.id,
+        "document_db_id": document.id,
+        "title": Path(document.filename).stem,
+        "filename": document.filename,
+        "source_path": document.source_path,
+        "chunk_index": chunk_index,
+        "tenant_id": document.tenant_id,
+        "category": document.category,
+        "version": document.version,
+        "checksum": document.checksum,
+        "source_type": "uploaded_document",
+    }
+
+
+def build_embedding_text(
+    *,
+    document: Document,
+    content: str,
+) -> str:
+    title = Path(document.filename).stem
+    return f"{title}\n\n{content}"
+
+
+def get_document_chroma_collection(
+    *,
+    chroma_dir: Path = DEFAULT_CHROMA_DIR,
+    collection_name: str = DEFAULT_COLLECTION_NAME,
+) -> Any:
+    client = get_chroma_client(chroma_dir)
+
+    try:
+        return client.get_collection(
+            name=collection_name,
+            embedding_function=None,
+        )
+    except Exception:
+        return client.create_collection(
+            name=collection_name,
+            embedding_function=None,
+            metadata={
+                "description": "Local document RAG collection with uploaded documents",
+            },
+        )
+
+
+def delete_existing_document_chunks(
+    *,
+    session: Session,
+    document_id: str,
+    collection: Any,
+) -> int:
+    existing_chunks = list(
+        session.exec(
+            select(DocumentChunk).where(DocumentChunk.document_id == document_id)
+        ).all()
+    )
+
+    embedding_ids = [
+        chunk.embedding_id
+        for chunk in existing_chunks
+        if chunk.embedding_id
+    ]
+
+    if embedding_ids:
+        collection.delete(ids=embedding_ids)
+
+    for chunk in existing_chunks:
+        session.delete(chunk)
+
+    session.commit()
+
+    return len(embedding_ids)
+
+
+def index_document(
+    *,
+    document_id: str,
+    tenant_id: str,
+    embedding_function: EmbeddingFunction = embed_texts,
+    chroma_collection: Any | None = None,
+    chroma_dir: Path = DEFAULT_CHROMA_DIR,
+    collection_name: str = DEFAULT_COLLECTION_NAME,
+) -> Document:
+    with Session(engine) as session:
+        document = session.get(Document, document_id)
+
+        if (
+            document is None
+            or document.tenant_id != tenant_id
+            or document.status == "deleted"
+        ):
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        document.status = "indexing"
+        document.error_message = None
+        document.updated_at = utc_now()
+        session.add(document)
+        session.commit()
+        session.refresh(document)
+
+        try:
+            source_path = Path(document.source_path)
+
+            if not source_path.exists():
+                raise RuntimeError(f"Document source file not found: {source_path}")
+
+            text = source_path.read_text(encoding="utf-8").strip()
+
+            if not text:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Document content is empty",
+                )
+
+            chunk_texts = split_text(
+                text=text,
+                chunk_size=DEFAULT_CHUNK_SIZE,
+                overlap=DEFAULT_CHUNK_OVERLAP,
+                min_chunk_size=MIN_CHUNK_SIZE,
+            )
+
+            if not chunk_texts:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No chunks generated from document",
+                )
+
+            collection = chroma_collection or get_document_chroma_collection(
+                chroma_dir=chroma_dir,
+                collection_name=collection_name,
+            )
+
+            delete_existing_document_chunks(
+                session=session,
+                document_id=document.id,
+                collection=collection,
+            )
+            session.refresh(document)
+
+            embedding_ids: list[str] = []
+            chroma_documents: list[str] = []
+            metadatas: list[dict[str, Any]] = []
+            embedding_texts: list[str] = []
+
+            for chunk_index, content in enumerate(chunk_texts):
+                embedding_id = build_embedding_id(
+                    document_id=document.id,
+                    version=document.version,
+                    chunk_index=chunk_index,
+                )
+                metadata = build_chunk_metadata(
+                    document=document,
+                    chunk_index=chunk_index,
+                    embedding_id=embedding_id,
+                )
+
+                embedding_ids.append(embedding_id)
+                chroma_documents.append(content)
+                metadatas.append(metadata)
+                embedding_texts.append(
+                    build_embedding_text(
+                        document=document,
+                        content=content,
+                    )
+                )
+
+            embeddings = embedding_function(embedding_texts)
+
+            if len(embeddings) != len(chunk_texts):
+                raise RuntimeError(
+                    f"Embedding count mismatch: chunks={len(chunk_texts)}, "
+                    f"embeddings={len(embeddings)}"
+                )
+
+            collection.add(
+                ids=embedding_ids,
+                documents=chroma_documents,
+                embeddings=embeddings,
+                metadatas=metadatas,
+            )
+
+            for chunk_index, content in enumerate(chunk_texts):
+                metadata = metadatas[chunk_index]
+                chunk = DocumentChunk(
+                    tenant_id=document.tenant_id,
+                    document_id=document.id,
+                    chunk_index=chunk_index,
+                    content=content,
+                    category=document.category,
+                    metadata_json=json.dumps(metadata, ensure_ascii=False),
+                    embedding_id=embedding_ids[chunk_index],
+                )
+                session.add(chunk)
+
+            document.status = "indexed"
+            document.chunk_count = len(chunk_texts)
+            document.error_message = None
+            document.updated_at = utc_now()
+            session.add(document)
+            session.commit()
+            session.refresh(document)
+
+            return document
+
+        except Exception as exc:
+            document.status = "failed"
+            document.error_message = (
+                str(exc.detail)
+                if isinstance(exc, HTTPException)
+                else str(exc)
+            )
+            document.updated_at = utc_now()
+            session.add(document)
+            session.commit()
+
+            if isinstance(exc, HTTPException):
+                raise exc
+
+            raise HTTPException(
+                status_code=500,
+                detail=f"Document indexing failed: {exc}",
+            )
