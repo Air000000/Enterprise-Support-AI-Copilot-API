@@ -370,6 +370,7 @@ fastapi-todo-api/
 │   ├── rag_local/
 │   └── evals/
 ├── docs/
+│   ├── project_summary.md
 │   ├── architecture.md
 │   ├── agent_workflow.md
 │   ├── demo_script.md
@@ -411,6 +412,7 @@ fastapi-todo-api/
 
 | 文档                                                                   | 说明                                                                                                   |
 | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------|
+| [`docs/project_summary.md`](docs/project_summary.md)                 | 项目成果总结，说明项目定位、解决问题、已完成能力、核心链路、验证方式、当前限制和后续计划 |
 | [`docs/architecture.md`](docs/architecture.md)                       | 系统总览架构文档，说明模块分层、数据存储、RAG / Document / Agent / AgentOps 请求链路、Docker 运行布局和 MVP 边界 |
 | [`docs/agent_workflow.md`](docs/agent_workflow.md)                   | Ticket Agent preview / confirm 流程、tool_calls 链路、AgentOps 查询方式                                   |
 | [`docs/demo_script.md`](docs/demo_script.md)                         | Swagger / API 手动演示脚本，用于展示 RAG、Ticket Agent、approval 和 metrics                                |
@@ -1111,12 +1113,12 @@ RAG 测试使用 `monkeypatch` 隔离真实 Chroma、embedding 和 LLM 调用，
 短期下一步：
 
 ```text
-Security boundary and final project packaging
+Final review and optional polish
 ```
 
 计划包括：
-1. 保持 README / architecture / security / demo_script / smoke scripts 与当前实现同步。
-2. 补充最终项目交付说明和简洁版项目总结。
+1. 保持 README / project_summary / architecture / security / demo_script / smoke scripts 与当前实现同步。
+2. 检查最终文档、测试、Docker Compose 和 smoke scripts 是否可复现。
 3. 保留 AgentOps dashboard / 时间窗口筛选作为后续增强。
 4. 保留真实 tenant / user auth context 作为后续增强。
 
@@ -1136,5 +1138,5 @@ Security boundary and final project packaging
 
 仓库名保留为 `fastapi-todo-api`，因为项目最初从 FastAPI Todo API 开始演进。当前 `main` 分支是 `Enterprise Support AI Copilot` 的主开发分支。
 
-当前 `main` 分支已经完成 Enterprise RAG Core v1、Ticket CRUD MVP、Ticket Agent MVP、AgentOps read API、Retrieval Logs / Metrics、Document Backend MVP、Docker Compose 本地运行、Document Backend smoke test、approval reject / cancel API 和 AgentOps metrics summary API。后续可以继续推进最终项目总结、真实 tenant / user auth context、真实前端审批界面、AgentOps dashboard / 时间窗口筛选和文档版本管理。
+当前 `main` 分支已经完成 Enterprise RAG Core v1、Ticket CRUD MVP、Ticket Agent MVP、AgentOps read API、Retrieval Logs / Metrics、Document Backend MVP、Docker Compose 本地运行、Document Backend smoke test、approval reject / cancel API 和 AgentOps metrics summary API。后续可以继续推进最终检查、真实 tenant / user auth context、真实前端审批界面、AgentOps dashboard / 时间窗口筛选和文档版本管理。
 
