@@ -10,13 +10,13 @@ from fastapi import HTTPException
 from sqlmodel import Session, select
 
 from database import engine
-from experiments.rag_local.build_chroma_index import (
+from rag_runtime.build_chroma_index import (
     DEFAULT_CHROMA_DIR,
     DEFAULT_COLLECTION_NAME,
     embed_texts,
     get_chroma_client,
 )
-from experiments.rag_local.text_splitter import (
+from rag_runtime.text_splitter import (
     DEFAULT_CHUNK_OVERLAP,
     DEFAULT_CHUNK_SIZE,
     MIN_CHUNK_SIZE,

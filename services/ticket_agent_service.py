@@ -4,7 +4,7 @@ import json
 import time
 
 from fastapi import HTTPException
-from experiments.rag_local.query_chroma import search_chroma
+from rag_runtime.query_chroma import search_chroma
 from schemas.agent_ticket import (
     TicketAgentConfirmRequest,
     TicketAgentConfirmResponse,
