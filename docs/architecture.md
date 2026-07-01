@@ -1,12 +1,12 @@
-# Architecture
+﻿# Architecture
 
-Enterprise Support AI Copilot 当前稳定基线的系统结构说明。
+Enterprise Support AI Copilot is the current stable backend baseline for enterprise knowledge retrieval, controlled ticket creation, and AgentOps audit flows.
 
-本文档只描述当前 `main` 基线下已经稳定的运行方式、模块边界和关键链路，不包含未来的目录重构计划。
+This document describes the runtime paths, module boundaries, and request flows that are stable today. It intentionally documents the current implementation rather than future refactor ideas.
 
 ## System Overview
 
-当前系统定位为企业内部支持场景下的 AI Copilot 后端，覆盖以下主链路：
+Main product path:
 
 ```text
 Enterprise documents / uploaded documents
@@ -19,7 +19,7 @@ Enterprise documents / uploaded documents
 -> AgentOps audit and metrics
 ```
 
-当前稳定能力：
+Current stable capabilities:
 
 ```text
 Enterprise RAG Core
@@ -32,66 +32,65 @@ Docker Compose local runtime
 Smoke scripts
 ```
 
-## High-Level Layers
-
-```text
-Client / Swagger / Smoke Scripts
--> FastAPI Routers
--> Pydantic Schemas
--> Service Layer
--> SQLModel Models / SQLite
--> Chroma Vector Store
--> DashScope-compatible Embedding / LLM APIs
-```
-
-模块视图：
+## Repository Layout
 
 ```text
 enterprise-support-ai-copilot-api/
-├── main.py
-├── routers/
-├── schemas/
-├── services/
-├── models/
-├── docs/
-├── scripts/
-├── tests/
-├── experiments/
-│   ├── docs/
-│   ├── evals/
-│   └── rag_local/
-├── database.py
-├── docker-compose.yml
-└── README.md
+|-- main.py
+|-- database.py
+|-- routers/
+|-- schemas/
+|-- services/
+|-- models/
+|-- rag_runtime/
+|-- experiments/
+|   |-- docs/
+|   |-- evals/
+|   `-- rag_local/
+|-- scripts/
+|-- tests/
+|-- docker-compose.yml
+`-- README.md
 ```
 
-分层职责：
+Layer responsibilities:
 
 | Layer | Main Location | Responsibility |
 |---|---|---|
-| API Layer | `routers/` | 接收 HTTP 请求、参数校验、组织 response |
-| Schema Layer | `schemas/` | request / response 数据结构 |
-| Service Layer | `services/` | 编排业务流程与状态流转 |
-| Persistence | `models/`, `database.py` | SQLModel 表结构与 SQLite 会话 |
-| RAG Runtime | `experiments/rag_local/` | Chroma 检索、RAG 组装、LLM 调用 |
-| Evaluation | `experiments/evals/` | retrieval eval 与指标统计 |
-| Scripts | `scripts/` | smoke 验证脚本 |
+| API Layer | `routers/` | HTTP request handling and response shaping |
+| Schema Layer | `schemas/` | Request and response models |
+| Service Layer | `services/` | Business workflow orchestration |
+| Persistence | `models/`, `database.py` | SQLModel tables and SQLite session setup |
+| RAG Runtime | `rag_runtime/` | Chroma retrieval, RAG assembly, and LLM calls |
+| Compatibility Layer | `experiments/rag_local/` | Thin wrappers for legacy imports and `python -m` entry points |
+| Evaluation | `experiments/evals/` | Retrieval evals and metric reporting |
+| Scripts | `scripts/` | Smoke and local verification scripts |
 
-## Key Runtime Decisions
+## Runtime Decisions
 
-### RAG runtime stays in `experiments/rag_local/`
-本轮基线冻结明确保留当前运行路径，不迁移到 `rag_runtime/`。
+### Official Runtime Path
 
-原因：
+`rag_runtime/` is now the official runtime package.
 
-- 当前路径已经被 services、tests、scripts、evals 和文档命令使用
-- 该路径虽然带有实验目录历史，但不影响当前稳定运行
-- 基线冻结阶段优先保证低风险收口，不做路径级重构
+`experiments/rag_local/` is still kept in the repository as a compatibility layer so that:
 
-### Todo remains as Legacy compatibility
-Todo 与旧 AI Todo 能力继续保留，但不作为当前主能力展示。
+- old imports continue to resolve
+- historical `python -m experiments.rag_local.*` commands continue to run
+- existing evals and notes do not break all at once
 
-保留项包括：
+### Active Service Imports
+
+The active runtime chain now imports `rag_runtime.*` from:
+
+- `services/rag_service.py`
+- `services/document_service.py`
+- `services/ticket_agent_service.py`
+
+### Legacy Todo Compatibility
+
+Legacy Todo and AI Todo endpoints remain available for compatibility and historical coverage, but they are no longer the primary project story.
+
+Retained legacy surface:
 
 - `/todos`
 - `/chat`
@@ -100,10 +99,9 @@ Todo 与旧 AI Todo 能力继续保留，但不作为当前主能力展示。
 - `/ai/create-todos`
 - `tests/test_todos.py`
 
-### Default database filename stays unchanged
-默认数据库文件名继续使用 `data/todos.db`。
+### Database Filename
 
-这是历史命名遗留，不代表当前项目仍是 Todo API。本轮不改它，避免带来数据迁移、Docker volume 和文档命令变化。
+The default SQLite path remains `data/todos.db` for baseline stability. The name is historical and does not change the current product positioning.
 
 ## Core Request Flows
 
@@ -113,7 +111,7 @@ Todo 与旧 AI Todo 能力继续保留，但不作为当前主能力展示。
 POST /rag/search or /rag/ask
 -> routers/rag.py
 -> services/rag_service.py
--> experiments/rag_local/*
+-> rag_runtime/*
 -> Chroma retrieval
 -> answer / sources
 -> retrieval logs
@@ -152,26 +150,26 @@ DELETE /documents/{document_id}
 -> embedding cleanup
 ```
 
-## Current Boundary Notes
+## Boundaries For This Baseline
 
-当前基线明确不做：
+Intentionally unchanged in this baseline freeze:
 
-- HTTP 接口改名
-- request / response shape 调整
-- 业务规则重写
-- `experiments/rag_local` 目录迁移
-- 默认数据库文件名调整
+- HTTP paths, request bodies, response bodies, and status codes
+- business logic behavior
+- default database filename
+- Docker runtime behavior
+- `experiments/evals/*` import paths in the first migration round
 
-当前基线允许做：
+Intentionally changed in this Phase C migration:
 
-- 项目命名收口
-- README / docs 收口
-- OpenAPI title 和 `/about` 文案更新
-- mock tenant / user 常量集中管理
+- official runtime package moves to `rag_runtime/`
+- `experiments/rag_local/` becomes a compatibility wrapper layer
+- active services stop importing `experiments.rag_local.*`
+- runtime docs recommend `python -m rag_runtime.*`
 
 ## Related Docs
 
-- [project_summary.md](project_summary.md): 当前基线总结
-- [agent_workflow.md](agent_workflow.md): Ticket Agent 流程
-- [security.md](security.md): 当前安全边界
-- `docs/*_report.md`: 历史阶段性记录
+- [project_summary.md](project_summary.md): current baseline summary
+- [agent_workflow.md](agent_workflow.md): ticket agent flow
+- [security.md](security.md): current security boundary
+- `docs/*_report.md`: historical phase reports retained for context

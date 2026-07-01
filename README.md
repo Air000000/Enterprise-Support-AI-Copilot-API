@@ -98,7 +98,7 @@ enterprise-support-ai-copilot-api/
 
 说明：
 
-- `experiments/rag_local/` 当前仍是稳定基线的一部分，本轮不迁移到 `rag_runtime/`。
+- `rag_runtime/` 现在是正式运行时路径，`experiments/rag_local/` 保留为兼容层。`python -m experiments.rag_local.*` 旧命令仍可用，但新的运行与说明统一推荐 `python -m rag_runtime.*`。
 - `data/todos.db` 的命名属于历史遗留，本轮不改，避免引入数据迁移和 Docker volume 变化。
 - Todo 相关接口与测试继续保留，但按 Legacy 处理。
 
@@ -210,7 +210,7 @@ python scripts/smoke_document_backend_flow.py
 
 - 不改 HTTP 路径、请求体、响应体、状态码
 - 不改业务逻辑
-- 不改 `experiments/rag_local` 运行路径
+- 保留 `experiments/rag_local` 兼容入口，但正式运行时已切换到 `rag_runtime`
 - 不改默认数据库文件名 `todos.db`
 - 不删除 Todo / AI Todo 兼容能力
 
