@@ -12,6 +12,7 @@ from services.ticket_agent_service import (
     confirm_ticket as confirm_ticket_service,
     preview_ticket as preview_ticket_service,
 )
+from mock_context import MOCK_TENANT_ID, MOCK_USER_ID
 
 
 router = APIRouter(
@@ -19,8 +20,6 @@ router = APIRouter(
     tags=["agent-ticket"],
 )
 
-MOCK_TENANT_ID = "tenant_demo"
-MOCK_USER_ID = "user_demo"
 
 
 @router.post("/preview", response_model=TicketAgentPreviewResponse)

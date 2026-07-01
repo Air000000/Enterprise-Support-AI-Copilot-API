@@ -15,6 +15,7 @@ from schemas.rag import (
 from schemas.agent_ops import RetrievalLogCreate
 from services.agent_ops_service import create_retrieval_log as create_retrieval_log_service
 from services.rag_service import answer_question, search_documents
+from mock_context import MOCK_TENANT_ID
 
 
 # 创建一个 APIRouter 实例，设置前缀为 "/rag"，
@@ -22,7 +23,6 @@ from services.rag_service import answer_question, search_documents
 # 同时给这个 router 打上 "RAG" 标签，方便在 API 文档中分类显示。
 router = APIRouter(prefix="/rag", tags=["RAG"]) 
 
-MOCK_TENANT_ID = "tenant_demo"
 
 def make_preview(text: str, max_length: int = 200) -> str:
     """对文本进行清洗和截断，生成预览文本"""

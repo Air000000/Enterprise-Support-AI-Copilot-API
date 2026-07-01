@@ -20,6 +20,7 @@ from services.document_service import (
     index_document as index_document_service,
     list_documents as list_documents_service,
 )
+from mock_context import MOCK_TENANT_ID, MOCK_USER_ID
 
 
 router = APIRouter(
@@ -27,8 +28,6 @@ router = APIRouter(
     tags=["documents"],
 )
 
-MOCK_TENANT_ID = "tenant_demo"
-MOCK_USER_ID = "user_demo"
 
 
 def get_document_storage_root() -> Path:

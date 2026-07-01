@@ -15,6 +15,7 @@ from services.ticket_service import (
     list_tickets as list_tickets_service,
     update_ticket as update_ticket_service,
 )
+from mock_context import MOCK_TENANT_ID, MOCK_USER_ID
 
 
 router = APIRouter(
@@ -22,8 +23,6 @@ router = APIRouter(
     tags=["tickets"],
 )
 
-MOCK_TENANT_ID = "tenant_demo"
-MOCK_USER_ID = "user_demo"
 
 
 @router.post("", response_model=TicketResponse, status_code=201)

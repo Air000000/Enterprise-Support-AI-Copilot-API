@@ -31,11 +31,10 @@ from services.agent_ops_service import (
     list_tool_calls_by_run as list_tool_calls_by_run_service,
     update_approval_request as update_approval_request_service,
 )
+from mock_context import MOCK_TENANT_ID, MOCK_USER_ID
 
 router = APIRouter(prefix="/agent-ops", tags=["agent-ops"])
 
-MOCK_TENANT_ID = "tenant_demo"
-MOCK_USER_ID = "user_demo"
 
 AgentRunStatusQuery = Literal[
     "running",
