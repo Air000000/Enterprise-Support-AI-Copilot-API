@@ -60,7 +60,7 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",  # 日志格式：时间戳 | 日志级别 | 记录器名称 | 日志消息
 )
 
-logger = logging.getLogger("ai-todo-api")   # 创建一个名为 "ai-todo-api" 的日志记录器实例，可以在代码中使用 logger.info(), logger.error() 等方法来记录日志消息。
+logger = logging.getLogger("enterprise-support-ai-copilot-api")   # 创建一个名为 "enterprise-support-ai-copilot-api" 的日志记录器实例，可以在代码中使用 logger.info(), logger.error() 等方法来记录日志消息。
 
 
 llm_client = OpenAI(
@@ -83,7 +83,7 @@ async def lifespan(app: FastAPI):
     yield   # yield 前面的代码：应用启动时执行。后面的代码：应用关闭时执行。
 
 
-app = FastAPI(title="FastAPI Todo API", lifespan= lifespan) # 把 lifespan 传给 FastAPI 实例，应用启动时自动调用 create_db_and_tables() 来创建数据库表格。
+app = FastAPI(title="Enterprise Support AI Copilot API", lifespan= lifespan) # 把 lifespan 传给 FastAPI 实例，应用启动时自动调用 create_db_and_tables() 来创建数据库表格。
 
 app.include_router(rag_router)  
 app.include_router(tickets_router)
@@ -185,9 +185,9 @@ def check_health():
 @app.get("/about")
 def about():
     return {
-        "name": "fastapi-todo-api",
+        "name": "enterprise-support-ai-copilot-api",
         "version": "0.1.0",
-        "description": "My first FastAPI backend project"
+        "description": "Enterprise Support AI Copilot backend API"
     }
 
 
