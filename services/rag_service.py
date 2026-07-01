@@ -1,5 +1,5 @@
-from experiments.rag_local.query_chroma import search_chroma
-from experiments.rag_local.query_rag_chroma import ask_rag
+from rag_runtime.query_chroma import search_chroma
+from rag_runtime.query_rag_chroma import ask_rag
 
 
 def search_documents(
