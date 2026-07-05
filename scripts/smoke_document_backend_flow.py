@@ -9,6 +9,8 @@ import httpx
 
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+AUTH_USERNAME = os.getenv("AUTH_USERNAME", "support")
+AUTH_PASSWORD = os.getenv("AUTH_PASSWORD", "support")
 TIMEOUT_SECONDS = 120.0
 
 
@@ -99,6 +101,15 @@ Smoke run id: {run_id}
             require_status(response, 200, "GET /health")
             print("   OK")
 
+            response = client.post(
+                f"{API_BASE_URL}/auth/token",
+                json={"username": AUTH_USERNAME, "password": AUTH_PASSWORD},
+            )
+            require_status(response, 200, "POST /auth/token")
+            headers = {
+                "Authorization": f"Bearer {response.json()['access_token']}",
+            }
+
             print("2. Uploading document...")
             response = client.post(
                 f"{API_BASE_URL}/documents/upload",
@@ -110,6 +121,7 @@ Smoke run id: {run_id}
                         "text/markdown",
                     )
                 },
+                headers=headers,
             )
             require_status(response, 201, "POST /documents/upload")
             uploaded = response.json()
@@ -127,7 +139,10 @@ Smoke run id: {run_id}
             print(f"   OK document_id={document_id}")
 
             print("3. Indexing document...")
-            response = client.post(f"{API_BASE_URL}/documents/{document_id}/index")
+            response = client.post(
+                f"{API_BASE_URL}/documents/{document_id}/index",
+                headers=headers,
+            )
             require_status(response, 200, "POST /documents/{document_id}/index")
             indexed = response.json()
 
@@ -150,6 +165,7 @@ Smoke run id: {run_id}
                     "top_k": 5,
                     "category": "admin",
                 },
+                headers=headers,
             )
             require_status(response, 200, "POST /rag/search after index")
             search_data = response.json()
@@ -164,7 +180,10 @@ Smoke run id: {run_id}
             print("   OK uploaded document is retrievable")
 
             print("5. Deleting document...")
-            response = client.delete(f"{API_BASE_URL}/documents/{document_id}")
+            response = client.delete(
+                f"{API_BASE_URL}/documents/{document_id}",
+                headers=headers,
+            )
             require_status(response, 200, "DELETE /documents/{document_id}")
             deleted_data = response.json()
 
@@ -192,6 +211,7 @@ Smoke run id: {run_id}
                     "top_k": 5,
                     "category": "admin",
                 },
+                headers=headers,
             )
             require_status(response, 200, "POST /rag/search after delete")
             search_after_delete = response.json()
@@ -217,7 +237,10 @@ Smoke run id: {run_id}
                 print()
                 print("Cleanup: deleting uploaded document after failed smoke run...")
                 try:
-                    client.delete(f"{API_BASE_URL}/documents/{document_id}")
+                    client.delete(
+                        f"{API_BASE_URL}/documents/{document_id}",
+                        headers=headers,
+                    )
                 except Exception as exc:
                     print(f"Cleanup failed: {exc}")
 

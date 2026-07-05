@@ -1,5 +1,5 @@
 from datetime import datetime
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field as PydanticField
 from typing import Optional
 from contextlib import asynccontextmanager
@@ -18,11 +18,13 @@ import logging
 from experiments.rag_local.query_chroma import search_chroma
 from experiments.rag_local.query_rag_chroma import ask_rag
 
+from routers.auth import router as auth_router
 from routers.rag import router as rag_router
 from routers.tickets import router as tickets_router
 from routers.agent_ticket import router as agent_ticket_router
 from routers.agent_ops import router as agent_ops_router
 from routers.documents import router as documents_router
+from auth import CurrentUser, get_current_user
 
 from models.ticket import Ticket  # noqa: F401
 from models.agent_ops import AgentRun, ApprovalRequest, ToolCall  # noqa: F401
@@ -85,6 +87,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Enterprise Support AI Copilot API", lifespan= lifespan) # 把 lifespan 传给 FastAPI 实例，应用启动时自动调用 create_db_and_tables() 来创建数据库表格。
 
+app.include_router(auth_router)
 app.include_router(rag_router)  
 app.include_router(tickets_router)
 app.include_router(agent_ticket_router)
@@ -192,7 +195,7 @@ def about():
 
 
 @app.post("/echo")
-def echo(request: EchoRequest):
+def echo(request: EchoRequest, _user: CurrentUser = Depends(get_current_user)):
     return {
         "you_said": request.message,
         "repeat": request.repeat,
@@ -201,7 +204,7 @@ def echo(request: EchoRequest):
 
 
 @app.post("/chat")
-def chat(request: ChatRequest):
+def chat(request: ChatRequest, _user: CurrentUser = Depends(get_current_user)):
     fake_response = f"这是一个模拟 AI 回复：我收到了你的消息「{request.message}」"
 
     return {
@@ -210,7 +213,7 @@ def chat(request: ChatRequest):
     }
 
 @app.get("/todos", response_model=list[TodoResponse])
-def list_todos():
+def list_todos(_user: CurrentUser = Depends(get_current_user)):
     with Session(engine) as session:
         statement = select(Todo)
         todos = session.exec(statement).all()
@@ -218,7 +221,7 @@ def list_todos():
 
 
 @app.post("/todos", response_model=TodoResponse, status_code=201)
-def create_todo(todo: TodoCreate):
+def create_todo(todo: TodoCreate, _user: CurrentUser = Depends(get_current_user)):
     logger.info("Creating todo: %s", todo.title)
     
     db_todo = Todo(
@@ -235,7 +238,7 @@ def create_todo(todo: TodoCreate):
 
 
 @app.get("/todos/{todo_id}", response_model=TodoResponse)
-def get_todo(todo_id: int):
+def get_todo(todo_id: int, _user: CurrentUser = Depends(get_current_user)):
     with Session(engine) as session:
         todo = session.get(Todo, todo_id)   # session.get() 方法根据主键（这里是 id）查询数据库中的 Todo 记录
 
@@ -246,7 +249,11 @@ def get_todo(todo_id: int):
 
 
 @app.patch("/todos/{todo_id}", response_model=TodoResponse)
-def update_todo(todo_id: int, update: TodoUpdate):
+def update_todo(
+    todo_id: int,
+    update: TodoUpdate,
+    _user: CurrentUser = Depends(get_current_user),
+):
     with Session(engine) as session:
         todo = session.get(Todo, todo_id)   
 
@@ -270,7 +277,7 @@ def update_todo(todo_id: int, update: TodoUpdate):
 
 
 @app.delete("/todos/{todo_id}", status_code=200)
-def delete_todo(todo_id: int):
+def delete_todo(todo_id: int, _user: CurrentUser = Depends(get_current_user)):
     logger.info("Deleting todo with ID: %d", todo_id)
     with Session(engine) as session:
         todo = session.get(Todo, todo_id)
@@ -285,7 +292,7 @@ def delete_todo(todo_id: int):
 
 # 用户输入的一段消息，发送给 AI 模型进行对话
 @app.post("/ai/chat")
-def ai_chat(request: ChatRequest):
+def ai_chat(request: ChatRequest, _user: CurrentUser = Depends(get_current_user)):
     logger.info("Calling LLM chat endpoint with model: %s", settings.dashscope_model)
 
     if not settings.dashscope_api_key:
@@ -326,7 +333,7 @@ def ai_chat(request: ChatRequest):
 
 # 从用户输入的自然语言中提取出任务信息，返回给用户 
 @app.post("/ai/extract-tasks", response_model=TaskExtractResponse)
-def extract_tasks(request: TaskExtractRequest):
+def extract_tasks(request: TaskExtractRequest, _user: CurrentUser = Depends(get_current_user)):
     return extract_tasks_from_text(request.text)
 
 def extract_tasks_from_text(text: str) -> TaskExtractResponse:
@@ -376,7 +383,7 @@ def extract_tasks_from_text(text: str) -> TaskExtractResponse:
         )
     
 @app.post("/ai/create-todos", response_model=AICreateTodosResponse, status_code=201)
-def ai_create_todos(request: TaskExtractRequest):
+def ai_create_todos(request: TaskExtractRequest, _user: CurrentUser = Depends(get_current_user)):
     logger.info("Creating todos from AI extraction")
 
     extracted = extract_tasks_from_text(request.text) 

@@ -1,5 +1,5 @@
 from typing import Literal
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
 from schemas.agent_ops import (
     AgentOpsMetricsSummaryResponse,
@@ -31,7 +31,7 @@ from services.agent_ops_service import (
     list_tool_calls_by_run as list_tool_calls_by_run_service,
     update_approval_request as update_approval_request_service,
 )
-from mock_context import MOCK_TENANT_ID, MOCK_USER_ID
+from auth import CurrentUser, require_roles
 
 router = APIRouter(prefix="/agent-ops", tags=["agent-ops"])
 
@@ -68,6 +68,7 @@ RetrievalEndpointQuery = Literal[
 RetrievalStatusQuery = Literal[
     "ok",
     "no_context",
+    "refused_low_relevance",
     "failed",
 ]
 
@@ -78,9 +79,10 @@ def list_agent_runs(
     agent_name: str | None = None,
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    user: CurrentUser = Depends(require_roles("support", "admin")),
 ) -> list[AgentRunResponse]:
     agent_runs = list_agent_runs_service(
-        tenant_id=MOCK_TENANT_ID,
+        tenant_id=user.tenant_id,
         status=status,
         agent_name=agent_name,
         limit=limit,
@@ -101,9 +103,10 @@ def get_retrieval_no_context_query_metrics(
     endpoint: RetrievalEndpointQuery | None = None,
     category: str | None = None,
     limit: int = Query(default=10, ge=1, le=100),
+    user: CurrentUser = Depends(require_roles("support", "admin")),
 ) -> list[RetrievalNoContextQueryMetricResponse]:
     return get_retrieval_no_context_query_metrics_service(
-        tenant_id=MOCK_TENANT_ID,
+        tenant_id=user.tenant_id,
         endpoint=endpoint,
         category=category,
         limit=limit,
@@ -118,9 +121,10 @@ def get_retrieval_failure_metrics(
     endpoint: RetrievalEndpointQuery | None = None,
     category: str | None = None,
     limit: int = Query(default=10, ge=1, le=100),
+    user: CurrentUser = Depends(require_roles("support", "admin")),
 ) -> list[RetrievalFailureMetricResponse]:
     return get_retrieval_failure_metrics_service(
-        tenant_id=MOCK_TENANT_ID,
+        tenant_id=user.tenant_id,
         endpoint=endpoint,
         category=category,
         limit=limit,
@@ -128,10 +132,13 @@ def get_retrieval_failure_metrics(
 
 
 @router.get("/runs/{agent_run_id}", response_model=AgentRunResponse)
-def get_agent_run(agent_run_id: int) -> AgentRunResponse:
+def get_agent_run(
+    agent_run_id: int,
+    user: CurrentUser = Depends(require_roles("support", "admin")),
+) -> AgentRunResponse:
     agent_run = get_agent_run_service(
         agent_run_id=agent_run_id,
-        tenant_id=MOCK_TENANT_ID,
+        tenant_id=user.tenant_id,
     )
 
     return AgentRunResponse.model_validate(agent_run)
@@ -141,10 +148,13 @@ def get_agent_run(agent_run_id: int) -> AgentRunResponse:
     "/runs/{agent_run_id}/trace",
     response_model=AgentRunTraceResponse,
 )
-def get_agent_run_trace(agent_run_id: int) -> AgentRunTraceResponse:
+def get_agent_run_trace(
+    agent_run_id: int,
+    user: CurrentUser = Depends(require_roles("support", "admin")),
+) -> AgentRunTraceResponse:
     agent_run, tool_calls, approval_requests = get_agent_run_trace_service(
         agent_run_id=agent_run_id,
-        tenant_id=MOCK_TENANT_ID,
+        tenant_id=user.tenant_id,
     )
 
     return AgentRunTraceResponse(
@@ -168,9 +178,10 @@ def list_tool_calls(
     error_type: str | None = None,
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    user: CurrentUser = Depends(require_roles("support", "admin")),
 ) -> list[ToolCallResponse]:
     tool_calls = list_tool_calls_service(
-        tenant_id=MOCK_TENANT_ID,
+        tenant_id=user.tenant_id,
         agent_run_id=agent_run_id,
         status=status,
         tool_name=tool_name,
@@ -194,10 +205,11 @@ def list_tool_calls_by_run(
     status: ToolCallStatusQuery | None = None,
     tool_name: str | None = None,
     error_type: str | None = None,
+    user: CurrentUser = Depends(require_roles("support", "admin")),
 ) -> list[ToolCallResponse]:
     tool_calls = list_tool_calls_by_run_service(
         agent_run_id=agent_run_id,
-        tenant_id=MOCK_TENANT_ID,
+        tenant_id=user.tenant_id,
         status=status,
         tool_name=tool_name,
         error_type=error_type,
@@ -219,9 +231,10 @@ def list_approval_requests(
     approval_type: ApprovalTypeQuery | None = None,
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    user: CurrentUser = Depends(require_roles("support", "admin")),
 ) -> list[ApprovalRequestResponse]:
     approval_requests = list_approval_requests_service(
-        tenant_id=MOCK_TENANT_ID,
+        tenant_id=user.tenant_id,
         agent_run_id=agent_run_id,
         status=status,
         approval_type=approval_type,
@@ -241,10 +254,11 @@ def list_approval_requests(
 )
 def list_approval_requests_by_run(
     agent_run_id: int,
+    user: CurrentUser = Depends(require_roles("support", "admin")),
 ) -> list[ApprovalRequestResponse]:
     approval_requests = list_approval_requests_by_run_service(
         agent_run_id=agent_run_id,
-        tenant_id=MOCK_TENANT_ID,
+        tenant_id=user.tenant_id,
     )
 
     return [
@@ -263,9 +277,10 @@ def list_retrieval_logs(
     category: str | None = None,
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    user: CurrentUser = Depends(require_roles("support", "admin")),
 ) -> list[RetrievalLogResponse]:
     retrieval_logs = list_retrieval_logs_service(
-        tenant_id=MOCK_TENANT_ID,
+        tenant_id=user.tenant_id,
         endpoint=endpoint,
         retrieval_status=retrieval_status,
         category=category,
@@ -283,9 +298,11 @@ def list_retrieval_logs(
     "/metrics/summary",
     response_model=AgentOpsMetricsSummaryResponse,
 )
-def get_agent_ops_metrics_summary() -> AgentOpsMetricsSummaryResponse:
+def get_agent_ops_metrics_summary(
+    user: CurrentUser = Depends(require_roles("support", "admin")),
+) -> AgentOpsMetricsSummaryResponse:
     return get_agent_ops_metrics_summary_service(
-        tenant_id=MOCK_TENANT_ID,
+        tenant_id=user.tenant_id,
     )
 
 
@@ -296,9 +313,10 @@ def get_agent_ops_metrics_summary() -> AgentOpsMetricsSummaryResponse:
 def get_retrieval_metrics_summary(
     endpoint: RetrievalEndpointQuery | None = None,
     category: str | None = None,
+    user: CurrentUser = Depends(require_roles("support", "admin")),
 ) -> RetrievalMetricsSummaryResponse:
     return get_retrieval_metrics_summary_service(
-        tenant_id=MOCK_TENANT_ID,
+        tenant_id=user.tenant_id,
         endpoint=endpoint,
         category=category,
     )
@@ -312,9 +330,10 @@ def get_retrieval_source_metrics(
     endpoint: RetrievalEndpointQuery | None = None,
     category: str | None = None,
     limit: int = Query(default=10, ge=1, le=100),
+    user: CurrentUser = Depends(require_roles("support", "admin")),
 ) -> list[RetrievalSourceMetricResponse]:
     return get_retrieval_source_metrics_service(
-        tenant_id=MOCK_TENANT_ID,
+        tenant_id=user.tenant_id,
         endpoint=endpoint,
         category=category,
         limit=limit,
@@ -328,13 +347,14 @@ def get_retrieval_source_metrics(
 def reject_approval_request(
     approval_request_id: int,
     request: ApprovalDecisionRequest,
+    user: CurrentUser = Depends(require_roles("support", "admin")),
 ) -> ApprovalRequestResponse:
     approval_request = update_approval_request_service(
         approval_request_id=approval_request_id,
-        tenant_id=MOCK_TENANT_ID,
+        tenant_id=user.tenant_id,
         approval_request_update=ApprovalRequestUpdate(
             status="rejected",
-            approved_by=MOCK_USER_ID,
+            approved_by=user.user_id,
             decision_reason=request.reason,
         ),
     )
@@ -349,13 +369,14 @@ def reject_approval_request(
 def cancel_approval_request(
     approval_request_id: int,
     request: ApprovalDecisionRequest,
+    user: CurrentUser = Depends(require_roles("support", "admin")),
 ) -> ApprovalRequestResponse:
     approval_request = update_approval_request_service(
         approval_request_id=approval_request_id,
-        tenant_id=MOCK_TENANT_ID,
+        tenant_id=user.tenant_id,
         approval_request_update=ApprovalRequestUpdate(
             status="cancelled",
-            approved_by=MOCK_USER_ID,
+            approved_by=user.user_id,
             decision_reason=request.reason,
         ),
     )
