@@ -11,12 +11,15 @@ from urllib.request import Request, urlopen
 
 
 BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+AUTH_USERNAME = os.getenv("AUTH_USERNAME", "support")
+AUTH_PASSWORD = os.getenv("AUTH_PASSWORD", "support")
 
 
 def request_json(
     method: str,
     path: str,
     payload: dict[str, Any] | None = None,
+    token: str | None = None,
 ) -> Any:
     url = f"{BASE_URL}{path}"
 
@@ -24,6 +27,8 @@ def request_json(
     headers = {
         "Accept": "application/json",
     }
+    if token is not None:
+        headers["Authorization"] = f"Bearer {token}"
 
     if payload is not None:
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -71,6 +76,16 @@ def main() -> int:
     health = request_json("GET", "/health")
     print("health:", health)
 
+    token_response = request_json(
+        "POST",
+        "/auth/token",
+        {
+            "username": AUTH_USERNAME,
+            "password": AUTH_PASSWORD,
+        },
+    )
+    token = token_response["access_token"]
+
     print("[2/7] Creating ticket preview")
     preview = request_json(
         "POST",
@@ -79,6 +94,7 @@ def main() -> int:
             "message": "VPN 连不上，重启客户端也没用",
             "category": "it",
         },
+        token=token,
     )
 
     agent_run_id = preview["agent_run_id"]
@@ -106,6 +122,7 @@ def main() -> int:
     preview_tool_calls = request_json(
         "GET",
         f"/agent-ops/runs/{agent_run_id}/tool-calls",
+        token=token,
     )
 
     preview_tool_names = tool_names(preview_tool_calls)
@@ -131,6 +148,7 @@ def main() -> int:
     approval_requests = request_json(
         "GET",
         f"/agent-ops/runs/{agent_run_id}/approval-requests",
+        token=token,
     )
 
     matching_approval = next(
@@ -155,6 +173,7 @@ def main() -> int:
             "approval_request_id": approval_request_id,
             "draft": draft,
         },
+        token=token,
     )
 
     ticket = confirm["ticket"]
@@ -171,6 +190,7 @@ def main() -> int:
     full_tool_calls = request_json(
         "GET",
         f"/agent-ops/runs/{agent_run_id}/tool-calls",
+        token=token,
     )
 
     full_tool_names = tool_names(full_tool_calls)
@@ -197,6 +217,7 @@ def main() -> int:
     approval_requests_after_confirm = request_json(
         "GET",
         f"/agent-ops/runs/{agent_run_id}/approval-requests",
+        token=token,
     )
 
     matching_approval_after_confirm = next(
@@ -216,7 +237,7 @@ def main() -> int:
     )
 
     print("[7/7] Inspecting AgentOps metrics")
-    metrics = request_json("GET", "/agent-ops/metrics/summary")
+    metrics = request_json("GET", "/agent-ops/metrics/summary", token=token)
     print(json.dumps(metrics, ensure_ascii=False, indent=2))
 
     assert_condition(

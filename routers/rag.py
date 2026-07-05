@@ -1,6 +1,6 @@
 import json
 import time
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 
 
@@ -15,7 +15,7 @@ from schemas.rag import (
 from schemas.agent_ops import RetrievalLogCreate
 from services.agent_ops_service import create_retrieval_log as create_retrieval_log_service
 from services.rag_service import answer_question, search_documents
-from mock_context import MOCK_TENANT_ID
+from auth import CurrentUser, get_current_user
 
 
 # 创建一个 APIRouter 实例，设置前缀为 "/rag"，
@@ -46,7 +46,10 @@ def safe_create_retrieval_log(
 
 
 @router.post("/search", response_model=RagSearchResponse)
-def rag_search(request: RagSearchRequest):
+def rag_search(
+    request: RagSearchRequest,
+    user: CurrentUser = Depends(get_current_user),
+):
     """根据用户的查询语句，搜索相关的文档片段"""
     started_at = time.perf_counter()
 
@@ -54,7 +57,7 @@ def rag_search(request: RagSearchRequest):
         results = search_documents(
             query=request.query,
             top_k=request.top_k,
-            tenant_id=MOCK_TENANT_ID,
+            tenant_id=user.tenant_id,
             category=request.category,
         )
     except Exception as exc:
@@ -62,7 +65,8 @@ def rag_search(request: RagSearchRequest):
 
         safe_create_retrieval_log(
             RetrievalLogCreate(
-                tenant_id=MOCK_TENANT_ID,
+                tenant_id=user.tenant_id,
+                user_id=user.user_id,
                 endpoint="search",
                 query_text=request.query,
                 top_k=request.top_k,
@@ -121,7 +125,8 @@ def rag_search(request: RagSearchRequest):
 
     safe_create_retrieval_log(
         RetrievalLogCreate(
-            tenant_id=MOCK_TENANT_ID,
+            tenant_id=user.tenant_id,
+            user_id=user.user_id,
             endpoint="search",
             query_text=request.query,
             top_k=request.top_k,
@@ -158,7 +163,10 @@ def rag_search(request: RagSearchRequest):
 
 
 @router.post("/ask", response_model=RagAskResponse)
-def rag_ask(request: RagAskRequest):
+def rag_ask(
+    request: RagAskRequest,
+    user: CurrentUser = Depends(get_current_user),
+):
     started_at = time.perf_counter()
 
     try:
@@ -166,7 +174,7 @@ def rag_ask(request: RagAskRequest):
             question=request.question,
             top_k=request.top_k,
             max_distance=request.max_distance,
-            tenant_id=MOCK_TENANT_ID,
+            tenant_id=user.tenant_id,
             category=request.category,
         )
     except Exception as exc:
@@ -174,7 +182,8 @@ def rag_ask(request: RagAskRequest):
 
         safe_create_retrieval_log(
             RetrievalLogCreate(
-                tenant_id=MOCK_TENANT_ID,
+                tenant_id=user.tenant_id,
+                user_id=user.user_id,
                 endpoint="ask",
                 query_text=request.question,
                 top_k=request.top_k,
@@ -233,7 +242,8 @@ def rag_ask(request: RagAskRequest):
 
     safe_create_retrieval_log(
         RetrievalLogCreate(
-            tenant_id=MOCK_TENANT_ID,
+            tenant_id=user.tenant_id,
+            user_id=user.user_id,
             endpoint="ask",
             query_text=request.question,
             top_k=request.top_k,
