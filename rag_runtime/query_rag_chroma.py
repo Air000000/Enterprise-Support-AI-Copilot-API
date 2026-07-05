@@ -181,7 +181,7 @@ def generate_answer(question: str, context: str) -> str:
     """
     client = get_llm_client()
 
-    model = os.getenv("CHAT_MODEL", "qwen-plus")
+    model = os.getenv("CHAT_MODEL") or os.getenv("DASHSCOPE_MODEL", "qwen3.5-plus")
 
     system_prompt = """
 你是一个严谨的企业知识库问答助手。
@@ -246,6 +246,15 @@ def ask_rag(
     sources = build_sources(results)
 
     top_distance = results[0].distance if results else None
+
+    if not results:
+        return RagResponse(
+            question=question,
+            answer="我在已提供资料中没有找到足够依据。",
+            retrieval_status="no_context",
+            top_distance=None,
+            sources=[],
+        )
 
     if should_refuse(results, max_distance=max_distance):
         return RagResponse(
