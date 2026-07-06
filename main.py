@@ -2,10 +2,9 @@ from datetime import datetime
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field as PydanticField
 from typing import Optional
-from contextlib import asynccontextmanager
-from sqlmodel import SQLModel, Field as SQLField, Session, create_engine, select
+from sqlmodel import Session, create_engine, select
 from pathlib import Path
-from database import engine, create_db_and_tables
+from database import engine
 import os
 
 from dotenv import load_dotenv
@@ -29,6 +28,7 @@ from auth import CurrentUser, get_current_user
 from models.ticket import Ticket  # noqa: F401
 from models.agent_ops import AgentRun, ApprovalRequest, ToolCall  # noqa: F401
 from models.document import Document, DocumentChunk  # noqa: F401
+from models.todo import Todo
 
 
 load_dotenv()   # 从 .env 文件加载环境变量
@@ -71,21 +71,7 @@ llm_client = OpenAI(
 )
 
 
-# 定义一个 SQLModel 模型，表示数据库中的 "todo" 表格结构
-class Todo(SQLModel, table=True):   #　table=True 表示这是一个数据库表格模型，表名默认为 "todo"
-    id: Optional[int] = SQLField(default=None, primary_key=True)    # id可以一开始为空，它是主键。
-    title: str
-    completed: bool = False
-    due_time: Optional[str] = None  # 任务的截止时间
-
-# 生命周期函数，在 FastAPI 启动时自动调用
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    create_db_and_tables()
-    yield   # yield 前面的代码：应用启动时执行。后面的代码：应用关闭时执行。
-
-
-app = FastAPI(title="Enterprise Support AI Copilot API", lifespan= lifespan) # 把 lifespan 传给 FastAPI 实例，应用启动时自动调用 create_db_and_tables() 来创建数据库表格。
+app = FastAPI(title="Enterprise Support AI Copilot API")
 
 app.include_router(auth_router)
 app.include_router(rag_router)  

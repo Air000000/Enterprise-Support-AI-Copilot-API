@@ -126,8 +126,11 @@ pip install -r requirements.txt
 启动服务：
 
 ```bash
+alembic upgrade head
 uvicorn main:app --reload
 ```
+
+如果旧的本地 SQLite 数据库还没有 Alembic 版本标记，可以删除 `data/todos.db` 后重新执行 `alembic upgrade head`。如果需要保留已有开发数据，请先备份数据库，再使用 `alembic stamp head` 标记当前 schema 版本。
 
 打开 Swagger：
 

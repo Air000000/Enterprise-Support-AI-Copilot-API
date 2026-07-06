@@ -11,9 +11,11 @@ if str(ROOT_DIR) not in sys.path:   # 确保项目根目录在 sys.path 中，�
 
 @pytest.fixture(autouse=True)
 def default_auth_user():
+    from database import create_db_and_tables
     from auth import CurrentUser, get_current_user
     from main import app
 
+    create_db_and_tables()
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
         sub="support",
         user_id="user_demo",
