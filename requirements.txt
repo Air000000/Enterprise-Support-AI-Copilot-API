@@ -8,3 +8,4 @@ pytest
 httpx
 chromadb
 python-multipart
+alembic

@@ -12,8 +12,14 @@ services:
       DATABASE_URL: sqlite:////app/data/todos.db
       DOCUMENT_STORAGE_ROOT: /app/storage/documents
       SQL_ECHO: "false"
+      HTTP_PROXY: ${DOCKER_HTTP_PROXY:-}
+      HTTPS_PROXY: ${DOCKER_HTTPS_PROXY:-}
+      NO_PROXY: ${DOCKER_NO_PROXY:-localhost,127.0.0.1,::1}
+      http_proxy: ${DOCKER_HTTP_PROXY:-}
+      https_proxy: ${DOCKER_HTTPS_PROXY:-}
+      no_proxy: ${DOCKER_NO_PROXY:-localhost,127.0.0.1,::1}
     volumes:
       - ./docker_data:/app/data
       - ./docker_storage:/app/storage
       - ./docker_chroma_db:/app/experiments/chroma_db
-    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    command: sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000"
