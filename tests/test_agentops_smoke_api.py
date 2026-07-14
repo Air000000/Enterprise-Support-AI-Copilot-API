@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
+from auth import CurrentUser, get_current_user
 from main import app
 
 import pytest
@@ -14,7 +15,23 @@ from sqlmodel import SQLModel, create_engine
 import services.agent_ops_service as agent_ops_service
 import services.ticket_service as ticket_service
 
-client = TestClient(app)
+@pytest.fixture(autouse=True)
+def default_auth_user():
+    user = CurrentUser(
+        sub="support",
+        user_id="user_demo",
+        tenant_id="tenant_demo",
+        role="support",
+    )
+    app.dependency_overrides[get_current_user] = lambda: user
+    yield
+    app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.fixture()
+def client():
+    with TestClient(app) as test_client:
+        yield test_client
 
 
 @pytest.fixture()
@@ -67,6 +84,7 @@ def get_tool_call_by_name(tool_calls: list[dict], tool_name: str) -> dict:
 
 
 def test_ticket_agent_preview_confirm_agentops_smoke_flow(
+    client,
     monkeypatch,
     smoke_test_engine,
 ):

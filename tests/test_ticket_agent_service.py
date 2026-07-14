@@ -17,6 +17,11 @@ from services.ticket_agent_service import (
 )
 
 
+@pytest.fixture(autouse=True)
+def default_auth_user():
+    yield
+
+
 def make_search_result(
     document_id: str = "doc_vpn_guide",
     chunk_id: str = "doc_vpn_guide_chunk_1",

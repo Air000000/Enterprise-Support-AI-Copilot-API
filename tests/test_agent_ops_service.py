@@ -17,6 +17,11 @@ from schemas.agent_ops import (
 import services.agent_ops_service as agent_ops_service
 
 
+@pytest.fixture(autouse=True)
+def default_auth_user():
+    yield
+
+
 @pytest.fixture()
 def agent_ops_test_engine(tmp_path, monkeypatch):
     """

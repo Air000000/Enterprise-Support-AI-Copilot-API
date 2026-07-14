@@ -1,13 +1,41 @@
 from types import SimpleNamespace
 
+import pytest
 from fastapi.testclient import TestClient
 
+from auth import CurrentUser, get_current_user
 import main
 import routers.rag as rag_router
 
-client = TestClient(main.app)
 
-def test_rag_search_returns_results(monkeypatch):
+@pytest.fixture(autouse=True)
+def default_auth_user():
+    user = CurrentUser(
+        sub="employee",
+        user_id="user_demo",
+        tenant_id="tenant_demo",
+        role="employee",
+    )
+    main.app.dependency_overrides[get_current_user] = lambda: user
+    yield
+    main.app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.fixture(autouse=True)
+def default_retrieval_log(monkeypatch):
+    monkeypatch.setattr(
+        rag_router,
+        "create_retrieval_log_service",
+        lambda retrieval_log_create: None,
+    )
+
+
+@pytest.fixture()
+def client():
+    with TestClient(main.app) as test_client:
+        yield test_client
+
+def test_rag_search_returns_results(client, monkeypatch):
     fake_results = [
         SimpleNamespace(
             document_id="doc_embedding_notes",
@@ -99,7 +127,7 @@ def test_rag_search_returns_results(monkeypatch):
     assert "0.8272" in log_calls["scores_json"]
     assert isinstance(log_calls["latency_ms"], int)
 
-def test_rag_ask_returns_answer_and_sources(monkeypatch):
+def test_rag_ask_returns_answer_and_sources(client, monkeypatch):
     fake_source = SimpleNamespace(
         document_id="doc_rag_notes",
         chunk_id="doc_rag_notes_chunk_0",
@@ -203,7 +231,7 @@ def test_rag_ask_returns_answer_and_sources(monkeypatch):
     assert isinstance(log_calls["latency_ms"], int)
 
 
-def test_rag_search_rejects_empty_query():
+def test_rag_search_rejects_empty_query(client):
     response = client.post(
         "/rag/search",
         json={
@@ -214,7 +242,7 @@ def test_rag_search_rejects_empty_query():
 
     assert response.status_code == 422  # 请求参数不合法，query 不能为空
 
-def test_rag_ask_rejects_empty_question():
+def test_rag_ask_rejects_empty_question(client):
     response = client.post(
         "/rag/ask",
         json={
@@ -226,7 +254,7 @@ def test_rag_ask_rejects_empty_question():
 
     assert response.status_code == 422  # 请求参数不合法，question 不能为空
 
-def test_rag_search_rejects_invalid_top_k():
+def test_rag_search_rejects_invalid_top_k(client):
     response = client.post(
         "/rag/search",
         json={
@@ -237,7 +265,7 @@ def test_rag_search_rejects_invalid_top_k():
 
     assert response.status_code == 422  # top_k 不合法，必须大于等于1
 
-def test_rag_ask_rejects_invalid_max_distance():
+def test_rag_ask_rejects_invalid_max_distance(client):
     response = client.post(
         "/rag/ask",
         json={
@@ -249,7 +277,7 @@ def test_rag_ask_rejects_invalid_max_distance():
 
     assert response.status_code == 422  # max_distance 不合法，必须大于0
 
-def test_rag_search_returns_500_when_service_fails(monkeypatch):
+def test_rag_search_returns_500_when_service_fails(client, monkeypatch):
     def fake_search_documents(
         query: str,
         top_k: int,
@@ -271,7 +299,7 @@ def test_rag_search_returns_500_when_service_fails(monkeypatch):
     assert response.status_code == 500
     assert "RAG search failed" in response.json()["detail"] 
 
-def test_rag_ask_returns_500_when_service_fails(monkeypatch):
+def test_rag_ask_returns_500_when_service_fails(client, monkeypatch):
     def fake_answer_question(
         question: str,
         top_k: int,

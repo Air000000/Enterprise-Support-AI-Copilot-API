@@ -1,6 +1,13 @@
 from types import SimpleNamespace
 
+import pytest
+
 import services.rag_service as rag_service
+
+
+@pytest.fixture(autouse=True)
+def default_auth_user():
+    yield
 
 
 def test_search_documents_calls_search_chroma(monkeypatch):
