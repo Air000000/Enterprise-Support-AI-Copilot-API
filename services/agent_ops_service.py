@@ -463,9 +463,6 @@ def list_retrieval_logs(
         retrieval_logs = session.exec(statement).all()
         return list(retrieval_logs)
 
- 
-def count_status(items, status: str) -> int:
-    return sum(1 for item in items if item.status == status)
 
 def count_status(
     items,

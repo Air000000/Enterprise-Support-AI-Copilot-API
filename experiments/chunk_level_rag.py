@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 import re
-from typing import Any
 
 load_dotenv()
 

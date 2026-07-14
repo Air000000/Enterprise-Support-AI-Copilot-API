@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
 
 from experiments.rag_local.query_chroma import ChromaSearchResult, search_chroma
-from experiments.evals.eval_core import load_eval_cases
 from experiments.evals import eval_core
 
 def result_to_preview(result: ChromaSearchResult) -> dict:

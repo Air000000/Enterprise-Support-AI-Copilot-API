@@ -9,3 +9,4 @@ httpx==0.28.1
 chromadb==1.5.9
 python-multipart==0.0.32
 alembic==1.18.5
+ruff==0.15.21

@@ -1,0 +1,9 @@
+[tool.ruff]
+target-version = "py311"
+extend-exclude = [
+    "data",
+    "docker_data",
+    "docker_storage",
+    "docker_chroma_db",
+    "storage",
+]
