@@ -1,16 +1,34 @@
 from datetime import datetime
 from types import SimpleNamespace
 
+import pytest
 from fastapi.testclient import TestClient
 
+from auth import CurrentUser, get_current_user
 import main
 import routers.agent_ops as agent_ops_router
 
 
-client = TestClient(main.app)
+@pytest.fixture(autouse=True)
+def default_auth_user():
+    user = CurrentUser(
+        sub="support",
+        user_id="user_demo",
+        tenant_id="tenant_demo",
+        role="support",
+    )
+    main.app.dependency_overrides[get_current_user] = lambda: user
+    yield
+    main.app.dependency_overrides.pop(get_current_user, None)
 
 
-def test_list_agent_runs(monkeypatch):
+@pytest.fixture()
+def client():
+    with TestClient(main.app) as test_client:
+        yield test_client
+
+
+def test_list_agent_runs(client, monkeypatch):
     calls = {}
 
     def fake_list_agent_runs_service(
@@ -81,7 +99,7 @@ def test_list_agent_runs(monkeypatch):
     assert data[0]["latency_ms"] == 123
     assert data[0]["retrieval_summary_json"] == '{"top_k":3,"sources_count":1}'
 
-def test_get_agent_run(monkeypatch):
+def test_get_agent_run(client, monkeypatch):
     calls = {}
 
     def fake_get_agent_run_service(
@@ -129,7 +147,7 @@ def test_get_agent_run(monkeypatch):
     assert data["retrieval_summary_json"] == '{"top_k":3,"sources_count":1}'
 
 
-def test_get_agent_run_trace(monkeypatch):
+def test_get_agent_run_trace(client, monkeypatch):
     calls = {}
 
     def fake_get_agent_run_trace_service(
@@ -215,7 +233,7 @@ def test_get_agent_run_trace(monkeypatch):
     assert data["approval_requests"][0]["decision_reason"] == "Looks good"
 
 
-def test_list_tool_calls_by_run(monkeypatch):
+def test_list_tool_calls_by_run(client, monkeypatch):
     calls = {}
 
     def fake_list_tool_calls_by_run_service(
@@ -274,7 +292,7 @@ def test_list_tool_calls_by_run(monkeypatch):
     assert data[0]["error_message"] is None
 
 
-def test_list_approval_requests_by_run(monkeypatch):
+def test_list_approval_requests_by_run(client, monkeypatch):
     calls = {}
 
     def fake_list_approval_requests_by_run_service(
@@ -322,7 +340,7 @@ def test_list_approval_requests_by_run(monkeypatch):
     assert data[0]["approved_by"] == "user_demo"
     assert data[0]["decision_reason"] == "用户已确认创建工单。"
 
-def test_reject_approval_request(monkeypatch):
+def test_reject_approval_request(client, monkeypatch):
     calls = {}
 
     def fake_update_approval_request_service(
@@ -381,7 +399,7 @@ def test_reject_approval_request(monkeypatch):
     assert data["decision_reason"] == "该请求需要主管审批，暂不创建工单。"
     assert data["decided_at"] is not None
 
-def test_cancel_approval_request(monkeypatch):
+def test_cancel_approval_request(client, monkeypatch):
     calls = {}
 
     def fake_update_approval_request_service(
@@ -440,7 +458,7 @@ def test_cancel_approval_request(monkeypatch):
     assert data["decision_reason"] == "用户撤回了该请求。"
     assert data["decided_at"] is not None
 
-def test_get_agent_ops_metrics_summary(monkeypatch):
+def test_get_agent_ops_metrics_summary(client, monkeypatch):
     calls = {}
 
     def fake_get_agent_ops_metrics_summary_service(tenant_id: str):
@@ -501,7 +519,7 @@ def test_get_agent_ops_metrics_summary(monkeypatch):
     assert data["cancelled_approval_requests"] == 1
 
 
-def test_list_tool_calls_by_run_with_filters(monkeypatch):
+def test_list_tool_calls_by_run_with_filters(client, monkeypatch):
     calls = {}
 
     def fake_list_tool_calls_by_run_service(
@@ -565,7 +583,7 @@ def test_list_tool_calls_by_run_with_filters(monkeypatch):
     assert data[0]["error_type"] == "create_ticket_failed"
 
 
-def test_list_tool_calls_with_filters(monkeypatch):
+def test_list_tool_calls_with_filters(client, monkeypatch):
     calls = {}
 
     def fake_list_tool_calls_service(
@@ -639,7 +657,7 @@ def test_list_tool_calls_with_filters(monkeypatch):
     assert data[0]["error_type"] == "create_ticket_failed"
 
 
-def test_list_approval_requests_with_filters(monkeypatch):
+def test_list_approval_requests_with_filters(client, monkeypatch):
     calls = {}
 
     def fake_list_approval_requests_service(
@@ -708,7 +726,7 @@ def test_list_approval_requests_with_filters(monkeypatch):
     assert data[0]["decision_reason"] is None
 
 
-def test_list_agent_runs_rejects_invalid_status():
+def test_list_agent_runs_rejects_invalid_status(client):
     response = client.get(
         "/agent-ops/runs",
         params={"status": "pending"},
@@ -717,7 +735,7 @@ def test_list_agent_runs_rejects_invalid_status():
     assert response.status_code == 422
 
 
-def test_list_tool_calls_rejects_invalid_status():
+def test_list_tool_calls_rejects_invalid_status(client):
     response = client.get(
         "/agent-ops/tool-calls",
         params={"status": "cancelled"},
@@ -726,7 +744,7 @@ def test_list_tool_calls_rejects_invalid_status():
     assert response.status_code == 422
 
 
-def test_list_tool_calls_by_run_rejects_invalid_status():
+def test_list_tool_calls_by_run_rejects_invalid_status(client):
     response = client.get(
         "/agent-ops/runs/1/tool-calls",
         params={"status": "cancelled"},
@@ -735,7 +753,7 @@ def test_list_tool_calls_by_run_rejects_invalid_status():
     assert response.status_code == 422
 
 
-def test_list_approval_requests_rejects_invalid_approval_type():
+def test_list_approval_requests_rejects_invalid_approval_type(client):
     response = client.get(
         "/agent-ops/approval-requests",
         params={"approval_type": "create_ticket"},
@@ -744,7 +762,7 @@ def test_list_approval_requests_rejects_invalid_approval_type():
     assert response.status_code == 422
 
 
-def test_list_retrieval_logs_with_filters(monkeypatch):
+def test_list_retrieval_logs_with_filters(client, monkeypatch):
     calls = {}
 
     def fake_list_retrieval_logs_service(
@@ -819,7 +837,7 @@ def test_list_retrieval_logs_with_filters(monkeypatch):
     assert data[0]["top_distance"] == 0.3123
 
 
-def test_list_retrieval_logs_rejects_invalid_status():
+def test_list_retrieval_logs_rejects_invalid_status(client):
     response = client.get(
         "/agent-ops/retrieval-logs",
         params={"retrieval_status": "unknown"},
@@ -828,7 +846,7 @@ def test_list_retrieval_logs_rejects_invalid_status():
     assert response.status_code == 422
 
 
-def test_get_retrieval_metrics_summary(monkeypatch):
+def test_get_retrieval_metrics_summary(client, monkeypatch):
     calls = {}
 
     def fake_get_retrieval_metrics_summary_service(
@@ -895,7 +913,7 @@ def test_get_retrieval_metrics_summary(monkeypatch):
     }
 
 
-def test_get_retrieval_metrics_summary_rejects_invalid_endpoint():
+def test_get_retrieval_metrics_summary_rejects_invalid_endpoint(client):
     response = client.get(
         "/agent-ops/metrics/retrieval",
         params={"endpoint": "chat"},
@@ -904,7 +922,7 @@ def test_get_retrieval_metrics_summary_rejects_invalid_endpoint():
     assert response.status_code == 422
 
 
-def test_get_retrieval_source_metrics(monkeypatch):
+def test_get_retrieval_source_metrics(client, monkeypatch):
     calls = {}
 
     def fake_get_retrieval_source_metrics_service(
@@ -959,7 +977,7 @@ def test_get_retrieval_source_metrics(monkeypatch):
     assert data[0]["retrieval_count"] == 2
     assert data[0]["average_distance"] == 0.35
 
-def test_get_retrieval_source_metrics_rejects_invalid_endpoint():
+def test_get_retrieval_source_metrics_rejects_invalid_endpoint(client):
     response = client.get(
         "/agent-ops/metrics/retrieval/sources",
         params={"endpoint": "chat"},
@@ -968,7 +986,7 @@ def test_get_retrieval_source_metrics_rejects_invalid_endpoint():
     assert response.status_code == 422
 
 
-def test_get_retrieval_no_context_query_metrics(monkeypatch):
+def test_get_retrieval_no_context_query_metrics(client, monkeypatch):
     calls = {}
 
     def fake_get_retrieval_no_context_query_metrics_service(
@@ -1023,7 +1041,7 @@ def test_get_retrieval_no_context_query_metrics(monkeypatch):
     assert data[0]["no_context_count"] == 2
     assert data[0]["latest_latency_ms"] == 200
 
-def test_get_retrieval_no_context_query_metrics_rejects_invalid_endpoint():
+def test_get_retrieval_no_context_query_metrics_rejects_invalid_endpoint(client):
     response = client.get(
         "/agent-ops/metrics/retrieval/no-context-queries",
         params={"endpoint": "chat"},
@@ -1032,7 +1050,7 @@ def test_get_retrieval_no_context_query_metrics_rejects_invalid_endpoint():
     assert response.status_code == 422
 
 
-def test_get_retrieval_failure_metrics(monkeypatch):
+def test_get_retrieval_failure_metrics(client, monkeypatch):
     calls = {}
 
     def fake_get_retrieval_failure_metrics_service(
@@ -1087,7 +1105,7 @@ def test_get_retrieval_failure_metrics(monkeypatch):
     assert data[0]["failed_count"] == 2
     assert data[0]["latest_latency_ms"] == 200
 
-def test_get_retrieval_failure_metrics_rejects_invalid_endpoint():
+def test_get_retrieval_failure_metrics_rejects_invalid_endpoint(client):
     response = client.get(
         "/agent-ops/metrics/retrieval/failures",
         params={"endpoint": "chat"},

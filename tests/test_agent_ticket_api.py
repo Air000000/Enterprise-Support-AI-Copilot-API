@@ -1,7 +1,9 @@
 from datetime import datetime
 
+import pytest
 from fastapi.testclient import TestClient
 
+from auth import CurrentUser, get_current_user
 from main import app
 from schemas.agent_ticket import (
     TicketAgentConfirmResponse,
@@ -12,7 +14,26 @@ from schemas.agent_ticket import (
 from schemas.ticket import TicketResponse
 
 
-def test_agent_ticket_preview_returns_draft(monkeypatch):
+@pytest.fixture(autouse=True)
+def default_auth_user():
+    user = CurrentUser(
+        sub="support",
+        user_id="user_demo",
+        tenant_id="tenant_demo",
+        role="support",
+    )
+    app.dependency_overrides[get_current_user] = lambda: user
+    yield
+    app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.fixture()
+def client():
+    with TestClient(app) as test_client:
+        yield test_client
+
+
+def test_agent_ticket_preview_returns_draft(client, monkeypatch):
     calls = {}
 
     def fake_preview_ticket_service(request, tenant_id: str):
@@ -49,14 +70,13 @@ def test_agent_ticket_preview_returns_draft(monkeypatch):
         fake_preview_ticket_service,
     )
 
-    with TestClient(app) as client:
-        response = client.post(
-            "/agent/ticket/preview",
-            json={
-                "message": "VPN 连不上，重启客户端也没用",
-                "category": "it",
-            },
-        )
+    response = client.post(
+        "/agent/ticket/preview",
+        json={
+            "message": "VPN 连不上，重启客户端也没用",
+            "category": "it",
+        },
+    )
 
     assert response.status_code == 200
 
@@ -76,7 +96,7 @@ def test_agent_ticket_preview_returns_draft(monkeypatch):
     assert calls["tenant_id"] == "tenant_demo"
 
 
-def test_agent_ticket_preview_can_return_no_ticket(monkeypatch):
+def test_agent_ticket_preview_can_return_no_ticket(client, monkeypatch):
     def fake_preview_ticket_service(request, tenant_id: str):
         return TicketAgentPreviewResponse(
             agent_run_id=2,
@@ -102,14 +122,13 @@ def test_agent_ticket_preview_can_return_no_ticket(monkeypatch):
         fake_preview_ticket_service,
     )
 
-    with TestClient(app) as client:
-        response = client.post(
-            "/agent/ticket/preview",
-            json={
-                "message": "请假怎么申请？",
-                "category": "hr",
-            },
-        )
+    response = client.post(
+        "/agent/ticket/preview",
+        json={
+            "message": "请假怎么申请？",
+            "category": "hr",
+        },
+    )
 
     assert response.status_code == 200
 
@@ -121,7 +140,7 @@ def test_agent_ticket_preview_can_return_no_ticket(monkeypatch):
     assert data["approval_request_id"] is None
 
 
-def test_agent_ticket_confirm_creates_ticket(monkeypatch):
+def test_agent_ticket_confirm_creates_ticket(client, monkeypatch):
     calls = {}
 
     def fake_confirm_ticket_service(request, tenant_id: str, created_by: str):
@@ -155,20 +174,19 @@ def test_agent_ticket_confirm_creates_ticket(monkeypatch):
         fake_confirm_ticket_service,
     )
 
-    with TestClient(app) as client:
-        response = client.post(
-            "/agent/ticket/confirm",
-            json={
-                "agent_run_id": 1,
-                "approval_request_id": 10,
-                "draft": {
-                    "title": "VPN 连不上",
-                    "description": "用户远程办公时 VPN 连不上，重启客户端后仍未恢复。",
-                    "category": "it",
-                    "priority": "high",
-                },
+    response = client.post(
+        "/agent/ticket/confirm",
+        json={
+            "agent_run_id": 1,
+            "approval_request_id": 10,
+            "draft": {
+                "title": "VPN 连不上",
+                "description": "用户远程办公时 VPN 连不上，重启客户端后仍未恢复。",
+                "category": "it",
+                "priority": "high",
             },
-        )
+        },
+    )
     assert response.status_code == 201
 
     data = response.json()
@@ -190,44 +208,42 @@ def test_agent_ticket_confirm_creates_ticket(monkeypatch):
     assert calls["agent_run_id"] == 1
     assert calls["approval_request_id"] == 10
 
-def test_agent_ticket_preview_with_empty_message_should_fail():
-    with TestClient(app) as client:
-        response = client.post(
-            "/agent/ticket/preview",
-            json={
-                "message": "",
+
+def test_agent_ticket_preview_with_empty_message_should_fail(client):
+    response = client.post(
+        "/agent/ticket/preview",
+        json={
+            "message": "",
+            "category": "it",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_agent_ticket_preview_with_invalid_category_should_fail(client):
+    response = client.post(
+        "/agent/ticket/preview",
+        json={
+            "message": "VPN 连不上",
+            "category": "invalid",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_agent_ticket_confirm_with_invalid_priority_should_fail(client):
+    response = client.post(
+        "/agent/ticket/confirm",
+        json={
+            "draft": {
+                "title": "VPN 连不上",
+                "description": "用户远程办公时 VPN 连不上。",
                 "category": "it",
-            },
-        )
-
-    assert response.status_code == 422
-
-
-def test_agent_ticket_preview_with_invalid_category_should_fail():
-    with TestClient(app) as client:
-        response = client.post(
-            "/agent/ticket/preview",
-            json={
-                "message": "VPN 连不上",
-                "category": "invalid",
-            },
-        )
-
-    assert response.status_code == 422
-
-
-def test_agent_ticket_confirm_with_invalid_priority_should_fail():
-    with TestClient(app) as client:
-        response = client.post(
-            "/agent/ticket/confirm",
-            json={
-                "draft": {
-                    "title": "VPN 连不上",
-                    "description": "用户远程办公时 VPN 连不上。",
-                    "category": "it",
-                    "priority": "invalid",
-                }
-            },
-        )
+                "priority": "invalid",
+            }
+        },
+    )
 
     assert response.status_code == 422

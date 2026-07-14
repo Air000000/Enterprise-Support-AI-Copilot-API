@@ -6,10 +6,10 @@ from uuid import uuid4
 import pytest
 from fastapi import HTTPException
 
-from sqlmodel import Session, select
+from sqlmodel import SQLModel, Session, create_engine, select
 
-from database import create_db_and_tables, engine
 from models.document import DocumentChunk
+import services.document_service as document_service
 from services.document_service import (
     calculate_checksum,
     create_document_from_bytes,
@@ -24,8 +24,28 @@ def unique_name(prefix: str) -> str:
     return f"{prefix}_{uuid4().hex}"
 
 
+@pytest.fixture(autouse=True)
+def default_auth_user():
+    yield
+
+
+@pytest.fixture(autouse=True)
+def document_test_engine(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    db_path = tmp_path / "document_service.db"
+    test_engine = create_engine(
+        f"sqlite:///{db_path}",
+        connect_args={"check_same_thread": False},
+    )
+
+    SQLModel.metadata.create_all(test_engine)
+    monkeypatch.setattr(document_service, "engine", test_engine)
+
+    yield test_engine
+
+    SQLModel.metadata.drop_all(test_engine)
+
+
 def test_create_document_from_bytes_saves_file_and_record(tmp_path: Path):
-    create_db_and_tables()
 
     content = b"# VPN Guide\n\nCheck network, account status, and VPN client config."
     tenant_id = unique_name("tenant_demo")
@@ -55,7 +75,6 @@ def test_create_document_from_bytes_saves_file_and_record(tmp_path: Path):
 
 
 def test_create_document_rejects_unsupported_file_type(tmp_path: Path):
-    create_db_and_tables()
 
     with pytest.raises(HTTPException) as exc_info:
         create_document_from_bytes(
@@ -72,7 +91,6 @@ def test_create_document_rejects_unsupported_file_type(tmp_path: Path):
 
 
 def test_list_documents_filters_by_tenant_and_category(tmp_path: Path):
-    create_db_and_tables()
 
     tenant_a = unique_name("tenant_a")
     tenant_b = unique_name("tenant_b")
@@ -117,7 +135,6 @@ def test_list_documents_filters_by_tenant_and_category(tmp_path: Path):
 
 
 def test_get_document_requires_matching_tenant(tmp_path: Path):
-    create_db_and_tables()
 
     tenant_id = unique_name("tenant_demo")
     document = create_document_from_bytes(
@@ -170,8 +187,10 @@ def fake_embed_texts(texts: list[str]) -> list[list[float]]:
     ]
 
 
-def test_index_document_creates_chunks_and_updates_status(tmp_path: Path):
-    create_db_and_tables()
+def test_index_document_creates_chunks_and_updates_status(
+    tmp_path: Path,
+    document_test_engine,
+):
 
     content = (
         "# VPN Guide\n\n"
@@ -205,7 +224,7 @@ def test_index_document_creates_chunks_and_updates_status(tmp_path: Path):
     assert indexed_document.chunk_count >= 1
     assert indexed_document.error_message is None
 
-    with Session(engine) as session:
+    with Session(document_test_engine) as session:
         chunks = list(
             session.exec(
                 select(DocumentChunk).where(
@@ -223,8 +242,10 @@ def test_index_document_creates_chunks_and_updates_status(tmp_path: Path):
     assert fake_collection.added_metadatas[0]["source_type"] == "uploaded_document"
 
 
-def test_reindex_document_replaces_existing_chunks(tmp_path: Path):
-    create_db_and_tables()
+def test_reindex_document_replaces_existing_chunks(
+    tmp_path: Path,
+    document_test_engine,
+):
 
     content = (
         "# Leave Policy\n\n"
@@ -260,7 +281,7 @@ def test_reindex_document_replaces_existing_chunks(tmp_path: Path):
         chroma_collection=fake_collection,
     )
 
-    with Session(engine) as session:
+    with Session(document_test_engine) as session:
         chunks = list(
             session.exec(
                 select(DocumentChunk).where(
@@ -275,8 +296,10 @@ def test_reindex_document_replaces_existing_chunks(tmp_path: Path):
     assert fake_collection.deleted_ids == first_ids
 
 
-def test_delete_document_marks_deleted_and_removes_chunks(tmp_path: Path):
-    create_db_and_tables()
+def test_delete_document_marks_deleted_and_removes_chunks(
+    tmp_path: Path,
+    document_test_engine,
+):
 
     content = (
         "# Access Card\n\n"
@@ -316,7 +339,7 @@ def test_delete_document_marks_deleted_and_removes_chunks(tmp_path: Path):
     assert deleted_embeddings == len(indexed_ids)
     assert fake_collection.deleted_ids == indexed_ids
 
-    with Session(engine) as session:
+    with Session(document_test_engine) as session:
         chunks = list(
             session.exec(
                 select(DocumentChunk).where(
@@ -338,7 +361,6 @@ def test_delete_document_marks_deleted_and_removes_chunks(tmp_path: Path):
 
 
 def test_delete_document_requires_matching_tenant(tmp_path: Path):
-    create_db_and_tables()
 
     tenant_id = unique_name("tenant_demo")
     document = create_document_from_bytes(
