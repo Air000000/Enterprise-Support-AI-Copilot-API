@@ -2,8 +2,7 @@ from datetime import datetime
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field as PydanticField
 from typing import Optional
-from sqlmodel import Session, create_engine, select
-from pathlib import Path
+from sqlmodel import Session, select
 from database import engine
 import os
 
@@ -14,8 +13,6 @@ import json
 
 import logging
 
-from experiments.rag_local.query_chroma import search_chroma
-from experiments.rag_local.query_rag_chroma import ask_rag
 
 from routers.auth import router as auth_router
 from routers.rag import router as rag_router

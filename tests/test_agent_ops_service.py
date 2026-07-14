@@ -4,7 +4,6 @@ import pytest
 from fastapi import HTTPException
 from sqlmodel import SQLModel, create_engine
 
-from models.agent_ops import AgentRun, ApprovalRequest, ToolCall
 from schemas.agent_ops import (
     AgentRunCreate,
     AgentRunUpdate,

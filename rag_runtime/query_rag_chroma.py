@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 
 from dotenv import load_dotenv
 from openai import OpenAI

@@ -37,6 +37,10 @@ jobs:
         run: |
           python -m compileall -q .
 
+      - name: Run Ruff
+        run: |
+          ruff check .
+
       - name: Run focused tests
         run: |
           pytest \
