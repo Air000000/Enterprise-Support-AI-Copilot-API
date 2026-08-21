@@ -37,34 +37,31 @@ def collapse_chunk_results_to_document_ranking(
     return document_ranking
 
 
-def build_ranx_qrels(rows: Iterable[dict[str, Any]]) -> Qrels:
-    """Convert MTEB-style qrel rows into a ranx Qrels object."""
-    qrels_dict: dict[str, dict[str, int]] = {}
-
-    for row in rows:
-        query_id = str(row["query-id"])
-        document_id = str(row["corpus-id"])
-        relevance = int(row["score"])
-
-        qrels_dict.setdefault(query_id, {})[document_id] = relevance
-
+def build_ranx_qrels(
+    qrels_by_query: Mapping[str, Mapping[str, int]],
+) -> Qrels:
+    """Convert normalized document-level relevance labels into ranx Qrels."""
+    qrels_dict = {
+        str(query_id): {
+            str(document_id): int(relevance)
+            for document_id, relevance in document_relevance.items()
+        }
+        for query_id, document_relevance in qrels_by_query.items()
+    }
     return Qrels(qrels_dict)
 
 
 def build_ranx_run(
-    document_rankings: Mapping[str, Sequence[str]],
+    query_id: str,
+    ranked_document_ids: Sequence[str],
 ) -> Run:
-    """Convert ordered document rankings into a ranx Run object."""
-    run_dict: dict[str, dict[str, float]] = {}
-
-    for query_id, ranking in document_rankings.items():
-        ranking_size = len(ranking)
-        run_dict[str(query_id)] = {
-            str(document_id): float(ranking_size - rank)
-            for rank, document_id in enumerate(ranking)
-        }
-
-    return Run(run_dict)
+    """Convert one ordered document ranking into a ranx Run object."""
+    ranking_size = len(ranked_document_ids)
+    scores = {
+        str(document_id): float(ranking_size - rank)
+        for rank, document_id in enumerate(ranked_document_ids)
+    }
+    return Run({str(query_id): scores})
 
 
 def evaluate_ir_run(qrels: Qrels, run: Run) -> dict[str, float]:
