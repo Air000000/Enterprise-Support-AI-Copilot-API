@@ -1,7 +1,10 @@
+import pytest
+
 from experiments.evals.adapters.techqa import TechQADocument
 from experiments.evals.build_techqa_index import (
     TechQAIndexBuildSummary,
     build_techqa_index,
+    load_frozen_techqa_documents,
     search_techqa_index,
 )
 from rag_runtime.build_chroma_index import get_chroma_client
@@ -28,6 +31,41 @@ def _small_corpus() -> list[TechQADocument]:
         TechQADocument(document_id="doc_b", text="beta support resolution"),
         TechQADocument(document_id="doc_a", text="alpha support resolution"),
     ]
+
+
+def test_load_frozen_corpus_uses_manifest_identity():
+    observed: dict[str, object] = {}
+
+    def fake_load_dataset(path, name, *, split, revision):
+        observed.update(
+            path=path,
+            name=name,
+            split=split,
+            revision=revision,
+        )
+        return (
+            {"_id": f"doc_{index:05d}", "text": f"document {index}"}
+            for index in range(28481)
+        )
+
+    documents = load_frozen_techqa_documents(dataset_loader=fake_load_dataset)
+
+    assert observed == {
+        "path": "bowang0911/TechQA-RAG-Eval",
+        "name": "corpus",
+        "split": "train",
+        "revision": "68323f8f191fd5df93e2b2673d79a5da3a805638",
+    }
+    assert len(documents) == 28481
+    assert documents[0].document_id == "doc_00000"
+
+
+def test_load_frozen_corpus_rejects_count_mismatch():
+    def fake_load_dataset(path, name, *, split, revision):
+        return [{"_id": "doc_only", "text": "only one document"}]
+
+    with pytest.raises(RuntimeError, match="expected=28481"):
+        load_frozen_techqa_documents(dataset_loader=fake_load_dataset)
 
 
 def test_build_small_corpus_is_deterministic_and_records_metadata(tmp_path):
