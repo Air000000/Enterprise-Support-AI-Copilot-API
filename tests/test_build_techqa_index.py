@@ -134,6 +134,98 @@ def test_duplicate_build_is_idempotent(tmp_path):
     assert collection.count() == 2
 
 
+def test_resume_skips_existing_chunks_and_embeds_only_missing(tmp_path):
+    chroma_dir = tmp_path / "techqa_chroma"
+    collection_name = "techqa_test"
+
+    build_techqa_index(
+        [TechQADocument(document_id="doc_a", text="alpha support resolution")],
+        chroma_dir=chroma_dir,
+        collection_name=collection_name,
+        corpus_sha256="corpus-sha-demo",
+        embedder=_fake_embed_texts,
+    )
+
+    embedded_texts: list[str] = []
+
+    def tracking_embedder(texts: list[str]) -> list[list[float]]:
+        embedded_texts.extend(texts)
+        return _fake_embed_texts(texts)
+
+    summary = build_techqa_index(
+        _small_corpus(),
+        chroma_dir=chroma_dir,
+        collection_name=collection_name,
+        corpus_sha256="corpus-sha-demo",
+        embedder=tracking_embedder,
+    )
+
+    client = get_chroma_client(chroma_dir)
+    collection = client.get_collection(
+        name=collection_name,
+        embedding_function=None,
+    )
+
+    assert summary.chunk_count == 2
+    assert embedded_texts == ["beta support resolution"]
+    assert collection.count() == 2
+
+
+def test_resume_rejects_incompatible_corpus_identity(tmp_path):
+    chroma_dir = tmp_path / "techqa_chroma"
+    collection_name = "techqa_test"
+
+    build_techqa_index(
+        _small_corpus(),
+        chroma_dir=chroma_dir,
+        collection_name=collection_name,
+        corpus_sha256="corpus-sha-one",
+        embedder=_fake_embed_texts,
+    )
+
+    with pytest.raises(RuntimeError, match="corpus_sha256"):
+        build_techqa_index(
+            _small_corpus(),
+            chroma_dir=chroma_dir,
+            collection_name=collection_name,
+            corpus_sha256="corpus-sha-two",
+            embedder=_fake_embed_texts,
+        )
+
+
+def test_fresh_rebuild_reembeds_existing_chunks(tmp_path):
+    chroma_dir = tmp_path / "techqa_chroma"
+    collection_name = "techqa_test"
+    documents = [
+        TechQADocument(document_id="doc_a", text="alpha support resolution")
+    ]
+
+    build_techqa_index(
+        documents,
+        chroma_dir=chroma_dir,
+        collection_name=collection_name,
+        corpus_sha256="corpus-sha-demo",
+        embedder=_fake_embed_texts,
+    )
+
+    embedded_texts: list[str] = []
+
+    def tracking_embedder(texts: list[str]) -> list[list[float]]:
+        embedded_texts.extend(texts)
+        return _fake_embed_texts(texts)
+
+    build_techqa_index(
+        documents,
+        chroma_dir=chroma_dir,
+        collection_name=collection_name,
+        corpus_sha256="corpus-sha-demo",
+        embedder=tracking_embedder,
+        fresh=True,
+    )
+
+    assert embedded_texts == ["alpha support resolution"]
+
+
 def test_query_returns_canonical_document_id(tmp_path):
     chroma_dir = tmp_path / "techqa_chroma"
     collection_name = "techqa_test"
