@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any
 
+from ranx import Qrels
+
 
 def collapse_chunk_results_to_document_ranking(
     results: Iterable[Any],
@@ -26,3 +28,17 @@ def collapse_chunk_results_to_document_ranking(
         document_ranking.append(document_id)
 
     return document_ranking
+
+
+def build_ranx_qrels(rows: Iterable[dict[str, Any]]) -> Qrels:
+    """Convert MTEB-style qrel rows into a ranx Qrels object."""
+    qrels_dict: dict[str, dict[str, int]] = {}
+
+    for row in rows:
+        query_id = str(row["query-id"])
+        document_id = str(row["corpus-id"])
+        relevance = int(row["score"])
+
+        qrels_dict.setdefault(query_id, {})[document_id] = relevance
+
+    return Qrels(qrels_dict)
