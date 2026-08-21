@@ -237,4 +237,5 @@ docker_chroma_db/
 storage/
 
 # Manual demo temp files
-tmp_manual_docs/.worktrees/
+tmp_manual_docs/
+.worktrees/
