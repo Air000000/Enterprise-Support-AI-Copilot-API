@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import json
 import time
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from experiments.evals.adapters.techqa import TechQADocument
+from experiments.evals.adapters.techqa import TechQADocument, build_techqa_documents
 from rag_runtime.build_chroma_index import get_chroma_client
 from rag_runtime.build_rag_index import embed_texts
 from rag_runtime.text_splitter import (
@@ -19,10 +20,14 @@ from rag_runtime.text_splitter import (
 
 DEFAULT_TECHQA_CHROMA_DIR = Path("data/eval_chroma/techqa_e0")
 DEFAULT_TECHQA_COLLECTION_NAME = "techqa_e0_dense"
+DEFAULT_TECHQA_MANIFEST_PATH = Path(
+    "experiments/evals/datasets/techqa/manifest.json"
+)
 DEFAULT_ADD_BATCH_SIZE = 128
 CHUNK_STRATEGY = "paragraph_aware_character"
 
 Embedder = Callable[[list[str]], list[list[float]]]
+DatasetLoader = Callable[..., Iterable[Mapping[str, Any]]]
 
 
 @dataclass(frozen=True)
@@ -39,6 +44,44 @@ class TechQAIndexSearchResult:
     chunk_index: int
     content: str
     distance: float
+
+
+def _load_techqa_manifest(
+    manifest_path: str | Path = DEFAULT_TECHQA_MANIFEST_PATH,
+) -> dict[str, Any]:
+    return json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+
+
+def load_frozen_techqa_documents(
+    *,
+    dataset_loader: DatasetLoader | None = None,
+    manifest_path: str | Path = DEFAULT_TECHQA_MANIFEST_PATH,
+) -> list[TechQADocument]:
+    """Load the full TechQA corpus from the revision frozen in the manifest."""
+    manifest = _load_techqa_manifest(manifest_path)
+    retrieval = manifest["retrieval_dataset"]
+
+    if dataset_loader is None:
+        from datasets import load_dataset
+
+        dataset_loader = load_dataset
+
+    rows = dataset_loader(
+        retrieval["repo"],
+        "corpus",
+        split="train",
+        revision=retrieval["revision"],
+    )
+    documents = build_techqa_documents(rows)
+
+    expected_count = int(retrieval["loaded_corpus_documents"])
+    if len(documents) != expected_count:
+        raise RuntimeError(
+            "Frozen TechQA corpus count mismatch: "
+            f"expected={expected_count}, actual={len(documents)}"
+        )
+
+    return documents
 
 
 def _reset_techqa_collection(
@@ -205,3 +248,29 @@ def search_techqa_index(
             distances,
         )
     ]
+
+
+def main() -> None:
+    manifest = _load_techqa_manifest()
+    retrieval = manifest["retrieval_dataset"]
+
+    print("Loading frozen TechQA corpus...")
+    documents = load_frozen_techqa_documents()
+    print(f"Loaded documents: {len(documents)}")
+
+    print("Building isolated TechQA dense index...")
+    summary = build_techqa_index(
+        documents,
+        corpus_sha256=str(retrieval["corpus_sha256"]),
+    )
+
+    print("TechQA dense index build completed.")
+    print(f"Collection:       {DEFAULT_TECHQA_COLLECTION_NAME}")
+    print(f"Persist dir:      {DEFAULT_TECHQA_CHROMA_DIR}")
+    print(f"Document count:   {summary.document_count}")
+    print(f"Chunk count:      {summary.chunk_count}")
+    print(f"Indexing seconds: {summary.indexing_seconds:.3f}")
+
+
+if __name__ == "__main__":
+    main()
