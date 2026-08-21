@@ -1,0 +1,94 @@
+{
+  "benchmark": "TechQA-RAG-Eval",
+  "purpose": {
+    "retrieval": "single-evidence-document technical support retrieval benchmark",
+    "generation": "technical support answer generation and abstention evaluation"
+  },
+  "project": {
+    "production_baseline_sha": "4d0a44d464493c970c65679499599438cc4a519d",
+    "task1_start_sha": "4ea0de3d47776fc1f606e86e933f5c480c8fc52a",
+    "baseline_note": "task1_start_sha differs from production_baseline_sha only by local worktree housekeeping commits; no RAG runtime behavior changed."
+  },
+  "retrieval_dataset": {
+    "repo": "bowang0911/TechQA-RAG-Eval",
+    "revision": "68323f8f191fd5df93e2b2673d79a5da3a805638",
+    "license_declared": "apache-2.0",
+    "corpus_file": "corpus/train-00000-of-00001.parquet",
+    "queries_file": "queries/train-00000-of-00001.parquet",
+    "qrels_file": "data/train-00000-of-00001.parquet",
+    "corpus_sha256": "3c4c4fe05204efa99101a402dc4d1c6206bcd160eb20be28e6a0b594415b3edb",
+    "queries_sha256": "ac0151d80b930b07b4d4214ff7f914f9d74cbe9fca39d82a51a79a5ad9792fb9",
+    "qrels_sha256": "1e739923a9549d93c9613bb6d29ecfa747addef1d7cbadbb5ac8422b280c6735",
+    "loaded_corpus_documents": 28481,
+    "loaded_retrieval_queries": 610,
+    "qrels_rows": 610,
+    "unique_gold_documents": 496,
+    "qrels_per_query_distribution": {
+      "1": 610
+    },
+    "relevance_score_distribution": {
+      "1": 610
+    }
+  },
+  "generation_dataset": {
+    "repo": "nvidia/TechQA-RAG-Eval",
+    "revision": "0b5bbc84b7f07d6d09d063130e90b716d8d4a32a",
+    "license_declared": "apache-2.0",
+    "metadata_file": "train.json",
+    "metadata_sha256": "69d97231509482ed6bd5ec1c4bc0607acb82a88d11169eb8383592d0ca8b93c7",
+    "loaded_records": 910,
+    "answerable": 610,
+    "impossible": 300
+  },
+  "split_contract": {
+    "recovery_rule": "question ID prefix",
+    "train": {
+      "all": 600,
+      "answerable": 450,
+      "impossible": 150,
+      "usage": "development, failure analysis, parameter selection"
+    },
+    "dev": {
+      "all": 310,
+      "answerable": 160,
+      "impossible": 150,
+      "usage": "frozen held-out final comparison"
+    },
+    "other_prefix_count": 0,
+    "dev_failure_mining_before_e1_freeze": false
+  },
+  "alignment_audit": {
+    "retrieval_ids_equal_nvidia_answerable_ids": true,
+    "retrieval_queries_missing_from_nvidia": 0,
+    "nvidia_answerable_missing_from_retrieval": 0,
+    "exact_question_text_matches": 267,
+    "whitespace_normalized_question_matches": 610,
+    "whitespace_normalized_question_mismatches": 0,
+    "qrel_gold_docs_missing_from_nvidia_contexts": 0,
+    "qrel_gold_docs_missing_from_corpus": 0
+  },
+  "retrieval_evaluation_contract": {
+    "gold_level": "document",
+    "retrieved_runtime_unit": "chunk",
+    "document_ranking_rule": "collapse chunk results by document_id, retaining the first occurrence of each document",
+    "primary_metrics": [
+      "Document Recall@5",
+      "Document Recall@20",
+      "MRR@10"
+    ],
+    "metric_note": "Each answerable query has exactly one relevant document, so Document Recall@K and Hit@K are numerically equivalent on this benchmark."
+  },
+  "baseline_rag": {
+    "retriever": "chroma_dense",
+    "chunk_strategy": "paragraph_aware_character",
+    "chunk_size_chars": 800,
+    "chunk_overlap_chars": 120,
+    "min_chunk_size_chars": 150
+  },
+  "environment": {
+    "python": "3.11.14",
+    "datasets": "5.0.1",
+    "huggingface_hub": "1.16.1",
+    "ranx": "0.3.21"
+  }
+}
