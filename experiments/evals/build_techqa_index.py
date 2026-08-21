@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 import time
 from collections.abc import Callable, Iterable, Mapping
@@ -24,6 +25,7 @@ DEFAULT_TECHQA_MANIFEST_PATH = Path(
     "experiments/evals/datasets/techqa/manifest.json"
 )
 DEFAULT_ADD_BATCH_SIZE = 128
+PROGRESS_BATCH_INTERVAL = 10
 CHUNK_STRATEGY = "paragraph_aware_character"
 
 Embedder = Callable[[list[str]], list[list[float]]]
@@ -84,27 +86,75 @@ def load_frozen_techqa_documents(
     return documents
 
 
-def _reset_techqa_collection(
-    chroma_dir: str | Path,
+def _collection_metadata(corpus_sha256: str) -> dict[str, str]:
+    return {
+        "benchmark": "techqa",
+        "corpus_sha256": corpus_sha256,
+        "chunk_strategy": CHUNK_STRATEGY,
+    }
+
+
+def _create_techqa_collection(
+    client,
     collection_name: str,
     corpus_sha256: str,
 ):
-    client = get_chroma_client(chroma_dir)
-
-    try:
-        client.delete_collection(name=collection_name)
-    except Exception:
-        pass
-
     return client.create_collection(
         name=collection_name,
         embedding_function=None,
-        metadata={
-            "benchmark": "techqa",
-            "corpus_sha256": corpus_sha256,
-            "chunk_strategy": CHUNK_STRATEGY,
-        },
+        metadata=_collection_metadata(corpus_sha256),
     )
+
+
+def _prepare_techqa_collection(
+    chroma_dir: str | Path,
+    collection_name: str,
+    corpus_sha256: str,
+    *,
+    fresh: bool,
+):
+    client = get_chroma_client(chroma_dir)
+
+    if fresh:
+        try:
+            client.delete_collection(name=collection_name)
+        except Exception:
+            pass
+        collection = _create_techqa_collection(
+            client,
+            collection_name,
+            corpus_sha256,
+        )
+        return collection, set()
+
+    try:
+        collection = client.get_collection(
+            name=collection_name,
+            embedding_function=None,
+        )
+    except Exception:
+        collection = _create_techqa_collection(
+            client,
+            collection_name,
+            corpus_sha256,
+        )
+        return collection, set()
+
+    expected_metadata = _collection_metadata(corpus_sha256)
+    actual_metadata = collection.metadata or {}
+
+    for key, expected_value in expected_metadata.items():
+        actual_value = actual_metadata.get(key)
+        if actual_value != expected_value:
+            raise RuntimeError(
+                "Existing TechQA collection is incompatible: "
+                f"{key} expected={expected_value!r}, actual={actual_value!r}. "
+                "Use fresh=True only when a full rebuild is intended."
+            )
+
+    stored = collection.get(include=[])
+    existing_chunk_ids = {str(chunk_id) for chunk_id in stored["ids"]}
+    return collection, existing_chunk_ids
 
 
 def _add_chunk_batch(
@@ -140,20 +190,27 @@ def build_techqa_index(
     corpus_sha256: str,
     embedder: Embedder = embed_texts,
     add_batch_size: int = DEFAULT_ADD_BATCH_SIZE,
+    fresh: bool = False,
 ) -> TechQAIndexBuildSummary:
-    """Build an isolated dense Chroma index from the full TechQA corpus."""
+    """Build or resume an isolated dense Chroma index from the TechQA corpus."""
     if add_batch_size <= 0:
         raise ValueError("add_batch_size must be greater than 0")
 
     started = time.perf_counter()
     ordered_documents = sorted(documents, key=lambda item: item.document_id)
-    collection = _reset_techqa_collection(
+    collection, existing_chunk_ids = _prepare_techqa_collection(
         chroma_dir=chroma_dir,
         collection_name=collection_name,
         corpus_sha256=corpus_sha256,
+        fresh=fresh,
     )
 
+    if existing_chunk_ids:
+        print(f"Resuming from {len(existing_chunk_ids)} existing chunks...")
+
     chunk_count = 0
+    added_chunk_count = 0
+    completed_batches = 0
     batch: list[dict[str, Any]] = []
 
     for document in ordered_documents:
@@ -166,6 +223,11 @@ def build_techqa_index(
 
         for chunk_index, content in enumerate(chunk_texts):
             chunk_id = build_chunk_id(document.document_id, chunk_index)
+            chunk_count += 1
+
+            if chunk_id in existing_chunk_ids:
+                continue
+
             batch.append(
                 {
                     "chunk_id": chunk_id,
@@ -180,13 +242,29 @@ def build_techqa_index(
                     },
                 }
             )
-            chunk_count += 1
 
             if len(batch) >= add_batch_size:
                 _add_chunk_batch(collection, batch, embedder)
+                added_chunk_count += len(batch)
+                completed_batches += 1
                 batch = []
 
-    _add_chunk_batch(collection, batch, embedder)
+                if completed_batches % PROGRESS_BATCH_INTERVAL == 0:
+                    print(
+                        "Indexed chunks this run: "
+                        f"{added_chunk_count}; collection count: {collection.count()}"
+                    )
+
+    if batch:
+        _add_chunk_batch(collection, batch, embedder)
+        added_chunk_count += len(batch)
+
+    stored_chunk_count = collection.count()
+    if stored_chunk_count != chunk_count:
+        raise RuntimeError(
+            "TechQA collection count mismatch after build: "
+            f"expected={chunk_count}, actual={stored_chunk_count}"
+        )
 
     return TechQAIndexBuildSummary(
         document_count=len(ordered_documents),
@@ -251,6 +329,16 @@ def search_techqa_index(
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Build or resume the frozen TechQA dense evaluation index."
+    )
+    parser.add_argument(
+        "--fresh",
+        action="store_true",
+        help="Delete the existing compatible collection and rebuild from zero.",
+    )
+    args = parser.parse_args()
+
     manifest = _load_techqa_manifest()
     retrieval = manifest["retrieval_dataset"]
 
@@ -262,6 +350,7 @@ def main() -> None:
     summary = build_techqa_index(
         documents,
         corpus_sha256=str(retrieval["corpus_sha256"]),
+        fresh=args.fresh,
     )
 
     print("TechQA dense index build completed.")
