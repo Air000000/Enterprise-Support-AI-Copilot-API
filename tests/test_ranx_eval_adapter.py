@@ -27,31 +27,27 @@ def test_collapse_keeps_first_document_occurrence():
     ]
 
 
-def test_build_ranx_qrels_from_rows():
+def test_build_ranx_qrels_preserves_relevance_labels():
     qrels = build_ranx_qrels(
-        [
-            {"query-id": "q1", "corpus-id": "d1", "score": 1},
-            {"query-id": "q2", "corpus-id": "d2", "score": 1},
-        ]
+        {
+            "q1": {"d1": 1},
+            "q2": {"d2": 2},
+        }
     )
 
     assert isinstance(qrels, Qrels)
-
-    perfect_run = Run(
-        {
-            "q1": {"d1": 1.0},
-            "q2": {"d2": 1.0},
-        }
-    )
-    assert evaluate(qrels, perfect_run, "mrr") == 1.0
+    assert qrels.qrels["q1"]["d1"] == 1
+    assert qrels.qrels["q2"]["d2"] == 2
 
 
 def test_build_ranx_qrels_preserves_multiple_relevant_documents():
     qrels = build_ranx_qrels(
-        [
-            {"query-id": "q1", "corpus-id": "d1", "score": 1},
-            {"query-id": "q1", "corpus-id": "d2", "score": 1},
-        ]
+        {
+            "q1": {
+                "d1": 1,
+                "d2": 1,
+            }
+        }
     )
 
     partial_run = Run({"q1": {"d1": 1.0}})
@@ -59,11 +55,7 @@ def test_build_ranx_qrels_preserves_multiple_relevant_documents():
 
 
 def test_build_ranx_run_preserves_document_ranking():
-    run = build_ranx_run(
-        {
-            "q1": ["d2", "d1", "d3"],
-        }
-    )
+    run = build_ranx_run("q1", ["d2", "d1", "d3"])
     qrels = Qrels({"q1": {"d1": 1}})
 
     assert isinstance(run, Run)
@@ -77,10 +69,10 @@ def test_evaluate_ir_run_uses_frozen_primary_metrics():
             "q2": {"d2": 1},
         }
     )
-    run = build_ranx_run(
+    run = Run(
         {
-            "q1": ["d1", "other"],
-            "q2": ["other", "d2"],
+            "q1": {"d1": 2.0, "other": 1.0},
+            "q2": {"other": 2.0, "d2": 1.0},
         }
     )
 
