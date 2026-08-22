@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import time
 from collections.abc import Callable, Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
@@ -22,6 +22,10 @@ from rag_runtime.query_rag_chroma import generate_answer
 DEFAULT_TECHQA_MANIFEST_PATH = Path(
     "experiments/evals/datasets/techqa/manifest.json"
 )
+DEFAULT_GENERATION_REPORT_DIR = Path("experiments/evals/reports/e0_generation")
+DEFAULT_GENERATION_CHECKPOINT_PATH = (
+    DEFAULT_GENERATION_REPORT_DIR / "train_checkpoint.jsonl"
+)
 DEFAULT_GENERATION_TOP_K = 3
 DEFAULT_REFUSAL_MAX_DISTANCE = 0.9
 DEFAULT_REFUSAL_ANSWER = "我在已提供资料中没有找到足够依据。"
@@ -32,6 +36,7 @@ Generator = Callable[[str, str], str]
 Judge = Callable[..., "GenerationJudgeResult"]
 Clock = Callable[[], float]
 EvalSplit = Literal["train", "dev"]
+CaseEvaluator = Callable[[TechQAGenerationCase], "TechQAGenerationEvalResult"]
 
 
 @dataclass(frozen=True)
@@ -204,6 +209,59 @@ def _percentile(values: list[float], percentile: float) -> float:
     ) * fraction
 
 
+def _summarize_generation_results(
+    results: Iterable[TechQAGenerationEvalResult],
+    *,
+    split: EvalSplit,
+) -> TechQAGenerationEvalSummary:
+    ordered_results = tuple(sorted(results, key=lambda result: result.question_id))
+    correctness_scores = [
+        result.correctness_score
+        for result in ordered_results
+        if result.answerable and result.correctness_score is not None
+    ]
+    faithfulness_scores = [
+        result.faithfulness_score
+        for result in ordered_results
+        if result.answerable and result.faithfulness_score is not None
+    ]
+    impossible_results = [result for result in ordered_results if not result.answerable]
+    latencies_ms = [result.e2e_latency_ms for result in ordered_results]
+
+    answerable_count = sum(result.answerable for result in ordered_results)
+    impossible_count = len(impossible_results)
+
+    return TechQAGenerationEvalSummary(
+        split=split,
+        query_count=len(ordered_results),
+        answerable_count=answerable_count,
+        impossible_count=impossible_count,
+        correctness_mean=(
+            sum(correctness_scores) / len(correctness_scores)
+            if correctness_scores
+            else None
+        ),
+        faithfulness_mean=(
+            sum(faithfulness_scores) / len(faithfulness_scores)
+            if faithfulness_scores
+            else None
+        ),
+        abstention_accuracy=(
+            sum(result.abstained for result in impossible_results) / impossible_count
+            if impossible_count
+            else 0.0
+        ),
+        hallucination_rate=(
+            sum(result.hallucinated for result in impossible_results) / impossible_count
+            if impossible_count
+            else 0.0
+        ),
+        e2e_latency_p50_ms=_percentile(latencies_ms, 0.50),
+        e2e_latency_p95_ms=_percentile(latencies_ms, 0.95),
+        results=ordered_results,
+    )
+
+
 def evaluate_techqa_generation_cases(
     cases: Iterable[TechQAGenerationCase],
     *,
@@ -227,11 +285,6 @@ def evaluate_techqa_generation_cases(
         raise ValueError(f"No TechQA generation cases found for split={split}")
 
     results: list[TechQAGenerationEvalResult] = []
-    correctness_scores: list[float] = []
-    faithfulness_scores: list[float] = []
-    impossible_abstentions: list[bool] = []
-    impossible_hallucinations: list[bool] = []
-    latencies_ms: list[float] = []
 
     for case in selected_cases:
         started = clock()
@@ -251,7 +304,6 @@ def evaluate_techqa_generation_cases(
             generated_answer = generator(case.question, context)
 
         e2e_latency_ms = (clock() - started) * 1000.0
-        latencies_ms.append(e2e_latency_ms)
 
         abstained = generated_answer.strip() == DEFAULT_REFUSAL_ANSWER
         hallucinated = (not case.answerable) and not abstained
@@ -272,11 +324,6 @@ def evaluate_techqa_generation_cases(
             correctness_reason = judge_result.correctness_reason
             faithfulness_score = judge_result.faithfulness_score
             faithfulness_reason = judge_result.faithfulness_reason
-            correctness_scores.append(correctness_score)
-            faithfulness_scores.append(faithfulness_score)
-        else:
-            impossible_abstentions.append(abstained)
-            impossible_hallucinations.append(hallucinated)
 
         results.append(
             TechQAGenerationEvalResult(
@@ -302,29 +349,159 @@ def evaluate_techqa_generation_cases(
             )
         )
 
-    answerable_count = len(correctness_scores)
-    impossible_count = len(impossible_abstentions)
+    return _summarize_generation_results(results, split=split)
 
-    return TechQAGenerationEvalSummary(
-        split=split,
-        query_count=len(results),
-        answerable_count=answerable_count,
-        impossible_count=impossible_count,
-        correctness_mean=(
-            sum(correctness_scores) / answerable_count if answerable_count else None
-        ),
-        faithfulness_mean=(
-            sum(faithfulness_scores) / answerable_count if answerable_count else None
-        ),
-        abstention_accuracy=(
-            sum(impossible_abstentions) / impossible_count if impossible_count else 0.0
-        ),
-        hallucination_rate=(
-            sum(impossible_hallucinations) / impossible_count
-            if impossible_count
-            else 0.0
-        ),
-        e2e_latency_p50_ms=_percentile(latencies_ms, 0.50),
-        e2e_latency_p95_ms=_percentile(latencies_ms, 0.95),
-        results=tuple(results),
+
+def _generation_result_from_payload(
+    payload: Mapping[str, Any],
+) -> TechQAGenerationEvalResult:
+    normalized = dict(payload)
+    normalized["retrieved_chunk_ids"] = tuple(normalized["retrieved_chunk_ids"])
+    normalized["retrieved_document_ids"] = tuple(normalized["retrieved_document_ids"])
+    normalized["retrieval_context"] = tuple(normalized["retrieval_context"])
+    return TechQAGenerationEvalResult(**normalized)
+
+
+def load_generation_checkpoint(
+    checkpoint_path: str | Path = DEFAULT_GENERATION_CHECKPOINT_PATH,
+) -> list[TechQAGenerationEvalResult]:
+    """Load completed generation-eval results from an append-only JSONL checkpoint."""
+    path = Path(checkpoint_path)
+    if not path.exists():
+        return []
+
+    results: list[TechQAGenerationEvalResult] = []
+    with path.open("r", encoding="utf-8") as file:
+        for line in file:
+            if not line.strip():
+                continue
+            results.append(_generation_result_from_payload(json.loads(line)))
+    return results
+
+
+def _append_generation_checkpoint(
+    result: TechQAGenerationEvalResult,
+    checkpoint_path: str | Path,
+) -> None:
+    path = Path(checkpoint_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as file:
+        file.write(json.dumps(asdict(result), ensure_ascii=False) + "\n")
+
+
+def _evaluate_single_generation_case(
+    case: TechQAGenerationCase,
+) -> TechQAGenerationEvalResult:
+    summary = evaluate_techqa_generation_cases([case], split=case.split)
+    return summary.results[0]
+
+
+def run_resumable_generation_eval(
+    cases: Iterable[TechQAGenerationCase],
+    *,
+    evaluator: CaseEvaluator = _evaluate_single_generation_case,
+    checkpoint_path: str | Path = DEFAULT_GENERATION_CHECKPOINT_PATH,
+    split: EvalSplit = "train",
+) -> TechQAGenerationEvalSummary:
+    """Evaluate only missing cases and persist every successful result immediately."""
+    selected_cases = sorted(
+        (case for case in cases if case.split == split),
+        key=lambda case: case.question_id,
+    )
+    if not selected_cases:
+        raise ValueError(f"No TechQA generation cases found for split={split}")
+
+    target_ids = {case.question_id for case in selected_cases}
+    checkpoint_results = load_generation_checkpoint(checkpoint_path)
+    results_by_id = {
+        result.question_id: result
+        for result in checkpoint_results
+        if result.question_id in target_ids
+    }
+
+    completed = len(results_by_id)
+    total = len(selected_cases)
+    if completed:
+        print(f"Resuming generation eval from {completed}/{total} completed cases...")
+
+    for case in selected_cases:
+        if case.question_id in results_by_id:
+            continue
+
+        result = evaluator(case)
+        if result.question_id != case.question_id:
+            raise RuntimeError(
+                "Generation evaluator returned mismatched question_id: "
+                f"expected={case.question_id}, actual={result.question_id}"
+            )
+
+        _append_generation_checkpoint(result, checkpoint_path)
+        results_by_id[case.question_id] = result
+        completed += 1
+        print(f"Completed generation eval: {completed}/{total} ({case.question_id})")
+
+    ordered_results = [results_by_id[case.question_id] for case in selected_cases]
+    return _summarize_generation_results(ordered_results, split=split)
+
+
+def write_generation_reports(
+    summary: TechQAGenerationEvalSummary,
+    *,
+    report_dir: str | Path = DEFAULT_GENERATION_REPORT_DIR,
+    manifest_path: str | Path = DEFAULT_TECHQA_MANIFEST_PATH,
+) -> None:
+    """Write reproducible TechQA generation results and aggregate metrics."""
+    output_dir = Path(report_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    manifest = _load_manifest(manifest_path)
+    generation = manifest["generation_dataset"]
+
+    run_manifest = {
+        "benchmark": "TechQA-RAG-Eval",
+        "run": "e0_generation",
+        "split": summary.split,
+        "query_count": summary.query_count,
+        "answerable_count": summary.answerable_count,
+        "impossible_count": summary.impossible_count,
+        "generation_top_k": DEFAULT_GENERATION_TOP_K,
+        "refusal_max_distance": DEFAULT_REFUSAL_MAX_DISTANCE,
+        "context_source": "actual retrieved chunks from techqa_e0_dense",
+        "generation_dataset": {
+            "repo": generation["repo"],
+            "revision": generation["revision"],
+            "metadata_sha256": generation["metadata_sha256"],
+        },
+        "generator": "rag_runtime.query_rag_chroma.generate_answer",
+        "judge": {
+            "framework": "deepeval",
+            "model": "qwen3.5-plus",
+            "correctness_metric": "GEval",
+            "faithfulness_metric": "FaithfulnessMetric",
+        },
+    }
+    (output_dir / f"{summary.split}_manifest.json").write_text(
+        json.dumps(run_manifest, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    with (output_dir / f"{summary.split}_results.jsonl").open(
+        "w", encoding="utf-8"
+    ) as file:
+        for result in summary.results:
+            file.write(json.dumps(asdict(result), ensure_ascii=False) + "\n")
+
+    metrics_payload = {
+        "query_count": summary.query_count,
+        "answerable_count": summary.answerable_count,
+        "impossible_count": summary.impossible_count,
+        "correctness_mean": summary.correctness_mean,
+        "faithfulness_mean": summary.faithfulness_mean,
+        "abstention_accuracy": summary.abstention_accuracy,
+        "hallucination_rate": summary.hallucination_rate,
+        "e2e_latency_p50_ms": summary.e2e_latency_p50_ms,
+        "e2e_latency_p95_ms": summary.e2e_latency_p95_ms,
+    }
+    (output_dir / f"{summary.split}_metrics.json").write_text(
+        json.dumps(metrics_payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
     )
