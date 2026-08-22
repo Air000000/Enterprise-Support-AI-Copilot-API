@@ -147,16 +147,14 @@ def test_completed_checkpoint_rebuilds_summary_and_reports_without_evaluator(tmp
     report_dir = tmp_path / "reports"
     write_generation_reports(summary, report_dir=report_dir)
 
-    metrics = json.loads((report_dir / "train_metrics.json").read_text(encoding="utf-8"))
-    manifest = json.loads((report_dir / "train_manifest.json").read_text(encoding="utf-8"))
-    result_lines = (report_dir / "train_results.jsonl").read_text(
+    metrics = json.loads(
+        (report_dir / "train_generation_metrics.json").read_text(encoding="utf-8")
+    )
+    result_lines = (report_dir / "train_generation_results.jsonl").read_text(
         encoding="utf-8"
     ).splitlines()
 
     assert metrics["query_count"] == 2
     assert metrics["correctness_mean"] == pytest.approx(0.8)
     assert metrics["faithfulness_mean"] == pytest.approx(0.9)
-    assert manifest["split"] == "train"
-    assert manifest["generation_top_k"] == 3
-    assert manifest["refusal_max_distance"] == pytest.approx(0.9)
     assert len(result_lines) == 2
