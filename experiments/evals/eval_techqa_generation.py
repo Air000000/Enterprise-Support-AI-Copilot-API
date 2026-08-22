@@ -505,3 +505,34 @@ def write_generation_reports(
         json.dumps(metrics_payload, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
+
+
+def main() -> None:
+    print("Loading frozen TechQA generation cases...")
+    cases = load_frozen_techqa_generation_cases()
+    train_count = sum(case.split == "train" for case in cases)
+    print(f"Loaded cases: {len(cases)} (TRAIN={train_count})")
+
+    print("Running resumable E0 generation evaluation on TRAIN only...")
+    summary = run_resumable_generation_eval(
+        cases,
+        checkpoint_path=DEFAULT_GENERATION_CHECKPOINT_PATH,
+        split="train",
+    )
+    write_generation_reports(summary)
+
+    print("TechQA E0 TRAIN generation evaluation completed.")
+    print(f"Queries:              {summary.query_count}")
+    print(f"Answerable:           {summary.answerable_count}")
+    print(f"Impossible:           {summary.impossible_count}")
+    print(f"Correctness mean:     {summary.correctness_mean}")
+    print(f"Faithfulness mean:    {summary.faithfulness_mean}")
+    print(f"Abstention accuracy:  {summary.abstention_accuracy:.6f}")
+    print(f"Hallucination rate:   {summary.hallucination_rate:.6f}")
+    print(f"E2E p50 latency:      {summary.e2e_latency_p50_ms:.3f} ms")
+    print(f"E2E p95 latency:      {summary.e2e_latency_p95_ms:.3f} ms")
+    print(f"Reports:              {DEFAULT_GENERATION_REPORT_DIR}")
+
+
+if __name__ == "__main__":
+    main()
