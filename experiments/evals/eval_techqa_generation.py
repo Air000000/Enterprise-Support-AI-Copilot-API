@@ -29,6 +29,12 @@ DEFAULT_GENERATION_CHECKPOINT_PATH = (
 DEFAULT_GENERATION_TOP_K = 3
 DEFAULT_REFUSAL_MAX_DISTANCE = 0.9
 DEFAULT_REFUSAL_ANSWER = "我在已提供资料中没有找到足够依据。"
+CORRECTNESS_EVALUATION_STEPS = [
+    "Compare the actual output with the expected output and identify any factual contradictions.",
+    "Verify that the actual output directly answers the user's input and preserves the key technical claims or instructions in the expected output.",
+    "Penalize omissions only when they make the answer materially incorrect or incomplete; do not penalize harmless wording differences.",
+    "Give a high score only when the central factual claims are correct and there are no material contradictions.",
+]
 
 DatasetLoader = Callable[..., Iterable[Mapping[str, Any]]]
 Searcher = Callable[..., list[Any]]
@@ -161,10 +167,7 @@ def judge_techqa_generation(
 
     correctness = GEval(
         name="Correctness",
-        criteria=(
-            "Determine whether the actual output is factually correct and answers "
-            "the question based on the expected output."
-        ),
+        evaluation_steps=CORRECTNESS_EVALUATION_STEPS,
         evaluation_params=[
             SingleTurnParams.INPUT,
             SingleTurnParams.ACTUAL_OUTPUT,
