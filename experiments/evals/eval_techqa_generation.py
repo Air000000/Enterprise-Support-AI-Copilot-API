@@ -32,13 +32,14 @@ from rag_runtime.query_rag_chroma import generate_answer
 DEFAULT_TECHQA_MANIFEST_PATH = Path(
     "experiments/evals/datasets/techqa/manifest.json"
 )
-DEFAULT_GENERATION_REPORT_DIR = Path("experiments/evals/reports/e0_generation")
+DEFAULT_GENERATION_REPORT_DIR = Path("experiments/evals/reports/e0_dense")
 DEFAULT_GENERATION_CHECKPOINT_PATH = (
-    DEFAULT_GENERATION_REPORT_DIR / "train_checkpoint.jsonl"
+    DEFAULT_GENERATION_REPORT_DIR / "train_generation_checkpoint.jsonl"
 )
 DEFAULT_GENERATION_RUN_MANIFEST_PATH = (
-    DEFAULT_GENERATION_REPORT_DIR / "train_run_manifest.json"
+    DEFAULT_GENERATION_REPORT_DIR / "train_generation_manifest.json"
 )
+DEFAULT_JUDGE_CALIBRATION_PATH = DEFAULT_GENERATION_REPORT_DIR / "judge_calibration.jsonl"
 DEFAULT_GENERATION_TOP_K = 3
 DEFAULT_REFUSAL_MAX_DISTANCE = 0.9
 DEFAULT_REFUSAL_ANSWER = "我在已提供资料中没有找到足够依据。"
@@ -617,9 +618,7 @@ def ensure_generation_run_manifest(
             "that it was produced by this experiment identity."
         )
 
-    manifest_to_write = json.loads(
-        json.dumps(expected_manifest, ensure_ascii=False)
-    )
+    manifest_to_write = json.loads(json.dumps(expected_manifest, ensure_ascii=False))
     if checkpoint_count:
         provenance = manifest_to_write.setdefault("provenance", {})
         provenance["adopted_existing_checkpoint_cases"] = checkpoint_count
@@ -638,41 +637,11 @@ def write_generation_reports(
     report_dir: str | Path = DEFAULT_GENERATION_REPORT_DIR,
     manifest_path: str | Path = DEFAULT_TECHQA_MANIFEST_PATH,
 ) -> None:
-    """Write reproducible TechQA generation results and aggregate metrics."""
+    """Write generation-specific TechQA artifacts without touching retrieval reports."""
     output_dir = Path(report_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    manifest = _load_manifest(manifest_path)
-    generation = manifest["generation_dataset"]
 
-    run_manifest = {
-        "benchmark": "TechQA-RAG-Eval",
-        "run": "e0_generation",
-        "split": summary.split,
-        "query_count": summary.query_count,
-        "answerable_count": summary.answerable_count,
-        "impossible_count": summary.impossible_count,
-        "generation_top_k": DEFAULT_GENERATION_TOP_K,
-        "refusal_max_distance": DEFAULT_REFUSAL_MAX_DISTANCE,
-        "context_source": "actual retrieved chunks from techqa_e0_dense",
-        "generation_dataset": {
-            "repo": generation["repo"],
-            "revision": generation["revision"],
-            "metadata_sha256": generation["metadata_sha256"],
-        },
-        "generator": "rag_runtime.query_rag_chroma.generate_answer",
-        "judge": {
-            "framework": "deepeval",
-            "model": "qwen3.5-plus",
-            "correctness_metric": "GEval",
-            "faithfulness_metric": "FaithfulnessMetric",
-        },
-    }
-    (output_dir / f"{summary.split}_manifest.json").write_text(
-        json.dumps(run_manifest, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-
-    with (output_dir / f"{summary.split}_results.jsonl").open(
+    with (output_dir / f"{summary.split}_generation_results.jsonl").open(
         "w", encoding="utf-8"
     ) as file:
         for result in summary.results:
@@ -689,7 +658,7 @@ def write_generation_reports(
         "e2e_latency_p50_ms": summary.e2e_latency_p50_ms,
         "e2e_latency_p95_ms": summary.e2e_latency_p95_ms,
     }
-    (output_dir / f"{summary.split}_metrics.json").write_text(
+    (output_dir / f"{summary.split}_generation_metrics.json").write_text(
         json.dumps(metrics_payload, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
