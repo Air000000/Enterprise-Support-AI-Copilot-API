@@ -17,6 +17,7 @@ def test_main_runs_train_generation_eval_with_resume_and_writes_reports(monkeypa
         e2e_latency_p95_ms=2400.0,
     )
     observed = {}
+    run_manifest = {"identity": {"run": "e0_generation"}, "provenance": {}}
 
     def fake_loader():
         observed["loaded"] = True
@@ -33,6 +34,16 @@ def test_main_runs_train_generation_eval_with_resume_and_writes_reports(monkeypa
 
     monkeypatch.setattr(
         generation_eval,
+        "build_generation_run_manifest",
+        lambda: run_manifest,
+    )
+    monkeypatch.setattr(
+        generation_eval,
+        "ensure_generation_run_manifest",
+        lambda manifest: observed.setdefault("locked_manifest", manifest),
+    )
+    monkeypatch.setattr(
+        generation_eval,
         "load_frozen_techqa_generation_cases",
         fake_loader,
     )
@@ -45,6 +56,7 @@ def test_main_runs_train_generation_eval_with_resume_and_writes_reports(monkeypa
 
     generation_eval.main()
 
+    assert observed["locked_manifest"] is run_manifest
     assert observed["loaded"] is True
     assert observed["runner_cases"] is cases
     assert observed["checkpoint_path"] == generation_eval.DEFAULT_GENERATION_CHECKPOINT_PATH
