@@ -1,0 +1,21 @@
+{
+  "benchmark": "TechQA-RAG-Eval",
+  "run": "e0_dense",
+  "split": "train",
+  "query_count": 450,
+  "candidate_chunk_k": 100,
+  "document_top_k": 20,
+  "document_ranking_rule": "collapse chunk results by document_id, retaining the first occurrence",
+  "retrieval_dataset": {
+    "repo": "bowang0911/TechQA-RAG-Eval",
+    "revision": "68323f8f191fd5df93e2b2673d79a5da3a805638",
+    "corpus_sha256": "3c4c4fe05204efa99101a402dc4d1c6206bcd160eb20be28e6a0b594415b3edb",
+    "queries_sha256": "ac0151d80b930b07b4d4214ff7f914f9d74cbe9fca39d82a51a79a5ad9792fb9",
+    "qrels_sha256": "1e739923a9549d93c9613bb6d29ecfa747addef1d7cbadbb5ac8422b280c6735"
+  },
+  "retriever": "chroma_dense",
+  "chunk_strategy": "paragraph_aware_character",
+  "chunk_size_chars": 800,
+  "chunk_overlap_chars": 120,
+  "min_chunk_size_chars": 150
+}
