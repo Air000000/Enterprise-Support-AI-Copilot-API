@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import hashlib
+import inspect
 import json
+import os
+import platform
+import subprocess
 import time
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from functools import lru_cache
+from importlib import metadata as importlib_metadata
 from pathlib import Path
 from typing import Any, Literal
 
@@ -15,7 +22,10 @@ from experiments.evals.adapters.techqa import (
     TechQAGenerationCase,
     build_techqa_generation_cases,
 )
-from experiments.evals.build_techqa_index import search_techqa_index
+from experiments.evals.build_techqa_index import (
+    DEFAULT_TECHQA_COLLECTION_NAME,
+    search_techqa_index,
+)
 from experiments.evals.judges.deepeval_dashscope import DashScopeDeepEvalModel
 from rag_runtime.query_rag_chroma import generate_answer
 
@@ -25,6 +35,9 @@ DEFAULT_TECHQA_MANIFEST_PATH = Path(
 DEFAULT_GENERATION_REPORT_DIR = Path("experiments/evals/reports/e0_generation")
 DEFAULT_GENERATION_CHECKPOINT_PATH = (
     DEFAULT_GENERATION_REPORT_DIR / "train_checkpoint.jsonl"
+)
+DEFAULT_GENERATION_RUN_MANIFEST_PATH = (
+    DEFAULT_GENERATION_REPORT_DIR / "train_run_manifest.json"
 )
 DEFAULT_GENERATION_TOP_K = 3
 DEFAULT_REFUSAL_MAX_DISTANCE = 0.9
@@ -447,6 +460,178 @@ def run_resumable_generation_eval(
     return _summarize_generation_results(ordered_results, split=split)
 
 
+def _sha256_text(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _resolve_project_sha() -> str:
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    project_sha = result.stdout.strip()
+    if not project_sha:
+        raise RuntimeError("Unable to resolve project SHA")
+    return project_sha
+
+
+def _installed_dependency_versions() -> dict[str, str]:
+    return {
+        package: importlib_metadata.version(package)
+        for package in ("deepeval", "openai", "chromadb")
+    }
+
+
+def _generation_prompt_sha256() -> str:
+    return _sha256_text(inspect.getsource(generate_answer))
+
+
+def _generation_eval_source_sha256() -> str:
+    critical_source = "\n\n".join(
+        [
+            inspect.getsource(build_techqa_retrieved_context),
+            inspect.getsource(judge_techqa_generation),
+            inspect.getsource(evaluate_techqa_generation_cases),
+            json.dumps(CORRECTNESS_EVALUATION_STEPS, ensure_ascii=False),
+        ]
+    )
+    return _sha256_text(critical_source)
+
+
+def build_generation_run_manifest(
+    *,
+    manifest_path: str | Path = DEFAULT_TECHQA_MANIFEST_PATH,
+    project_sha: str | None = None,
+    generation_model: str | None = None,
+    embedding_model: str | None = None,
+    python_version: str | None = None,
+    dependency_versions: Mapping[str, str] | None = None,
+    prompt_sha256: str | None = None,
+    eval_source_sha256: str | None = None,
+    created_at: str | None = None,
+) -> dict[str, Any]:
+    """Build the immutable identity used to protect a resumable E0 generation run."""
+    frozen = _load_manifest(manifest_path)
+    retrieval_dataset = frozen["retrieval_dataset"]
+    generation_dataset = frozen["generation_dataset"]
+    baseline_rag = frozen["baseline_rag"]
+
+    resolved_dependencies = dict(
+        dependency_versions or _installed_dependency_versions()
+    )
+    resolved_generation_model = generation_model or (
+        os.getenv("CHAT_MODEL") or os.getenv("DASHSCOPE_MODEL", "qwen3.5-plus")
+    )
+    resolved_embedding_model = embedding_model or os.getenv(
+        "EMBEDDING_MODEL", "text-embedding-v4"
+    )
+
+    identity = {
+        "benchmark": frozen["benchmark"],
+        "run": "e0_generation",
+        "split": "train",
+        "data": {
+            "corpus_sha256": retrieval_dataset["corpus_sha256"],
+            "queries_sha256": retrieval_dataset["queries_sha256"],
+            "qrels_sha256": retrieval_dataset["qrels_sha256"],
+            "generation_sha256": generation_dataset["metadata_sha256"],
+            "generation_revision": generation_dataset["revision"],
+        },
+        "retrieval": {
+            "retriever": baseline_rag["retriever"],
+            "collection": DEFAULT_TECHQA_COLLECTION_NAME,
+            "embedding_model": resolved_embedding_model,
+            "chunk_strategy": baseline_rag["chunk_strategy"],
+            "chunk_size_chars": baseline_rag["chunk_size_chars"],
+            "chunk_overlap_chars": baseline_rag["chunk_overlap_chars"],
+            "min_chunk_size_chars": baseline_rag["min_chunk_size_chars"],
+            "top_k": DEFAULT_GENERATION_TOP_K,
+            "refusal_max_distance": DEFAULT_REFUSAL_MAX_DISTANCE,
+        },
+        "generation": {
+            "model": resolved_generation_model,
+            "thinking_mode": "provider_default",
+            "prompt_version": "rag_runtime.query_rag_chroma.generate_answer",
+            "prompt_sha256": prompt_sha256 or _generation_prompt_sha256(),
+            "source_sha256": eval_source_sha256 or _generation_eval_source_sha256(),
+        },
+        "judge": {
+            "framework": "deepeval",
+            "framework_version": resolved_dependencies["deepeval"],
+            "model": "qwen3.5-plus",
+            "correctness_metric": "GEval",
+            "faithfulness_metric": "FaithfulnessMetric",
+            "correctness_evaluation_steps": CORRECTNESS_EVALUATION_STEPS,
+        },
+        "latency": {
+            "e2e_definition": "retrieval + generation",
+            "judge_included": False,
+        },
+    }
+
+    return {
+        "identity": identity,
+        "provenance": {
+            "project_sha": project_sha or _resolve_project_sha(),
+            "python": python_version or platform.python_version(),
+            "dependencies": resolved_dependencies,
+            "created_at": created_at or datetime.now(timezone.utc).isoformat(),
+        },
+    }
+
+
+def _count_checkpoint_records(checkpoint_path: str | Path) -> int:
+    path = Path(checkpoint_path)
+    if not path.exists():
+        return 0
+    with path.open("r", encoding="utf-8") as file:
+        return sum(1 for line in file if line.strip())
+
+
+def ensure_generation_run_manifest(
+    expected_manifest: Mapping[str, Any],
+    *,
+    run_manifest_path: str | Path = DEFAULT_GENERATION_RUN_MANIFEST_PATH,
+    checkpoint_path: str | Path = DEFAULT_GENERATION_CHECKPOINT_PATH,
+    adopt_existing_checkpoint: bool = False,
+) -> dict[str, Any]:
+    """Create or validate the immutable run identity before paid evaluation."""
+    path = Path(run_manifest_path)
+
+    if path.exists():
+        persisted = json.loads(path.read_text(encoding="utf-8"))
+        if persisted.get("identity") != expected_manifest.get("identity"):
+            raise RuntimeError(
+                "Generation run manifest identity mismatch; refusing to mix "
+                "results from different experiment configurations."
+            )
+        return persisted
+
+    checkpoint_count = _count_checkpoint_records(checkpoint_path)
+    if checkpoint_count and not adopt_existing_checkpoint:
+        raise RuntimeError(
+            "Generation run manifest is missing for an existing checkpoint. "
+            "Explicitly adopt the existing checkpoint only after verifying "
+            "that it was produced by this experiment identity."
+        )
+
+    manifest_to_write = json.loads(
+        json.dumps(expected_manifest, ensure_ascii=False)
+    )
+    if checkpoint_count:
+        provenance = manifest_to_write.setdefault("provenance", {})
+        provenance["adopted_existing_checkpoint_cases"] = checkpoint_count
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(manifest_to_write, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return manifest_to_write
+
+
 def write_generation_reports(
     summary: TechQAGenerationEvalSummary,
     *,
@@ -511,6 +696,10 @@ def write_generation_reports(
 
 
 def main() -> None:
+    print("Validating TechQA E0 generation run identity...")
+    run_manifest = build_generation_run_manifest()
+    ensure_generation_run_manifest(run_manifest)
+
     print("Loading frozen TechQA generation cases...")
     cases = load_frozen_techqa_generation_cases()
     train_count = sum(case.split == "train" for case in cases)
