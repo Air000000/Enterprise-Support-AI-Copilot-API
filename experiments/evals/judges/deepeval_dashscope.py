@@ -48,6 +48,7 @@ class DashScopeDeepEvalModel(DeepEvalBaseLLM):
                 f"JSON schema: {schema_json}"
             )
             request["response_format"] = {"type": "json_object"}
+            request["extra_body"] = {"enable_thinking": False}
 
         response = self.client.chat.completions.create(**request)
         content = response.choices[0].message.content or ""
