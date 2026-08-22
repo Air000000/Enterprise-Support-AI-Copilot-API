@@ -50,6 +50,7 @@ def test_dashscope_deepeval_model_supports_plain_text_generation():
     assert call["model"] == "qwen3.5-plus"
     assert call["temperature"] == 0.0
     assert "response_format" not in call
+    assert "extra_body" not in call
     assert call["messages"] == [
         {"role": "user", "content": "Judge this answer"}
     ]
@@ -67,6 +68,7 @@ def test_dashscope_deepeval_model_validates_schema_json_output():
     assert result == JudgePayload(score=0.9, reason="grounded")
     call = client.completions.calls[0]
     assert call["response_format"] == {"type": "json_object"}
+    assert call["extra_body"] == {"enable_thinking": False}
     assert "JSON" in call["messages"][0]["content"]
     assert "score" in call["messages"][0]["content"]
     assert "reason" in call["messages"][0]["content"]
