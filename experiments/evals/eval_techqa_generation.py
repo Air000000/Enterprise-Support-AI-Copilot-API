@@ -49,6 +49,14 @@ CORRECTNESS_EVALUATION_STEPS = [
     "Penalize omissions only when they make the answer materially incorrect or incomplete; do not penalize harmless wording differences.",
     "Give a high score only when the central factual claims are correct and there are no material contradictions.",
 ]
+JUDGE_CALIBRATION_BUCKET_COUNTS = (
+    ("answerable_low_correctness_high_faithfulness", 5),
+    ("answerable_low_both", 5),
+    ("answerable_high_both", 5),
+    ("answerable_metric_disagreement", 5),
+    ("impossible_unsafe_answer", 3),
+    ("impossible_correct_abstain", 2),
+)
 
 DatasetLoader = Callable[..., Iterable[Mapping[str, Any]]]
 Searcher = Callable[..., list[Any]]
@@ -101,6 +109,26 @@ class TechQAGenerationEvalSummary:
     e2e_latency_p50_ms: float
     e2e_latency_p95_ms: float
     results: tuple[TechQAGenerationEvalResult, ...]
+
+
+@dataclass(frozen=True)
+class JudgeCalibrationRecord:
+    selection_bucket: str
+    question_id: str
+    question: str
+    gold_answer: str
+    answerable: bool
+    retrieval_context: tuple[str, ...]
+    generated_answer: str
+    correctness_score: float | None
+    correctness_reason: str | None
+    faithfulness_score: float | None
+    faithfulness_reason: str | None
+    abstained: bool
+    manual_correctness: str
+    manual_faithfulness: str
+    manual_abstention: str
+    notes: str
 
 
 def _load_manifest(
@@ -394,6 +422,117 @@ def load_generation_checkpoint(
                 continue
             results.append(_generation_result_from_payload(json.loads(line)))
     return results
+
+
+def _judge_calibration_bucket(result: TechQAGenerationEvalResult) -> str | None:
+    if not result.answerable:
+        return (
+            "impossible_correct_abstain"
+            if result.abstained
+            else "impossible_unsafe_answer"
+        )
+
+    correctness = result.correctness_score
+    faithfulness = result.faithfulness_score
+    if correctness is None or faithfulness is None:
+        return None
+
+    if correctness <= 0.4 and faithfulness >= 0.8:
+        return "answerable_low_correctness_high_faithfulness"
+    if correctness <= 0.4 and faithfulness <= 0.4:
+        return "answerable_low_both"
+    if correctness >= 0.8 and faithfulness >= 0.8:
+        return "answerable_high_both"
+    if abs(correctness - faithfulness) >= 0.5:
+        return "answerable_metric_disagreement"
+    return None
+
+
+def _build_judge_calibration_record(
+    result: TechQAGenerationEvalResult,
+    *,
+    selection_bucket: str,
+) -> JudgeCalibrationRecord:
+    if result.answerable:
+        manual_correctness = ""
+        manual_faithfulness = ""
+        manual_abstention = "not_applicable"
+    else:
+        manual_correctness = "not_applicable"
+        manual_faithfulness = "not_applicable"
+        manual_abstention = ""
+
+    return JudgeCalibrationRecord(
+        selection_bucket=selection_bucket,
+        question_id=result.question_id,
+        question=result.question,
+        gold_answer=result.gold_answer,
+        answerable=result.answerable,
+        retrieval_context=result.retrieval_context,
+        generated_answer=result.generated_answer,
+        correctness_score=result.correctness_score,
+        correctness_reason=result.correctness_reason,
+        faithfulness_score=result.faithfulness_score,
+        faithfulness_reason=result.faithfulness_reason,
+        abstained=result.abstained,
+        manual_correctness=manual_correctness,
+        manual_faithfulness=manual_faithfulness,
+        manual_abstention=manual_abstention,
+        notes="",
+    )
+
+
+def select_judge_calibration_cases(
+    results: Iterable[TechQAGenerationEvalResult],
+) -> list[JudgeCalibrationRecord]:
+    """Select the frozen, stratified 25-case manual judge calibration set."""
+    buckets: dict[str, list[TechQAGenerationEvalResult]] = {
+        bucket: [] for bucket, _ in JUDGE_CALIBRATION_BUCKET_COUNTS
+    }
+
+    for result in sorted(results, key=lambda item: item.question_id):
+        bucket = _judge_calibration_bucket(result)
+        if bucket is not None:
+            buckets[bucket].append(result)
+
+    selected: list[JudgeCalibrationRecord] = []
+    for bucket, required_count in JUDGE_CALIBRATION_BUCKET_COUNTS:
+        candidates = buckets[bucket]
+        if len(candidates) < required_count:
+            raise ValueError(
+                "Insufficient judge calibration candidates for "
+                f"{bucket}: required={required_count}, actual={len(candidates)}"
+            )
+        selected.extend(
+            _build_judge_calibration_record(
+                result,
+                selection_bucket=bucket,
+            )
+            for result in candidates[:required_count]
+        )
+
+    return selected
+
+
+def write_judge_calibration_template(
+    records: Iterable[JudgeCalibrationRecord],
+    *,
+    output_path: str | Path = DEFAULT_JUDGE_CALIBRATION_PATH,
+) -> None:
+    """Write the frozen manual-review template exactly once."""
+    materialized = tuple(records)
+    expected_count = sum(count for _, count in JUDGE_CALIBRATION_BUCKET_COUNTS)
+    if len(materialized) != expected_count:
+        raise ValueError(
+            "Judge calibration template must contain exactly "
+            f"{expected_count} records, got {len(materialized)}"
+        )
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("x", encoding="utf-8") as file:
+        for record in materialized:
+            file.write(json.dumps(asdict(record), ensure_ascii=False) + "\n")
 
 
 def _append_generation_checkpoint(
