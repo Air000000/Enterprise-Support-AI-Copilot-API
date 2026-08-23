@@ -139,7 +139,7 @@ def build_generation_failure_analysis(
         assert isinstance(retrieval, TechQARetrievalResult)
         assert isinstance(generation, TechQAGenerationEvalResult)
 
-        if retrieval.question != generation.question:
+        if retrieval.question.rstrip() != generation.question.rstrip():
             raise ValueError(
                 f"question mismatch for {question_id}: "
                 f"retrieval={retrieval.question!r}, generation={generation.question!r}"
