@@ -90,20 +90,20 @@ def test_write_e0_reports_uses_split_specific_dev_artifact_names(tmp_path):
     assert persisted_manifest["query_count"] == 1
 
 
-def test_cli_can_run_frozen_dev_split_without_running_train(monkeypatch):
-    dev_cases = [
+def test_cli_train_split_remains_legacy_batch_path(monkeypatch):
+    train_cases = [
         TechQARetrievalCase(
-            question_id=f"DEV_Q{index:03d}",
-            question=f"dev question {index}",
+            question_id=f"TRAIN_Q{index:03d}",
+            question=f"train question {index}",
             relevant_document_ids=(f"doc_{index:03d}",),
-            split="dev",
+            split="train",
         )
-        for index in range(160)
+        for index in range(450)
     ]
     observed = []
     summary = SimpleNamespace(
-        split="dev",
-        query_count=160,
+        split="train",
+        query_count=450,
         metrics={"recall@5": 0.5, "recall@20": 0.7, "mrr@10": 0.4},
         latency_p50_ms=1000.0,
         latency_p95_ms=1500.0,
@@ -111,10 +111,10 @@ def test_cli_can_run_frozen_dev_split_without_running_train(monkeypatch):
 
     def fake_loader():
         observed.append("load")
-        return dev_cases
+        return train_cases
 
     def fake_evaluator(cases, *, split):
-        assert cases is dev_cases
+        assert cases is train_cases
         observed.append(("evaluate", split))
         return summary
 
@@ -134,10 +134,10 @@ def test_cli_can_run_frozen_dev_split_without_running_train(monkeypatch):
     )
     monkeypatch.setattr(retrieval_eval, "write_e0_reports", fake_writer)
 
-    retrieval_eval.main(["--split", "dev"])
+    retrieval_eval.main(["--split", "train"])
 
     assert observed == [
         "load",
-        ("evaluate", "dev"),
-        ("write", "dev"),
+        ("evaluate", "train"),
+        ("write", "train"),
     ]
