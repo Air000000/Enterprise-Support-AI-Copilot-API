@@ -1,11 +1,20 @@
 from __future__ import annotations
 
+import json
+from collections import Counter
 from collections.abc import Iterable
-from dataclasses import dataclass
-from typing import Literal
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Any, Literal, Mapping
 
-from experiments.evals.eval_techqa_generation import TechQAGenerationEvalResult
-from experiments.evals.eval_techqa_retrieval import TechQARetrievalResult
+from experiments.evals.eval_techqa_generation import (
+    TechQAGenerationEvalResult,
+    load_generation_checkpoint,
+)
+from experiments.evals.eval_techqa_retrieval import (
+    DEFAULT_REPORT_DIR,
+    TechQARetrievalResult,
+)
 
 FailureBucket = Literal[
     "retrieval_miss_top20",
@@ -18,6 +27,13 @@ FailureBucket = Literal[
     "gold_in_context_mid_correctness",
     "gold_in_context_high_correctness",
 ]
+
+DEFAULT_RETRIEVAL_RESULTS_PATH = DEFAULT_REPORT_DIR / "train_results.jsonl"
+DEFAULT_GENERATION_RESULTS_PATH = DEFAULT_REPORT_DIR / "train_generation_results.jsonl"
+DEFAULT_FAILURE_ANALYSIS_DETAIL_PATH = DEFAULT_REPORT_DIR / "train_failure_analysis.jsonl"
+DEFAULT_FAILURE_ANALYSIS_SUMMARY_PATH = (
+    DEFAULT_REPORT_DIR / "train_failure_analysis_summary.json"
+)
 
 
 @dataclass(frozen=True)
@@ -160,3 +176,82 @@ def build_generation_failure_analysis(
         )
 
     return records
+
+
+def _retrieval_result_from_payload(payload: Mapping[str, Any]) -> TechQARetrievalResult:
+    normalized = dict(payload)
+    for field in (
+        "relevant_document_ids",
+        "raw_chunk_ids",
+        "raw_document_ids",
+        "document_ranking",
+    ):
+        normalized[field] = tuple(normalized[field])
+    return TechQARetrievalResult(**normalized)
+
+
+def load_retrieval_results(
+    results_path: str | Path = DEFAULT_RETRIEVAL_RESULTS_PATH,
+) -> list[TechQARetrievalResult]:
+    path = Path(results_path)
+    results: list[TechQARetrievalResult] = []
+    with path.open("r", encoding="utf-8") as file:
+        for line in file:
+            if not line.strip():
+                continue
+            results.append(_retrieval_result_from_payload(json.loads(line)))
+    return results
+
+
+def summarize_generation_failure_analysis(
+    records: Iterable[GenerationFailureAnalysisRecord],
+) -> dict[str, Any]:
+    ordered_records = list(records)
+    answerable_count = len(ordered_records)
+    bucket_counts = Counter(record.failure_bucket for record in ordered_records)
+    gold_in_context_count = sum(
+        record.gold_in_generation_context for record in ordered_records
+    )
+
+    return {
+        "answerable_count": answerable_count,
+        "bucket_counts": dict(sorted(bucket_counts.items())),
+        "bucket_rates": {
+            bucket: count / answerable_count if answerable_count else 0.0
+            for bucket, count in sorted(bucket_counts.items())
+        },
+        "gold_in_generation_context_count": gold_in_context_count,
+        "gold_not_in_generation_context_count": answerable_count - gold_in_context_count,
+    }
+
+
+def materialize_generation_failure_analysis(
+    *,
+    retrieval_results_path: str | Path = DEFAULT_RETRIEVAL_RESULTS_PATH,
+    generation_results_path: str | Path = DEFAULT_GENERATION_RESULTS_PATH,
+    report_dir: str | Path = DEFAULT_REPORT_DIR,
+) -> dict[str, Any]:
+    """Materialize deterministic E0 failure-analysis detail and summary artifacts once."""
+    output_dir = Path(report_dir)
+    detail_path = output_dir / "train_failure_analysis.jsonl"
+    summary_path = output_dir / "train_failure_analysis_summary.json"
+
+    if detail_path.exists():
+        raise FileExistsError(detail_path)
+    if summary_path.exists():
+        raise FileExistsError(summary_path)
+
+    retrieval_results = load_retrieval_results(retrieval_results_path)
+    generation_results = load_generation_checkpoint(generation_results_path)
+    records = build_generation_failure_analysis(retrieval_results, generation_results)
+    summary = summarize_generation_failure_analysis(records)
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with detail_path.open("x", encoding="utf-8") as file:
+        for record in records:
+            file.write(json.dumps(asdict(record), ensure_ascii=False) + "\n")
+
+    with summary_path.open("x", encoding="utf-8") as file:
+        json.dump(summary, file, ensure_ascii=False, indent=2)
+
+    return summary
