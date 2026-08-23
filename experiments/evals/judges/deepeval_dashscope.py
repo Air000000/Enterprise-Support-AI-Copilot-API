@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 from deepeval.models import DeepEvalBaseLLM
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from rag_runtime.query_rag_chroma import get_llm_client
 
@@ -32,31 +32,48 @@ class DashScopeDeepEvalModel(DeepEvalBaseLLM):
         prompt: str,
         schema: type[BaseModel] | None = None,
     ) -> str | BaseModel:
-        messages = [{"role": "user", "content": prompt}]
+        if schema is None:
+            response = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.0,
+            )
+            return response.choices[0].message.content or ""
+
+        schema_json = json.dumps(schema.model_json_schema(), ensure_ascii=False)
+        structured_prompt = (
+            f"{prompt}\n\n"
+            "Return ONLY a valid JSON object matching this JSON schema. "
+            "Do not include markdown fences or extra text.\n"
+            f"JSON schema: {schema_json}"
+        )
         request: dict[str, Any] = {
             "model": self.model_name,
-            "messages": messages,
+            "messages": [{"role": "user", "content": structured_prompt}],
             "temperature": 0.0,
+            "response_format": {"type": "json_object"},
+            "extra_body": {"enable_thinking": False},
         }
-
-        if schema is not None:
-            schema_json = json.dumps(schema.model_json_schema(), ensure_ascii=False)
-            messages[0]["content"] = (
-                f"{prompt}\n\n"
-                "Return ONLY a valid JSON object matching this JSON schema. "
-                "Do not include markdown fences or extra text.\n"
-                f"JSON schema: {schema_json}"
-            )
-            request["response_format"] = {"type": "json_object"}
-            request["extra_body"] = {"enable_thinking": False}
 
         response = self.client.chat.completions.create(**request)
         content = response.choices[0].message.content or ""
 
-        if schema is None:
-            return content
-
-        return schema.model_validate_json(content)
+        try:
+            return schema.model_validate_json(content)
+        except ValidationError as error:
+            retry_prompt = (
+                f"{structured_prompt}\n\n"
+                "The previous response failed schema validation. "
+                "Return a corrected JSON object only.\n"
+                f"Validation error: {error}"
+            )
+            retry_request = {
+                **request,
+                "messages": [{"role": "user", "content": retry_prompt}],
+            }
+            retry_response = self.client.chat.completions.create(**retry_request)
+            retry_content = retry_response.choices[0].message.content or ""
+            return schema.model_validate_json(retry_content)
 
     async def a_generate(
         self,
