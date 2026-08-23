@@ -157,6 +157,22 @@ def test_failure_analysis_filters_impossible_generation_rows_and_requires_exact_
         )
 
 
+def test_failure_analysis_allows_trailing_whitespace_but_rejects_content_mismatch():
+    analysis = _analysis_module()
+
+    records = analysis.build_generation_failure_analysis(
+        [_retrieval("TRAIN_Q000", question="same question")],
+        [_generation("TRAIN_Q000", question="same question \n")],
+    )
+    assert [record.question_id for record in records] == ["TRAIN_Q000"]
+
+    with pytest.raises(ValueError, match="question mismatch"):
+        analysis.build_generation_failure_analysis(
+            [_retrieval("TRAIN_Q000", question="same question")],
+            [_generation("TRAIN_Q000", question="different question \n")],
+        )
+
+
 def test_failure_analysis_rejects_duplicate_ids_and_missing_correctness():
     analysis = _analysis_module()
 
