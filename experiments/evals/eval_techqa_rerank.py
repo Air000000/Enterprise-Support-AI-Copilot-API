@@ -2,14 +2,20 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 import time
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from ranx import Run
 
+from experiments.evals.build_techqa_index import (
+    DEFAULT_TECHQA_CHROMA_DIR,
+    DEFAULT_TECHQA_COLLECTION_NAME,
+)
 from experiments.evals.ir.ranx_adapter import (
     build_ranx_qrels,
     collapse_chunk_results_to_document_ranking,
@@ -21,6 +27,18 @@ from experiments.evals.rerankers.qwen3_reranker import (
     RerankCandidate,
     rerank_candidates,
 )
+from rag_runtime.build_chroma_index import get_chroma_client
+
+DEFAULT_E0_RERANK_RESULTS_PATH = Path(
+    "experiments/evals/reports/e0_dense/train_results.jsonl"
+)
+DEFAULT_E0_RERANK_MANIFEST_PATH = Path(
+    "experiments/evals/reports/e0_dense/train_manifest.json"
+)
+DEFAULT_RERANK_REPORT_DIR = Path("experiments/evals/reports/e1_rerank")
+DEFAULT_RERANK_CHECKPOINT_PATH = DEFAULT_RERANK_REPORT_DIR / "train_checkpoint.jsonl"
+DEFAULT_RERANK_RUN_MANIFEST_PATH = DEFAULT_RERANK_REPORT_DIR / "train_manifest.json"
+DEFAULT_RERANK_TRAIN_COUNT = 450
 
 
 class FrozenCandidatePoolError(RuntimeError):
@@ -53,6 +71,35 @@ class TechQARerankEvalSummary:
 Reranker = Callable[[str, list[RerankCandidate]], Any]
 Clock = Callable[[], float]
 RerankEvaluator = Callable[[Mapping[str, Any]], TechQARerankResult]
+
+
+def load_frozen_e0_rerank_records(
+    path: str | Path = DEFAULT_E0_RERANK_RESULTS_PATH,
+    *,
+    expected_count: int = DEFAULT_RERANK_TRAIN_COUNT,
+) -> list[dict[str, Any]]:
+    """Load the frozen E0 TRAIN retrieval records used as the E1 candidate pool."""
+    source = Path(path)
+    records = [
+        dict(json.loads(line))
+        for line in source.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    if len(records) != expected_count:
+        raise RuntimeError(
+            "Frozen E0 TRAIN record count mismatch: "
+            f"expected={expected_count}, actual={len(records)}"
+        )
+    return records
+
+
+def open_frozen_techqa_collection() -> Any:
+    """Open the existing isolated TechQA E0 Chroma collection without rebuilding it."""
+    client = get_chroma_client(DEFAULT_TECHQA_CHROMA_DIR)
+    return client.get_collection(
+        name=DEFAULT_TECHQA_COLLECTION_NAME,
+        embedding_function=None,
+    )
 
 
 def _rehydrate_candidates(
@@ -330,3 +377,61 @@ def ensure_rerank_run_manifest(
         json.dumps(dict(expected), ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
+
+
+def _resolve_project_sha() -> str:
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    project_sha = result.stdout.strip()
+    if not project_sha:
+        raise RuntimeError("Unable to resolve project SHA")
+    return project_sha
+
+
+def main() -> None:
+    print("Loading frozen E0 TRAIN candidate pools...")
+    records = load_frozen_e0_rerank_records()
+
+    print("Validating E1 rerank run identity...")
+    run_manifest = build_rerank_run_manifest(
+        e0_results_path=DEFAULT_E0_RERANK_RESULTS_PATH,
+        e0_manifest_path=DEFAULT_E0_RERANK_MANIFEST_PATH,
+        project_sha=_resolve_project_sha(),
+        created_at=datetime.now(timezone.utc).isoformat(),
+    )
+    ensure_rerank_run_manifest(
+        run_manifest,
+        run_manifest_path=DEFAULT_RERANK_RUN_MANIFEST_PATH,
+        checkpoint_path=DEFAULT_RERANK_CHECKPOINT_PATH,
+    )
+
+    print("Opening frozen TechQA E0 Chroma collection...")
+    collection = open_frozen_techqa_collection()
+
+    def evaluator(record: Mapping[str, Any]) -> TechQARerankResult:
+        return rerank_frozen_e0_record(record, collection=collection)
+
+    print("Running resumable E1 qwen3-rerank evaluation on TRAIN...")
+    summary = run_resumable_rerank_eval(
+        records,
+        evaluator=evaluator,
+        checkpoint_path=DEFAULT_RERANK_CHECKPOINT_PATH,
+    )
+    write_rerank_reports(summary, report_dir=DEFAULT_RERANK_REPORT_DIR)
+
+    print("TechQA E1 rerank evaluation completed.")
+    print(f"Query count:              {summary.query_count}")
+    print(f"Recall@5:                 {summary.metrics['recall@5']:.6f}")
+    print(f"Recall@20:                {summary.metrics['recall@20']:.6f}")
+    print(f"MRR@10:                   {summary.metrics['mrr@10']:.6f}")
+    print(f"Rerank latency p50 (ms):  {summary.rerank_latency_p50_ms:.3f}")
+    print(f"Rerank latency p95 (ms):  {summary.rerank_latency_p95_ms:.3f}")
+    print(f"Provider total tokens:    {summary.provider_total_tokens}")
+
+
+if __name__ == "__main__":
+    main()
