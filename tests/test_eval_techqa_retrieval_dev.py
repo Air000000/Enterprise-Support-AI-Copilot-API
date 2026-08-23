@@ -1,8 +1,6 @@
 import json
 from types import SimpleNamespace
 
-import pytest
-
 import experiments.evals.eval_techqa_retrieval as retrieval_eval
 from experiments.evals.adapters.techqa import TechQARetrievalCase
 
