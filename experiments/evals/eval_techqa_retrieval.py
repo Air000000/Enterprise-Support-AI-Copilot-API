@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import argparse
 import json
 import time
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -151,7 +152,7 @@ def evaluate_techqa_retrieval_cases(
 
     for case in selected_cases:
         started = clock()
-        raw_results = searcher(case.question, top_k=candidate_chunk_k)
+        raw_results = searcher(case.question.rstrip(), top_k=candidate_chunk_k)
         latency_ms = (clock() - started) * 1000.0
 
         raw_chunk_ids = tuple(str(result.chunk_id) for result in raw_results)
@@ -209,6 +210,7 @@ def write_e0_reports(
     manifest = _load_manifest(manifest_path)
     retrieval = manifest["retrieval_dataset"]
     baseline = manifest["baseline_rag"]
+    artifact_prefix = summary.split
 
     run_manifest = {
         "benchmark": "TechQA-RAG-Eval",
@@ -233,12 +235,14 @@ def write_e0_reports(
         "chunk_overlap_chars": baseline["chunk_overlap_chars"],
         "min_chunk_size_chars": baseline["min_chunk_size_chars"],
     }
-    (output_dir / "train_manifest.json").write_text(
+    (output_dir / f"{artifact_prefix}_manifest.json").write_text(
         json.dumps(run_manifest, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
 
-    with (output_dir / "train_results.jsonl").open("w", encoding="utf-8") as file:
+    with (output_dir / f"{artifact_prefix}_results.jsonl").open(
+        "w", encoding="utf-8"
+    ) as file:
         for result in summary.results:
             file.write(json.dumps(asdict(result), ensure_ascii=False) + "\n")
 
@@ -248,24 +252,29 @@ def write_e0_reports(
         "latency_p50_ms": summary.latency_p50_ms,
         "latency_p95_ms": summary.latency_p95_ms,
     }
-    (output_dir / "train_metrics.json").write_text(
+    (output_dir / f"{artifact_prefix}_metrics.json").write_text(
         json.dumps(metrics_payload, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
 
 
-def main() -> None:
+def main(argv: Sequence[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description="Evaluate frozen TechQA dense retrieval.")
+    parser.add_argument("--split", choices=("train", "dev"), default="train")
+    args = parser.parse_args(argv)
+    split: EvalSplit = args.split
+
     print("Loading frozen TechQA retrieval cases...")
     cases = load_frozen_techqa_retrieval_cases()
     train_count = sum(case.split == "train" for case in cases)
     dev_count = sum(case.split == "dev" for case in cases)
     print(f"Loaded cases: {len(cases)} (TRAIN={train_count}, DEV={dev_count})")
 
-    print("Running E0 dense retrieval on TRAIN only...")
-    summary = evaluate_techqa_retrieval_cases(cases, split="train")
+    print(f"Running E0 dense retrieval on {split.upper()} only...")
+    summary = evaluate_techqa_retrieval_cases(cases, split=split)
     write_e0_reports(summary)
 
-    print("TechQA E0 TRAIN retrieval completed.")
+    print(f"TechQA E0 {split.upper()} retrieval completed.")
     print(f"Queries:    {summary.query_count}")
     print(f"Recall@5:   {summary.metrics['recall@5']:.6f}")
     print(f"Recall@20:  {summary.metrics['recall@20']:.6f}")
