@@ -2,6 +2,8 @@ import json
 from dataclasses import asdict
 from types import SimpleNamespace
 
+import pytest
+
 import experiments.evals.eval_techqa_retrieval as retrieval_eval
 from experiments.evals.adapters.techqa import TechQARetrievalCase
 
@@ -71,10 +73,7 @@ def test_resumable_dev_retrieval_skips_checkpointed_queries_and_appends_missing(
     ]
 
 
-def test_dev_manifest_identity_freezes_retrieval_contract(tmp_path):
-    builder = getattr(retrieval_eval, "build_dev_retrieval_run_manifest", None)
-    assert builder is not None, "build_dev_retrieval_run_manifest is not implemented yet"
-
+def _write_dataset_manifest(tmp_path):
     dataset_manifest = tmp_path / "dataset_manifest.json"
     dataset_manifest.write_text(
         json.dumps(
@@ -97,6 +96,15 @@ def test_dev_manifest_identity_freezes_retrieval_contract(tmp_path):
         ),
         encoding="utf-8",
     )
+    return dataset_manifest
+
+
+def test_dev_manifest_identity_freezes_retrieval_contract(monkeypatch, tmp_path):
+    builder = getattr(retrieval_eval, "build_dev_retrieval_run_manifest", None)
+    assert builder is not None, "build_dev_retrieval_run_manifest is not implemented yet"
+
+    monkeypatch.delenv("EMBEDDING_MODEL", raising=False)
+    dataset_manifest = _write_dataset_manifest(tmp_path)
 
     manifest = builder(
         dataset_manifest_path=dataset_manifest,
@@ -112,6 +120,7 @@ def test_dev_manifest_identity_freezes_retrieval_contract(tmp_path):
     assert identity["candidate_chunk_k"] == 100
     assert identity["document_top_k"] == 20
     assert identity["query_normalization"] == "rstrip"
+    assert identity["embedding_model"] == "text-embedding-v4"
     assert identity["document_ranking_rule"] == (
         "collapse chunk results by document_id, retaining the first occurrence"
     )
@@ -126,6 +135,42 @@ def test_dev_manifest_identity_freezes_retrieval_contract(tmp_path):
         "project_sha": "abc123",
         "created_at": "2026-08-24T00:00:00+00:00",
     }
+
+
+def test_dev_manifest_rejects_embedding_model_drift(monkeypatch, tmp_path):
+    builder = retrieval_eval.build_dev_retrieval_run_manifest
+    ensure = retrieval_eval.ensure_dev_retrieval_run_manifest
+    dataset_manifest = _write_dataset_manifest(tmp_path)
+    run_manifest_path = tmp_path / "dev_manifest.json"
+    checkpoint_path = tmp_path / "dev_checkpoint.jsonl"
+
+    monkeypatch.setenv("EMBEDDING_MODEL", "text-embedding-v4")
+    original = builder(
+        dataset_manifest_path=dataset_manifest,
+        query_count=160,
+        project_sha="abc123",
+        created_at="2026-08-24T00:00:00+00:00",
+    )
+    ensure(
+        original,
+        run_manifest_path=run_manifest_path,
+        checkpoint_path=checkpoint_path,
+    )
+
+    monkeypatch.setenv("EMBEDDING_MODEL", "different-embedding-model")
+    changed = builder(
+        dataset_manifest_path=dataset_manifest,
+        query_count=160,
+        project_sha="abc123",
+        created_at="2026-08-24T00:01:00+00:00",
+    )
+
+    with pytest.raises(RuntimeError, match="identity mismatch"):
+        ensure(
+            changed,
+            run_manifest_path=run_manifest_path,
+            checkpoint_path=checkpoint_path,
+        )
 
 
 def test_dev_main_locks_manifest_before_first_search(monkeypatch):
