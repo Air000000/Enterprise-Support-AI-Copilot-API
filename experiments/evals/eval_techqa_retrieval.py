@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import time
 from collections.abc import Callable, Iterable, Mapping, Sequence
@@ -334,6 +335,7 @@ def _dev_retrieval_contract(
         "candidate_chunk_k": DEFAULT_CANDIDATE_CHUNK_K,
         "document_top_k": DEFAULT_DOCUMENT_TOP_K,
         "query_normalization": "rstrip",
+        "embedding_model": os.getenv("EMBEDDING_MODEL", "text-embedding-v4"),
         "document_ranking_rule": document_ranking_rule,
         "retrieval_dataset": retrieval_dataset,
         "retriever": baseline["retriever"],
@@ -374,6 +376,7 @@ def build_dev_retrieval_run_manifest(
         "candidate_chunk_k": contract["candidate_chunk_k"],
         "document_top_k": contract["document_top_k"],
         "query_normalization": contract["query_normalization"],
+        "embedding_model": contract["embedding_model"],
         "document_ranking_rule": contract["document_ranking_rule"],
         "retrieval_dataset": contract["retrieval_dataset"],
     }
