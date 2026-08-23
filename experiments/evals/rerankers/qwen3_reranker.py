@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import os
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from rag_runtime.query_rag_chroma import get_llm_client
+from openai import OpenAI
+
+from rag_runtime import query_rag_chroma
+
+get_llm_client = query_rag_chroma.get_llm_client
 
 DEFAULT_RERANK_MODEL = "qwen3-rerank"
 DEFAULT_RERANK_INSTRUCTION = (
@@ -39,6 +44,27 @@ class RerankResult:
     total_tokens: int | None
 
 
+def get_rerank_client() -> OpenAI:
+    """Build the dedicated rerank client without falling back to chat config."""
+    api_key = os.getenv("DASHSCOPE_RERANK_API_KEY")
+    base_url = os.getenv("DASHSCOPE_RERANK_BASE_URL")
+
+    missing = [
+        name
+        for name, value in (
+            ("DASHSCOPE_RERANK_API_KEY", api_key),
+            ("DASHSCOPE_RERANK_BASE_URL", base_url),
+        )
+        if not value
+    ]
+    if missing:
+        raise RuntimeError(
+            "Missing required rerank configuration: " + ", ".join(missing)
+        )
+
+    return OpenAI(api_key=api_key, base_url=base_url)
+
+
 def _as_mapping(value: Any, *, label: str) -> Mapping[str, Any]:
     if not isinstance(value, Mapping):
         raise RerankProviderError(f"invalid rerank provider {label}")
@@ -54,7 +80,7 @@ def rerank_candidates(
     instruct: str = DEFAULT_RERANK_INSTRUCTION,
 ) -> RerankResult:
     """Rerank an existing candidate pool without changing candidate identity."""
-    provider = client or get_llm_client()
+    provider = client or get_rerank_client()
     body = {
         "model": model,
         "query": query.rstrip(),
