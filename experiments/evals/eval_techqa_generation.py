@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import argparse
 import hashlib
 import inspect
 import json
 import os
 import platform
 import subprocess
+import sys
 import time
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from functools import lru_cache
@@ -38,6 +40,12 @@ DEFAULT_GENERATION_CHECKPOINT_PATH = (
 )
 DEFAULT_GENERATION_RUN_MANIFEST_PATH = (
     DEFAULT_GENERATION_REPORT_DIR / "train_generation_manifest.json"
+)
+DEFAULT_DEV_GENERATION_CHECKPOINT_PATH = (
+    DEFAULT_GENERATION_REPORT_DIR / "dev_generation_checkpoint.jsonl"
+)
+DEFAULT_DEV_GENERATION_RUN_MANIFEST_PATH = (
+    DEFAULT_GENERATION_REPORT_DIR / "dev_generation_manifest.json"
 )
 DEFAULT_JUDGE_CALIBRATION_PATH = DEFAULT_GENERATION_REPORT_DIR / "judge_calibration.jsonl"
 DEFAULT_GENERATION_TOP_K = 3
@@ -651,6 +659,8 @@ def build_generation_run_manifest(
     prompt_sha256: str | None = None,
     eval_source_sha256: str | None = None,
     created_at: str | None = None,
+    split: EvalSplit = "train",
+    query_count: int | None = None,
 ) -> dict[str, Any]:
     """Build the immutable identity used to protect a resumable E0 generation run."""
     frozen = _load_manifest(manifest_path)
@@ -671,7 +681,7 @@ def build_generation_run_manifest(
     identity = {
         "benchmark": frozen["benchmark"],
         "run": "e0_generation",
-        "split": "train",
+        "split": split,
         "data": {
             "corpus_sha256": retrieval_dataset["corpus_sha256"],
             "queries_sha256": retrieval_dataset["queries_sha256"],
@@ -710,6 +720,8 @@ def build_generation_run_manifest(
             "judge_included": False,
         },
     }
+    if query_count is not None:
+        identity["query_count"] = query_count
 
     return {
         "identity": identity,
@@ -803,25 +815,44 @@ def write_generation_reports(
     )
 
 
-def main() -> None:
+def main(argv: Sequence[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description="Evaluate frozen TechQA generation.")
+    parser.add_argument("--split", choices=("train", "dev"), default="train")
+    args = parser.parse_args([] if argv is None else argv)
+    split: EvalSplit = args.split
+
     print("Validating TechQA E0 generation run identity...")
-    run_manifest = build_generation_run_manifest()
-    ensure_generation_run_manifest(run_manifest)
+    if split == "dev":
+        run_manifest = build_generation_run_manifest(split="dev", query_count=310)
+        ensure_generation_run_manifest(
+            run_manifest,
+            run_manifest_path=DEFAULT_DEV_GENERATION_RUN_MANIFEST_PATH,
+            checkpoint_path=DEFAULT_DEV_GENERATION_CHECKPOINT_PATH,
+        )
+        checkpoint_path = DEFAULT_DEV_GENERATION_CHECKPOINT_PATH
+    else:
+        run_manifest = build_generation_run_manifest()
+        ensure_generation_run_manifest(run_manifest)
+        checkpoint_path = DEFAULT_GENERATION_CHECKPOINT_PATH
 
     print("Loading frozen TechQA generation cases...")
     cases = load_frozen_techqa_generation_cases()
     train_count = sum(case.split == "train" for case in cases)
-    print(f"Loaded cases: {len(cases)} (TRAIN={train_count})")
+    dev_count = sum(case.split == "dev" for case in cases)
+    print(f"Loaded cases: {len(cases)} (TRAIN={train_count}, DEV={dev_count})")
 
-    print("Running resumable E0 generation evaluation on TRAIN only...")
+    print(f"Running resumable E0 generation evaluation on {split.upper()} only...")
     summary = run_resumable_generation_eval(
         cases,
-        checkpoint_path=DEFAULT_GENERATION_CHECKPOINT_PATH,
-        split="train",
+        checkpoint_path=checkpoint_path,
+        split=split,
     )
-    write_generation_reports(summary)
+    if split == "dev":
+        write_generation_reports(summary, report_dir=DEFAULT_GENERATION_REPORT_DIR)
+    else:
+        write_generation_reports(summary)
 
-    print("TechQA E0 TRAIN generation evaluation completed.")
+    print(f"TechQA E0 {split.upper()} generation evaluation completed.")
     print(f"Queries:              {summary.query_count}")
     print(f"Answerable:           {summary.answerable_count}")
     print(f"Impossible:           {summary.impossible_count}")
@@ -835,4 +866,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])
