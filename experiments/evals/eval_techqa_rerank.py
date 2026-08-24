@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import subprocess
+import sys
 import time
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -35,10 +37,19 @@ DEFAULT_E0_RERANK_RESULTS_PATH = Path(
 DEFAULT_E0_RERANK_MANIFEST_PATH = Path(
     "experiments/evals/reports/e0_dense/train_manifest.json"
 )
+DEFAULT_E0_DEV_RERANK_RESULTS_PATH = Path(
+    "experiments/evals/reports/e0_dense/dev_results.jsonl"
+)
+DEFAULT_E0_DEV_RERANK_MANIFEST_PATH = Path(
+    "experiments/evals/reports/e0_dense/dev_manifest.json"
+)
 DEFAULT_RERANK_REPORT_DIR = Path("experiments/evals/reports/e1_rerank")
 DEFAULT_RERANK_CHECKPOINT_PATH = DEFAULT_RERANK_REPORT_DIR / "train_checkpoint.jsonl"
 DEFAULT_RERANK_RUN_MANIFEST_PATH = DEFAULT_RERANK_REPORT_DIR / "train_manifest.json"
+DEFAULT_RERANK_DEV_CHECKPOINT_PATH = DEFAULT_RERANK_REPORT_DIR / "dev_checkpoint.jsonl"
+DEFAULT_RERANK_DEV_RUN_MANIFEST_PATH = DEFAULT_RERANK_REPORT_DIR / "dev_manifest.json"
 DEFAULT_RERANK_TRAIN_COUNT = 450
+DEFAULT_RERANK_DEV_COUNT = 160
 
 
 class FrozenCandidatePoolError(RuntimeError):
@@ -78,7 +89,7 @@ def load_frozen_e0_rerank_records(
     *,
     expected_count: int = DEFAULT_RERANK_TRAIN_COUNT,
 ) -> list[dict[str, Any]]:
-    """Load the frozen E0 TRAIN retrieval records used as the E1 candidate pool."""
+    """Load a frozen E0 retrieval result set used as the E1 candidate pool."""
     source = Path(path)
     records = [
         dict(json.loads(line))
@@ -87,7 +98,7 @@ def load_frozen_e0_rerank_records(
     ]
     if len(records) != expected_count:
         raise RuntimeError(
-            "Frozen E0 TRAIN record count mismatch: "
+            "Frozen E0 record count mismatch: "
             f"expected={expected_count}, actual={len(records)}"
         )
     return records
@@ -292,11 +303,15 @@ def write_rerank_reports(
     summary: TechQARerankEvalSummary,
     *,
     report_dir: str | Path,
+    split: str = "train",
 ) -> None:
     output_dir = Path(report_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    artifact_prefix = split
 
-    with (output_dir / "train_results.jsonl").open("w", encoding="utf-8") as file:
+    with (output_dir / f"{artifact_prefix}_results.jsonl").open(
+        "w", encoding="utf-8"
+    ) as file:
         for result in summary.results:
             file.write(json.dumps(asdict(result), ensure_ascii=False) + "\n")
 
@@ -307,7 +322,7 @@ def write_rerank_reports(
         "rerank_latency_p95_ms": summary.rerank_latency_p95_ms,
         "provider_total_tokens": summary.provider_total_tokens,
     }
-    (output_dir / "train_metrics.json").write_text(
+    (output_dir / f"{artifact_prefix}_metrics.json").write_text(
         json.dumps(metrics, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
@@ -323,29 +338,35 @@ def build_rerank_run_manifest(
     e0_manifest_path: str | Path,
     project_sha: str,
     created_at: str,
+    split: str = "train",
+    query_count: int | None = None,
 ) -> dict[str, Any]:
     e0_manifest = json.loads(Path(e0_manifest_path).read_text(encoding="utf-8"))
     candidate_chunk_k = int(e0_manifest["candidate_chunk_k"])
 
-    return {
-        "identity": {
-            "run": "e1_rerank",
-            "split": "train",
-            "source_e0": {
-                "results_sha256": _sha256(e0_results_path),
-                "manifest_sha256": _sha256(e0_manifest_path),
-            },
-            "reranker": {
-                "model": DEFAULT_RERANK_MODEL,
-                "instruction": DEFAULT_RERANK_INSTRUCTION,
-                "candidate_chunk_k": candidate_chunk_k,
-                "query_normalization": "rstrip",
-            },
-            "document_ranking": {
-                "top_k": 20,
-                "rule": "first occurrence of document_id after chunk rerank",
-            },
+    identity: dict[str, Any] = {
+        "run": "e1_rerank",
+        "split": split,
+        "source_e0": {
+            "results_sha256": _sha256(e0_results_path),
+            "manifest_sha256": _sha256(e0_manifest_path),
         },
+        "reranker": {
+            "model": DEFAULT_RERANK_MODEL,
+            "instruction": DEFAULT_RERANK_INSTRUCTION,
+            "candidate_chunk_k": candidate_chunk_k,
+            "query_normalization": "rstrip",
+        },
+        "document_ranking": {
+            "top_k": 20,
+            "rule": "first occurrence of document_id after chunk rerank",
+        },
+    }
+    if query_count is not None:
+        identity["query_count"] = query_count
+
+    return {
+        "identity": identity,
         "provenance": {
             "project_sha": project_sha,
             "created_at": created_at,
@@ -392,21 +413,52 @@ def _resolve_project_sha() -> str:
     return project_sha
 
 
-def main() -> None:
-    print("Loading frozen E0 TRAIN candidate pools...")
-    records = load_frozen_e0_rerank_records()
+def main(argv: Sequence[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description="Evaluate frozen TechQA reranking.")
+    parser.add_argument("--split", choices=("train", "dev"), default="train")
+    args = parser.parse_args([] if argv is None else argv)
+    split = str(args.split)
+
+    if split == "dev":
+        e0_results_path = DEFAULT_E0_DEV_RERANK_RESULTS_PATH
+        e0_manifest_path = DEFAULT_E0_DEV_RERANK_MANIFEST_PATH
+        checkpoint_path = DEFAULT_RERANK_DEV_CHECKPOINT_PATH
+        run_manifest_path = DEFAULT_RERANK_DEV_RUN_MANIFEST_PATH
+        expected_count = DEFAULT_RERANK_DEV_COUNT
+    else:
+        e0_results_path = DEFAULT_E0_RERANK_RESULTS_PATH
+        e0_manifest_path = DEFAULT_E0_RERANK_MANIFEST_PATH
+        checkpoint_path = DEFAULT_RERANK_CHECKPOINT_PATH
+        run_manifest_path = DEFAULT_RERANK_RUN_MANIFEST_PATH
+        expected_count = DEFAULT_RERANK_TRAIN_COUNT
+
+    print(f"Loading frozen E0 {split.upper()} candidate pools...")
+    records = load_frozen_e0_rerank_records(
+        e0_results_path,
+        expected_count=expected_count,
+    )
 
     print("Validating E1 rerank run identity...")
-    run_manifest = build_rerank_run_manifest(
-        e0_results_path=DEFAULT_E0_RERANK_RESULTS_PATH,
-        e0_manifest_path=DEFAULT_E0_RERANK_MANIFEST_PATH,
-        project_sha=_resolve_project_sha(),
-        created_at=datetime.now(timezone.utc).isoformat(),
-    )
+    if split == "dev":
+        run_manifest = build_rerank_run_manifest(
+            e0_results_path=e0_results_path,
+            e0_manifest_path=e0_manifest_path,
+            project_sha=_resolve_project_sha(),
+            created_at=datetime.now(timezone.utc).isoformat(),
+            split="dev",
+            query_count=expected_count,
+        )
+    else:
+        run_manifest = build_rerank_run_manifest(
+            e0_results_path=e0_results_path,
+            e0_manifest_path=e0_manifest_path,
+            project_sha=_resolve_project_sha(),
+            created_at=datetime.now(timezone.utc).isoformat(),
+        )
     ensure_rerank_run_manifest(
         run_manifest,
-        run_manifest_path=DEFAULT_RERANK_RUN_MANIFEST_PATH,
-        checkpoint_path=DEFAULT_RERANK_CHECKPOINT_PATH,
+        run_manifest_path=run_manifest_path,
+        checkpoint_path=checkpoint_path,
     )
 
     print("Opening frozen TechQA E0 Chroma collection...")
@@ -415,13 +467,20 @@ def main() -> None:
     def evaluator(record: Mapping[str, Any]) -> TechQARerankResult:
         return rerank_frozen_e0_record(record, collection=collection)
 
-    print("Running resumable E1 qwen3-rerank evaluation on TRAIN...")
+    print(f"Running resumable E1 qwen3-rerank evaluation on {split.upper()}...")
     summary = run_resumable_rerank_eval(
         records,
         evaluator=evaluator,
-        checkpoint_path=DEFAULT_RERANK_CHECKPOINT_PATH,
+        checkpoint_path=checkpoint_path,
     )
-    write_rerank_reports(summary, report_dir=DEFAULT_RERANK_REPORT_DIR)
+    if split == "dev":
+        write_rerank_reports(
+            summary,
+            report_dir=DEFAULT_RERANK_REPORT_DIR,
+            split="dev",
+        )
+    else:
+        write_rerank_reports(summary, report_dir=DEFAULT_RERANK_REPORT_DIR)
 
     print("TechQA E1 rerank evaluation completed.")
     print(f"Query count:              {summary.query_count}")
@@ -434,4 +493,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])
