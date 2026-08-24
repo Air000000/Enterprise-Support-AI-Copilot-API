@@ -146,7 +146,7 @@ def rerank_frozen_e0_record(
     candidates = _rehydrate_candidates(record, collection=collection)
 
     started = clock()
-    rerank_result = reranker(str(record["question"]), candidates)
+    rerank_result = reranker(str(record["question"]).rstrip(), candidates)
     rerank_latency_ms = (clock() - started) * 1000.0
 
     reranked_chunk_ids = tuple(
