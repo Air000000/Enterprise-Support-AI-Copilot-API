@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
+from dotenv import load_dotenv
 from ranx import Run
 
 from experiments.evals.adapters.techqa import (
@@ -367,6 +368,7 @@ def build_dev_retrieval_run_manifest(
     created_at: str | None = None,
 ) -> dict[str, Any]:
     """Build the immutable identity for the frozen E0 DEV retrieval run."""
+    load_dotenv()
     dataset_manifest = _load_manifest(dataset_manifest_path)
     contract = _dev_retrieval_contract(dataset_manifest, query_count=query_count)
     identity = {
