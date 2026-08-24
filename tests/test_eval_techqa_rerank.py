@@ -29,7 +29,7 @@ class FakeCollection:
         }
 
 
-def test_rerank_frozen_e0_record_rehydrates_original_candidate_order_then_collapses_docs():
+def test_rerank_frozen_e0_record_normalizes_query_rehydrates_order_then_collapses_docs():
     module = _rerank_eval_module()
     collection = FakeCollection(
         {
@@ -94,7 +94,7 @@ def test_rerank_frozen_e0_record_rehydrates_original_candidate_order_then_collap
         }
     ]
     assert observed == {
-        "query": "technical support question\n",
+        "query": "technical support question",
         "candidate_ids": ["c0", "c1", "c2"],
         "candidate_docs": ["doc_a", "doc_a", "doc_gold"],
         "candidate_contents": ["alpha zero", "alpha one", "gold evidence"],
