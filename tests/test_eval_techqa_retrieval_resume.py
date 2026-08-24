@@ -104,6 +104,12 @@ def test_dev_manifest_identity_freezes_retrieval_contract(monkeypatch, tmp_path)
     assert builder is not None, "build_dev_retrieval_run_manifest is not implemented yet"
 
     monkeypatch.delenv("EMBEDDING_MODEL", raising=False)
+    monkeypatch.setattr(
+        retrieval_eval,
+        "load_dotenv",
+        lambda: False,
+        raising=False,
+    )
     dataset_manifest = _write_dataset_manifest(tmp_path)
 
     manifest = builder(
@@ -135,6 +141,39 @@ def test_dev_manifest_identity_freezes_retrieval_contract(monkeypatch, tmp_path)
         "project_sha": "abc123",
         "created_at": "2026-08-24T00:00:00+00:00",
     }
+
+
+def test_dev_manifest_loads_dotenv_before_resolving_embedding_model(
+    monkeypatch,
+    tmp_path,
+):
+    builder = retrieval_eval.build_dev_retrieval_run_manifest
+    dataset_manifest = _write_dataset_manifest(tmp_path)
+    observed = []
+
+    monkeypatch.delenv("EMBEDDING_MODEL", raising=False)
+
+    def fake_load_dotenv():
+        observed.append("load_dotenv")
+        monkeypatch.setenv("EMBEDDING_MODEL", "dotenv-embedding-model")
+        return True
+
+    monkeypatch.setattr(
+        retrieval_eval,
+        "load_dotenv",
+        fake_load_dotenv,
+        raising=False,
+    )
+
+    manifest = builder(
+        dataset_manifest_path=dataset_manifest,
+        query_count=160,
+        project_sha="abc123",
+        created_at="2026-08-24T00:00:00+00:00",
+    )
+
+    assert observed == ["load_dotenv"]
+    assert manifest["identity"]["embedding_model"] == "dotenv-embedding-model"
 
 
 def test_dev_manifest_rejects_embedding_model_drift(monkeypatch, tmp_path):
