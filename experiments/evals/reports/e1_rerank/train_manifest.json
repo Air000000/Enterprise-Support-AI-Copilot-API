@@ -1,0 +1,24 @@
+{
+  "identity": {
+    "run": "e1_rerank",
+    "split": "train",
+    "source_e0": {
+      "results_sha256": "4abf6365de33fe14adfbac2cd53669a434f5506b928fa890b3acd37e4d999953",
+      "manifest_sha256": "3e41b13ed469ee74c2c2a76f602e11566732ce90a5c06e16550c07eb67b62593"
+    },
+    "reranker": {
+      "model": "qwen3-rerank",
+      "instruction": "Rank the candidate passages by relevance to resolving the technical support query.",
+      "candidate_chunk_k": 100,
+      "query_normalization": "rstrip"
+    },
+    "document_ranking": {
+      "top_k": 20,
+      "rule": "first occurrence of document_id after chunk rerank"
+    }
+  },
+  "provenance": {
+    "project_sha": "584135a23274fe7de3cbacec305612827baacb74",
+    "created_at": "2026-08-23T22:37:33.859634+00:00"
+  }
+}

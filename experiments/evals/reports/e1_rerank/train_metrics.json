@@ -1,0 +1,11 @@
+{
+  "query_count": 450,
+  "metrics": {
+    "recall@5": 0.6911111111111111,
+    "recall@20": 0.8155555555555556,
+    "mrr@10": 0.5672063492063492
+  },
+  "rerank_latency_p50_ms": 3078.3612499944866,
+  "rerank_latency_p95_ms": 3409.8942999946303,
+  "provider_total_tokens": 11972838
+}
