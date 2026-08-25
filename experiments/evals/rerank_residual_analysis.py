@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from typing import Any, Literal, Mapping, Sequence
 
@@ -108,3 +109,106 @@ def build_residual_records(
         )
 
     return records
+
+
+def select_candidate_miss_review_sample(
+    records: Sequence[RerankResidualRecord],
+    *,
+    sample_size: int = 30,
+) -> list[RerankResidualRecord]:
+    if sample_size <= 0:
+        return []
+
+    misses = [
+        record
+        for record in records
+        if record.residual_bucket == "dense_candidate_miss_top100"
+    ]
+    return sorted(
+        misses,
+        key=lambda record: hashlib.sha256(
+            record.question_id.encode("utf-8")
+        ).hexdigest(),
+    )[: min(sample_size, len(misses))]
+
+
+def summarize_residual_records(
+    records: Sequence[RerankResidualRecord],
+) -> dict[str, Any]:
+    ordered_records = list(records)
+    query_count = len(ordered_records)
+    bucket_counts = {
+        bucket: sum(record.residual_bucket == bucket for record in ordered_records)
+        for bucket in (
+            "dense_candidate_miss_top100",
+            "rerank_residual_top20",
+            "resolved_top20",
+        )
+    }
+    bucket_rates = {
+        bucket: count / query_count if query_count else 0.0
+        for bucket, count in bucket_counts.items()
+    }
+    return {
+        "query_count": query_count,
+        "bucket_counts": bucket_counts,
+        "bucket_rates": bucket_rates,
+        "dense_candidate_miss_count": bucket_counts[
+            "dense_candidate_miss_top100"
+        ],
+    }
+
+
+def _document_excerpt(
+    document_id: str,
+    *,
+    documents_by_id: Mapping[str, str],
+    excerpt_chars: int,
+) -> dict[str, str]:
+    return {
+        "document_id": document_id,
+        "text_excerpt": documents_by_id[document_id][:excerpt_chars],
+    }
+
+
+def build_candidate_miss_review_rows(
+    records: Sequence[RerankResidualRecord],
+    *,
+    documents_by_id: Mapping[str, str],
+    excerpt_chars: int = 600,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for record in records:
+        rows.append(
+            {
+                "question_id": record.question_id,
+                "question": record.question,
+                "gold_documents": [
+                    _document_excerpt(
+                        document_id,
+                        documents_by_id=documents_by_id,
+                        excerpt_chars=excerpt_chars,
+                    )
+                    for document_id in record.relevant_document_ids
+                ],
+                "dense_top5": [
+                    _document_excerpt(
+                        document_id,
+                        documents_by_id=documents_by_id,
+                        excerpt_chars=excerpt_chars,
+                    )
+                    for document_id in record.dense_candidate_document_ids[:5]
+                ],
+                "e1_top5": [
+                    _document_excerpt(
+                        document_id,
+                        documents_by_id=documents_by_id,
+                        excerpt_chars=excerpt_chars,
+                    )
+                    for document_id in record.e1_document_ranking[:5]
+                ],
+                "manual_label": "",
+                "notes": "",
+            }
+        )
+    return rows
