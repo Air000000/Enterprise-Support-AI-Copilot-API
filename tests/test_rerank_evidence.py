@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import json
+from importlib import import_module
 from pathlib import Path
 
 import pytest
 
-from experiments.evals.rerank_evidence import (
-    build_paired_evidence,
-    materialize_rerank_evidence,
-    sha256_file,
-)
+
+def _load_rerank_evidence_module():
+    try:
+        return import_module("experiments.evals.rerank_evidence")
+    except ModuleNotFoundError:
+        pytest.fail("rerank_evidence module is not implemented yet")
 
 
 def _write_json(path: Path, payload: dict) -> None:
@@ -110,6 +112,7 @@ def _write_split_artifacts(
 
 
 def test_paired_evidence_uses_per_query_latency_sums() -> None:
+    module = _load_rerank_evidence_module()
     e0 = [
         _e0_row("Q1", "g1", ["x", "g1"], 100.0),
         _e0_row("Q2", "g2", ["x", "y"], 900.0),
@@ -119,7 +122,7 @@ def test_paired_evidence_uses_per_query_latency_sums() -> None:
         _e1_row("Q2", "g2", ["g2"], 100.0),
     ]
 
-    evidence = build_paired_evidence(e0, e1)
+    evidence = module.build_paired_evidence(e0, e1)
 
     assert evidence["hit5_fixed"] == 1
     assert evidence["hit5_regressed"] == 0
@@ -132,6 +135,7 @@ def test_paired_evidence_uses_per_query_latency_sums() -> None:
 def test_materialize_rerank_evidence_emits_hashes_and_aggregate_only_dev_report(
     tmp_path: Path,
 ) -> None:
+    module = _load_rerank_evidence_module()
     e0_dir = tmp_path / "e0_dense"
     e1_dir = tmp_path / "e1_rerank"
 
@@ -167,7 +171,7 @@ def test_materialize_rerank_evidence_emits_hashes_and_aggregate_only_dev_report(
         e1_rows=dev_e1,
     )
 
-    result = materialize_rerank_evidence(
+    result = module.materialize_rerank_evidence(
         e0_dir=e0_dir,
         e1_dir=e1_dir,
         expected_counts={"train": 2, "dev": 2},
@@ -177,16 +181,16 @@ def test_materialize_rerank_evidence_emits_hashes_and_aggregate_only_dev_report(
     hashes = json.loads(
         (e1_dir / "artifact_hashes.json").read_text(encoding="utf-8")
     )
-    assert hashes["train"]["checkpoint_sha256"] == sha256_file(
+    assert hashes["train"]["checkpoint_sha256"] == module.sha256_file(
         e1_dir / "train_checkpoint.jsonl"
     )
-    assert hashes["train"]["results_sha256"] == sha256_file(
+    assert hashes["train"]["results_sha256"] == module.sha256_file(
         e1_dir / "train_results.jsonl"
     )
-    assert hashes["dev"]["checkpoint_sha256"] == sha256_file(
+    assert hashes["dev"]["checkpoint_sha256"] == module.sha256_file(
         e1_dir / "dev_checkpoint.jsonl"
     )
-    assert hashes["dev"]["results_sha256"] == sha256_file(
+    assert hashes["dev"]["results_sha256"] == module.sha256_file(
         e1_dir / "dev_results.jsonl"
     )
 
@@ -202,6 +206,7 @@ def test_materialize_rerank_evidence_emits_hashes_and_aggregate_only_dev_report(
 def test_materialize_rerank_evidence_rejects_checkpoint_result_drift(
     tmp_path: Path,
 ) -> None:
+    module = _load_rerank_evidence_module()
     e0_dir = tmp_path / "e0_dense"
     e1_dir = tmp_path / "e1_rerank"
     e0_rows = [_e0_row("TRAIN_Q1", "g1", ["x", "g1"], 100.0)]
@@ -227,7 +232,7 @@ def test_materialize_rerank_evidence_rejects_checkpoint_result_drift(
     _write_jsonl(e1_dir / "train_checkpoint.jsonl", drifted)
 
     with pytest.raises(RuntimeError, match="checkpoint/results mismatch"):
-        materialize_rerank_evidence(
+        module.materialize_rerank_evidence(
             e0_dir=e0_dir,
             e1_dir=e1_dir,
             expected_counts={"train": 1, "dev": 1},
