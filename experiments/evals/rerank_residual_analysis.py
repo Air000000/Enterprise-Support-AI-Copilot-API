@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Literal, Mapping, Sequence
@@ -14,6 +15,16 @@ ResidualBucket = Literal[
     "rerank_residual_top20",
     "dense_candidate_miss_top100",
 ]
+ReviewLabel = Literal[
+    "lexical_candidate",
+    "semantic_or_indirect_miss",
+    "qrel_or_query_ambiguity",
+]
+REVIEW_LABELS: tuple[ReviewLabel, ...] = (
+    "lexical_candidate",
+    "semantic_or_indirect_miss",
+    "qrel_or_query_ambiguity",
+)
 DocumentLoader = Callable[[], Sequence[TechQADocument]]
 
 DEFAULT_E0_TRAIN_RESULTS_PATH = Path(
@@ -172,6 +183,59 @@ def summarize_residual_records(
         "dense_candidate_miss_count": bucket_counts[
             "dense_candidate_miss_top100"
         ],
+    }
+
+
+def summarize_review_rows(
+    rows: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    label_counts = {label: 0 for label in REVIEW_LABELS}
+    for row in rows:
+        question_id = str(row.get("question_id", "<unknown>"))
+        label = str(row.get("manual_label", "")).strip()
+        if not label:
+            raise RuntimeError(f"review label missing for {question_id}")
+        if label not in REVIEW_LABELS:
+            raise RuntimeError(f"unknown review label for {question_id}: {label}")
+        label_counts[label] += 1
+
+    reviewed_count = len(rows)
+    label_rates = {
+        label: count / reviewed_count if reviewed_count else 0.0
+        for label, count in label_counts.items()
+    }
+    return {
+        "reviewed_count": reviewed_count,
+        "label_counts": label_counts,
+        "label_rates": label_rates,
+        "population_rate_claim_allowed": False,
+    }
+
+
+def build_r3_gate(dense_candidate_miss_count: int) -> dict[str, Any]:
+    required_recovered_dense_misses = max(
+        5,
+        math.ceil(0.15 * dense_candidate_miss_count),
+    )
+    required_net_gain_cases = max(
+        5,
+        math.ceil(0.10 * dense_candidate_miss_count),
+    )
+    return {
+        "split": "train",
+        "query_count": 450,
+        "dense_candidate_chunk_k": 100,
+        "bm25_candidate_document_k": 100,
+        "hybrid_candidate_document_k": 100,
+        "rrf_k": 60,
+        "dense_candidate_miss_count": dense_candidate_miss_count,
+        "required_recovered_dense_misses": required_recovered_dense_misses,
+        "required_net_gain_cases": required_net_gain_cases,
+        "required_net_gain_pp": required_net_gain_cases / 450 * 100.0,
+        "admission_logic": (
+            "recovered_dense_misses >= required_recovered_dense_misses AND "
+            "hybrid_hit100 - dense_hit100 >= required_net_gain_cases"
+        ),
     }
 
 
