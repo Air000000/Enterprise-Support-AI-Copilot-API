@@ -1,14 +1,20 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import dataclass
-from typing import Any, Literal, Mapping, Sequence
+from pathlib import Path
+from typing import Any, Callable, Literal, Mapping, Sequence
+
+from experiments.evals.adapters.techqa import TechQADocument
+from experiments.evals.build_techqa_index import load_frozen_techqa_documents
 
 ResidualBucket = Literal[
     "resolved_top20",
     "rerank_residual_top20",
     "dense_candidate_miss_top100",
 ]
+DocumentLoader = Callable[[], Sequence[TechQADocument]]
 
 
 @dataclass(frozen=True)
@@ -212,3 +218,61 @@ def build_candidate_miss_review_rows(
             }
         )
     return rows
+
+
+def _load_jsonl(path: str | Path) -> list[dict[str, Any]]:
+    return [
+        dict(json.loads(line))
+        for line in Path(path).read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+
+
+def materialize_rerank_residual_analysis(
+    *,
+    e0_results_path: str | Path,
+    e1_results_path: str | Path,
+    report_dir: str | Path,
+    expected_count: int = 450,
+    review_sample_size: int = 30,
+    document_loader: DocumentLoader = load_frozen_techqa_documents,
+) -> dict[str, Any]:
+    e0_rows = _load_jsonl(e0_results_path)
+    e1_rows = _load_jsonl(e1_results_path)
+    if len(e0_rows) != expected_count or len(e1_rows) != expected_count:
+        raise RuntimeError(
+            "TRAIN row count mismatch: "
+            f"expected={expected_count}, e0={len(e0_rows)}, e1={len(e1_rows)}"
+        )
+
+    records = build_residual_records(e0_rows, e1_rows)
+    summary = summarize_residual_records(records)
+    sample = select_candidate_miss_review_sample(
+        records,
+        sample_size=review_sample_size,
+    )
+
+    documents = document_loader()
+    documents_by_id = {
+        document.document_id: document.text
+        for document in documents
+    }
+    review_rows = build_candidate_miss_review_rows(
+        sample,
+        documents_by_id=documents_by_id,
+    )
+
+    output_dir = Path(report_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "train_residual_summary.json").write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    with (output_dir / "train_residual_review.jsonl").open(
+        "w",
+        encoding="utf-8",
+    ) as file:
+        for row in review_rows:
+            file.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+    return summary
