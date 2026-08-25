@@ -302,6 +302,17 @@ def _load_jsonl(path: str | Path) -> list[dict[str, Any]]:
     ]
 
 
+def _load_json(path: str | Path) -> dict[str, Any]:
+    return dict(json.loads(Path(path).read_text(encoding="utf-8")))
+
+
+def _write_json(path: str | Path, payload: Mapping[str, Any]) -> None:
+    Path(path).write_text(
+        json.dumps(dict(payload), ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
 def _load_default_documents() -> Sequence[TechQADocument]:
     from experiments.evals.build_techqa_index import load_frozen_techqa_documents
 
@@ -345,10 +356,7 @@ def materialize_rerank_residual_analysis(
 
     output_dir = Path(report_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    (output_dir / "train_residual_summary.json").write_text(
-        json.dumps(summary, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
+    _write_json(output_dir / "train_residual_summary.json", summary)
     with (output_dir / "train_residual_review.jsonl").open(
         "w",
         encoding="utf-8",
@@ -366,6 +374,7 @@ def main(
 ) -> None:
     parser = argparse.ArgumentParser(description="Analyze frozen E1 TRAIN residuals.")
     subparsers = parser.add_subparsers(dest="command", required=True)
+
     prepare = subparsers.add_parser("prepare")
     prepare.add_argument("--e0-results", type=Path, default=DEFAULT_E0_TRAIN_RESULTS_PATH)
     prepare.add_argument("--e1-results", type=Path, default=DEFAULT_E1_TRAIN_RESULTS_PATH)
@@ -380,24 +389,64 @@ def main(
         type=int,
         default=DEFAULT_REVIEW_SAMPLE_SIZE,
     )
+
+    summarize = subparsers.add_parser("summarize")
+    summarize.add_argument("--report-dir", type=Path, default=DEFAULT_RERANK_REPORT_DIR)
+
+    freeze_gate = subparsers.add_parser("freeze-gate")
+    freeze_gate.add_argument("--report-dir", type=Path, default=DEFAULT_RERANK_REPORT_DIR)
+
     args = parser.parse_args(argv)
 
-    if args.command != "prepare":
-        parser.error(f"unsupported command: {args.command}")
+    if args.command == "prepare":
+        summary = materialize_rerank_residual_analysis(
+            e0_results_path=args.e0_results,
+            e1_results_path=args.e1_results,
+            report_dir=args.report_dir,
+            expected_count=args.expected_count,
+            review_sample_size=args.review_sample_size,
+            document_loader=document_loader,
+        )
+        print("R2 TRAIN residual evidence materialized.")
+        print(f"query_count = {summary['query_count']}")
+        for bucket, count in summary["bucket_counts"].items():
+            print(f"{bucket} = {count}")
+        print("provider_calls = 0")
+        return
 
-    summary = materialize_rerank_residual_analysis(
-        e0_results_path=args.e0_results,
-        e1_results_path=args.e1_results,
-        report_dir=args.report_dir,
-        expected_count=args.expected_count,
-        review_sample_size=args.review_sample_size,
-        document_loader=document_loader,
-    )
-    print("R2 TRAIN residual evidence materialized.")
-    print(f"query_count = {summary['query_count']}")
-    for bucket, count in summary["bucket_counts"].items():
-        print(f"{bucket} = {count}")
-    print("provider_calls = 0")
+    if args.command == "summarize":
+        review_rows = _load_jsonl(args.report_dir / "train_residual_review.jsonl")
+        summary = summarize_review_rows(review_rows)
+        _write_json(
+            args.report_dir / "train_residual_review_summary.json",
+            summary,
+        )
+        print("R2 TRAIN residual review summarized.")
+        print(f"reviewed_count = {summary['reviewed_count']}")
+        for label, count in summary["label_counts"].items():
+            print(f"{label} = {count}")
+        print("provider_calls = 0")
+        return
+
+    if args.command == "freeze-gate":
+        residual_summary = _load_json(args.report_dir / "train_residual_summary.json")
+        dense_candidate_miss_count = int(
+            residual_summary["dense_candidate_miss_count"]
+        )
+        gate = build_r3_gate(dense_candidate_miss_count)
+        _write_json(args.report_dir / "r3_gate.json", gate)
+        print("R3 admission gate frozen.")
+        print(f"dense_candidate_miss_count = {gate['dense_candidate_miss_count']}")
+        print(
+            "required_recovered_dense_misses = "
+            f"{gate['required_recovered_dense_misses']}"
+        )
+        print(f"required_net_gain_cases = {gate['required_net_gain_cases']}")
+        print(f"required_net_gain_pp = {gate['required_net_gain_pp']}")
+        print("provider_calls = 0")
+        return
+
+    parser.error(f"unsupported command: {args.command}")
 
 
 if __name__ == "__main__":
