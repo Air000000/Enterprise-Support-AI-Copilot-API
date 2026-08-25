@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from importlib import import_module
+from pathlib import Path
 
 import pytest
+
+from experiments.evals.adapters.techqa import TechQADocument
 
 
 def _load_module():
@@ -219,3 +223,129 @@ def test_build_review_rows_adds_frozen_document_excerpts_and_blank_labels() -> N
             "notes": "",
         }
     ]
+
+
+def _write_jsonl(path: Path, rows: list[dict]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as file:
+        for row in rows:
+            file.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
+def _formal_rows() -> tuple[list[dict], list[dict]]:
+    e0_rows = [
+        {
+            "question_id": "TRAIN_Q1",
+            "question": "resolved question",
+            "relevant_document_ids": ["g1"],
+            "raw_chunk_ids": ["c1"],
+            "raw_document_ids": ["g1"],
+        },
+        {
+            "question_id": "TRAIN_Q2",
+            "question": "rerank residual question",
+            "relevant_document_ids": ["g2"],
+            "raw_chunk_ids": ["c2", "c3"],
+            "raw_document_ids": ["g2", "x"],
+        },
+        {
+            "question_id": "TRAIN_Q3",
+            "question": "dense miss question",
+            "relevant_document_ids": ["g3"],
+            "raw_chunk_ids": ["c4", "c5"],
+            "raw_document_ids": ["x", "y"],
+        },
+    ]
+    e1_rows = [
+        {
+            "question_id": "TRAIN_Q1",
+            "dense_chunk_ids": ["c1"],
+            "document_ranking": ["g1"],
+        },
+        {
+            "question_id": "TRAIN_Q2",
+            "dense_chunk_ids": ["c2", "c3"],
+            "document_ranking": ["x"],
+        },
+        {
+            "question_id": "TRAIN_Q3",
+            "dense_chunk_ids": ["c4", "c5"],
+            "document_ranking": ["x", "y"],
+        },
+    ]
+    return e0_rows, e1_rows
+
+
+def test_materialize_residual_analysis_writes_train_summary_and_review(tmp_path: Path) -> None:
+    module = _load_module()
+    e0_rows, e1_rows = _formal_rows()
+    e0_path = tmp_path / "e0" / "train_results.jsonl"
+    e1_path = tmp_path / "e1" / "train_results.jsonl"
+    report_dir = tmp_path / "reports" / "e1_rerank"
+    _write_jsonl(e0_path, e0_rows)
+    _write_jsonl(e1_path, e1_rows)
+
+    documents = [
+        TechQADocument("g1", "resolved gold"),
+        TechQADocument("g2", "rerank residual gold"),
+        TechQADocument("g3", "dense miss gold"),
+        TechQADocument("x", "candidate x"),
+        TechQADocument("y", "candidate y"),
+    ]
+
+    summary = module.materialize_rerank_residual_analysis(
+        e0_results_path=e0_path,
+        e1_results_path=e1_path,
+        report_dir=report_dir,
+        expected_count=3,
+        review_sample_size=2,
+        document_loader=lambda: documents,
+    )
+
+    assert summary["query_count"] == 3
+    assert summary["bucket_counts"] == {
+        "dense_candidate_miss_top100": 1,
+        "rerank_residual_top20": 1,
+        "resolved_top20": 1,
+    }
+    persisted_summary = json.loads(
+        (report_dir / "train_residual_summary.json").read_text(encoding="utf-8")
+    )
+    assert persisted_summary == summary
+
+    review_rows = [
+        json.loads(line)
+        for line in (report_dir / "train_residual_review.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+        if line.strip()
+    ]
+    assert [row["question_id"] for row in review_rows] == ["TRAIN_Q3"]
+    assert review_rows[0]["gold_documents"] == [
+        {"document_id": "g3", "text_excerpt": "dense miss gold"}
+    ]
+    assert review_rows[0]["manual_label"] == ""
+    assert review_rows[0]["notes"] == ""
+
+
+def test_materialize_residual_analysis_checks_count_before_loading_corpus(
+    tmp_path: Path,
+) -> None:
+    module = _load_module()
+    e0_rows, e1_rows = _formal_rows()
+    e0_path = tmp_path / "e0.jsonl"
+    e1_path = tmp_path / "e1.jsonl"
+    _write_jsonl(e0_path, e0_rows[:2])
+    _write_jsonl(e1_path, e1_rows[:2])
+
+    def fail_if_called():
+        raise AssertionError("document loader must not run after count mismatch")
+
+    with pytest.raises(RuntimeError, match="TRAIN row count mismatch"):
+        module.materialize_rerank_residual_analysis(
+            e0_results_path=e0_path,
+            e1_results_path=e1_path,
+            report_dir=tmp_path / "out",
+            expected_count=3,
+            document_loader=fail_if_called,
+        )
