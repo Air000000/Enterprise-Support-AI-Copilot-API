@@ -1,5 +1,7 @@
+from importlib import import_module
 from types import SimpleNamespace
 
+import pytest
 from ranx import Qrels, Run, evaluate
 
 from experiments.evals.ir.ranx_adapter import (
@@ -79,5 +81,41 @@ def test_evaluate_ir_run_uses_frozen_primary_metrics():
     assert evaluate_ir_run(qrels, run) == {
         "recall@5": 1.0,
         "recall@20": 1.0,
+        "mrr@10": 0.75,
+    }
+
+def _load_evaluate_ir_metrics():
+    module = import_module("experiments.evals.ir.ranx_adapter")
+    evaluate_ir_metrics = getattr(module, "evaluate_ir_metrics", None)
+
+    if evaluate_ir_metrics is None:
+        pytest.fail("evaluate_ir_metrics is not implemented yet")
+
+    return evaluate_ir_metrics
+
+
+def test_evaluate_ir_metrics_accepts_requested_metrics() -> None:
+    evaluate_ir_metrics = _load_evaluate_ir_metrics()
+
+    qrels = Qrels(
+        {
+            "q1": {"d1": 1},
+            "q2": {"d2": 1},
+        }
+    )
+    run = Run(
+        {
+            "q1": {"d1": 2.0, "other": 1.0},
+            "q2": {"other": 2.0, "d2": 1.0},
+        }
+    )
+
+    assert evaluate_ir_metrics(
+        qrels,
+        run,
+        ("recall@20", "recall@100", "mrr@10"),
+    ) == {
+        "recall@20": 1.0,
+        "recall@100": 1.0,
         "mrr@10": 0.75,
     }

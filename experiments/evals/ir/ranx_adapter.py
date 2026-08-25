@@ -64,10 +64,24 @@ def build_ranx_run(
     return Run({str(query_id): scores})
 
 
-def evaluate_ir_run(qrels: Qrels, run: Run) -> dict[str, float]:
-    """Evaluate a run with the frozen primary retrieval metrics."""
-    results = evaluate(qrels, run, list(PRIMARY_IR_METRICS))
+def evaluate_ir_metrics(
+    qrels: Qrels,
+    run: Run,
+    metrics: Sequence[str],
+) -> dict[str, float]:
+    """Evaluate a run with the requested retrieval metrics."""
+    results = evaluate(qrels, run, list(metrics))
+
     return {
         metric: float(results[metric])
-        for metric in PRIMARY_IR_METRICS
+        for metric in metrics
     }
+
+
+def evaluate_ir_run(qrels: Qrels, run: Run) -> dict[str, float]:
+    """Evaluate a run with the frozen primary retrieval metrics."""
+    return evaluate_ir_metrics(
+        qrels,
+        run,
+        PRIMARY_IR_METRICS,
+    )
