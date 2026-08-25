@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 from dataclasses import dataclass
@@ -7,7 +8,6 @@ from pathlib import Path
 from typing import Any, Callable, Literal, Mapping, Sequence
 
 from experiments.evals.adapters.techqa import TechQADocument
-from experiments.evals.build_techqa_index import load_frozen_techqa_documents
 
 ResidualBucket = Literal[
     "resolved_top20",
@@ -15,6 +15,16 @@ ResidualBucket = Literal[
     "dense_candidate_miss_top100",
 ]
 DocumentLoader = Callable[[], Sequence[TechQADocument]]
+
+DEFAULT_E0_TRAIN_RESULTS_PATH = Path(
+    "experiments/evals/reports/e0_dense/train_results.jsonl"
+)
+DEFAULT_E1_TRAIN_RESULTS_PATH = Path(
+    "experiments/evals/reports/e1_rerank/train_results.jsonl"
+)
+DEFAULT_RERANK_REPORT_DIR = Path("experiments/evals/reports/e1_rerank")
+DEFAULT_EXPECTED_TRAIN_COUNT = 450
+DEFAULT_REVIEW_SAMPLE_SIZE = 30
 
 
 @dataclass(frozen=True)
@@ -228,14 +238,20 @@ def _load_jsonl(path: str | Path) -> list[dict[str, Any]]:
     ]
 
 
+def _load_default_documents() -> Sequence[TechQADocument]:
+    from experiments.evals.build_techqa_index import load_frozen_techqa_documents
+
+    return load_frozen_techqa_documents()
+
+
 def materialize_rerank_residual_analysis(
     *,
     e0_results_path: str | Path,
     e1_results_path: str | Path,
     report_dir: str | Path,
-    expected_count: int = 450,
-    review_sample_size: int = 30,
-    document_loader: DocumentLoader = load_frozen_techqa_documents,
+    expected_count: int = DEFAULT_EXPECTED_TRAIN_COUNT,
+    review_sample_size: int = DEFAULT_REVIEW_SAMPLE_SIZE,
+    document_loader: DocumentLoader | None = None,
 ) -> dict[str, Any]:
     e0_rows = _load_jsonl(e0_results_path)
     e1_rows = _load_jsonl(e1_results_path)
@@ -252,7 +268,8 @@ def materialize_rerank_residual_analysis(
         sample_size=review_sample_size,
     )
 
-    documents = document_loader()
+    loader = document_loader or _load_default_documents
+    documents = loader()
     documents_by_id = {
         document.document_id: document.text
         for document in documents
@@ -276,3 +293,48 @@ def materialize_rerank_residual_analysis(
             file.write(json.dumps(row, ensure_ascii=False) + "\n")
 
     return summary
+
+
+def main(
+    argv: Sequence[str] | None = None,
+    *,
+    document_loader: DocumentLoader | None = None,
+) -> None:
+    parser = argparse.ArgumentParser(description="Analyze frozen E1 TRAIN residuals.")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    prepare = subparsers.add_parser("prepare")
+    prepare.add_argument("--e0-results", type=Path, default=DEFAULT_E0_TRAIN_RESULTS_PATH)
+    prepare.add_argument("--e1-results", type=Path, default=DEFAULT_E1_TRAIN_RESULTS_PATH)
+    prepare.add_argument("--report-dir", type=Path, default=DEFAULT_RERANK_REPORT_DIR)
+    prepare.add_argument(
+        "--expected-count",
+        type=int,
+        default=DEFAULT_EXPECTED_TRAIN_COUNT,
+    )
+    prepare.add_argument(
+        "--review-sample-size",
+        type=int,
+        default=DEFAULT_REVIEW_SAMPLE_SIZE,
+    )
+    args = parser.parse_args(argv)
+
+    if args.command != "prepare":
+        parser.error(f"unsupported command: {args.command}")
+
+    summary = materialize_rerank_residual_analysis(
+        e0_results_path=args.e0_results,
+        e1_results_path=args.e1_results,
+        report_dir=args.report_dir,
+        expected_count=args.expected_count,
+        review_sample_size=args.review_sample_size,
+        document_loader=document_loader,
+    )
+    print("R2 TRAIN residual evidence materialized.")
+    print(f"query_count = {summary['query_count']}")
+    for bucket, count in summary["bucket_counts"].items():
+        print(f"{bucket} = {count}")
+    print("provider_calls = 0")
+
+
+if __name__ == "__main__":
+    main()
