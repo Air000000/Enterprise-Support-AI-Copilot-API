@@ -1,0 +1,14 @@
+{
+  "query_count": 450,
+  "bucket_counts": {
+    "dense_candidate_miss_top100": 63,
+    "rerank_residual_top20": 20,
+    "resolved_top20": 367
+  },
+  "bucket_rates": {
+    "dense_candidate_miss_top100": 0.14,
+    "rerank_residual_top20": 0.044444444444444446,
+    "resolved_top20": 0.8155555555555556
+  },
+  "dense_candidate_miss_count": 63
+}
