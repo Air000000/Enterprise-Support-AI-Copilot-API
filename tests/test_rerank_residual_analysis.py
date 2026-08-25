@@ -349,3 +349,69 @@ def test_materialize_residual_analysis_checks_count_before_loading_corpus(
             expected_count=3,
             document_loader=fail_if_called,
         )
+
+
+def test_review_summary_reports_sample_only_counts_and_rates() -> None:
+    module = _load_module()
+    rows = [
+        {"question_id": "TRAIN_Q1", "manual_label": "lexical_candidate"},
+        {"question_id": "TRAIN_Q2", "manual_label": "semantic_or_indirect_miss"},
+        {"question_id": "TRAIN_Q3", "manual_label": "qrel_or_query_ambiguity"},
+        {"question_id": "TRAIN_Q4", "manual_label": "qrel_or_query_ambiguity"},
+    ]
+
+    summary = module.summarize_review_rows(rows)
+
+    assert summary == {
+        "reviewed_count": 4,
+        "label_counts": {
+            "lexical_candidate": 1,
+            "semantic_or_indirect_miss": 1,
+            "qrel_or_query_ambiguity": 2,
+        },
+        "label_rates": {
+            "lexical_candidate": 0.25,
+            "semantic_or_indirect_miss": 0.25,
+            "qrel_or_query_ambiguity": 0.5,
+        },
+        "population_rate_claim_allowed": False,
+    }
+
+
+def test_review_summary_rejects_blank_label() -> None:
+    module = _load_module()
+
+    with pytest.raises(RuntimeError, match="review label missing"):
+        module.summarize_review_rows(
+            [{"question_id": "TRAIN_Q1", "manual_label": ""}]
+        )
+
+
+def test_review_summary_rejects_unknown_label() -> None:
+    module = _load_module()
+
+    with pytest.raises(RuntimeError, match="unknown review label"):
+        module.summarize_review_rows(
+            [{"question_id": "TRAIN_Q1", "manual_label": "other"}]
+        )
+
+
+def test_build_r3_gate_freezes_numeric_admission_thresholds() -> None:
+    module = _load_module()
+
+    assert module.build_r3_gate(40) == {
+        "split": "train",
+        "query_count": 450,
+        "dense_candidate_chunk_k": 100,
+        "bm25_candidate_document_k": 100,
+        "hybrid_candidate_document_k": 100,
+        "rrf_k": 60,
+        "dense_candidate_miss_count": 40,
+        "required_recovered_dense_misses": 6,
+        "required_net_gain_cases": 5,
+        "required_net_gain_pp": 1.1111111111111112,
+        "admission_logic": (
+            "recovered_dense_misses >= required_recovered_dense_misses AND "
+            "hybrid_hit100 - dense_hit100 >= required_net_gain_cases"
+        ),
+    }
