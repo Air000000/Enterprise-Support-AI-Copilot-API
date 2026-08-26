@@ -6,7 +6,7 @@ This ledger tracks model/API spend at experiment-stage granularity. Historical s
 | --- | --- | --- | ---: | ---: | --- |
 | Completed E0/E1 | establish the baseline and test the ranking-error rerank hypothesis | mixed historical | historical | ≈ CNY 41 cumulative | frozen |
 | R2 | characterize E1 TRAIN residuals | local | CNY 0 | CNY 0 | pending |
-| R3 | test lexical complementarity with BM25/RRF | local | CNY 0 API | CNY 0 API | pending |
+| R3 | test lexical complementarity with BM25/RRF | local | CNY 0 API | CNY 0 API | ADMIT_PAID_R4 |
 | R4 | test Hybrid candidate pool + rerank | qwen3-rerank | freeze before run | — | gated |
 | G1 | test generator bottleneck on frozen context | candidate LLM | freeze before run | — | gated |
 | D1 | validate the final frozen generation configuration | final LLM/eval | final approval | — | gated |
