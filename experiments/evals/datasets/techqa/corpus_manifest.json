@@ -1,0 +1,19 @@
+{
+  "benchmark": "TechQA-RAG-Eval",
+  "role": "retrieval_corpus",
+  "source_repo": "bowang0911/TechQA-RAG-Eval",
+  "source_revision": "68323f8f191fd5df93e2b2673d79a5da3a805638",
+  "source_file": "corpus/train-00000-of-00001.parquet",
+  "source_file_bytes": 45597950,
+  "source_file_sha256": "3c4c4fe05204efa99101a402dc4d1c6206bcd160eb20be28e6a0b594415b3edb",
+  "loaded_documents": 28481,
+  "unique_document_ids": 28481,
+  "duplicate_document_ids": 0,
+  "empty_text_documents": 0,
+  "unique_qrels_gold_documents": 496,
+  "qrels_gold_documents_missing_from_corpus": 0,
+  "document_id_field": "_id",
+  "text_field": "text",
+  "title_field": "title",
+  "note": "The separate title field may be empty; the corpus text itself can contain the document title. Baseline content is preserved unchanged."
+}

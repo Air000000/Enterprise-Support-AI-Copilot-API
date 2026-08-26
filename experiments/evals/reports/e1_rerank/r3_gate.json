@@ -1,0 +1,13 @@
+{
+  "split": "train",
+  "query_count": 450,
+  "dense_candidate_chunk_k": 100,
+  "bm25_candidate_document_k": 100,
+  "hybrid_candidate_document_k": 100,
+  "rrf_k": 60,
+  "dense_candidate_miss_count": 63,
+  "required_recovered_dense_misses": 10,
+  "required_net_gain_cases": 7,
+  "required_net_gain_pp": 1.5555555555555556,
+  "admission_logic": "recovered_dense_misses >= required_recovered_dense_misses AND hybrid_hit100 - dense_hit100 >= required_net_gain_cases"
+}

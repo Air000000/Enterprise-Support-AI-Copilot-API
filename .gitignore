@@ -238,3 +238,8 @@ storage/
 
 # Manual demo temp files
 tmp_manual_docs/
+.worktrees/
+
+# Large local E1 rerank artifacts; compact manifests/metrics/evidence stay versioned.
+experiments/evals/reports/e1_rerank/*_checkpoint.jsonl
+experiments/evals/reports/e1_rerank/*_results.jsonl

@@ -1,0 +1,14 @@
+{
+  "reviewed_count": 30,
+  "label_counts": {
+    "lexical_candidate": 10,
+    "semantic_or_indirect_miss": 7,
+    "qrel_or_query_ambiguity": 13
+  },
+  "label_rates": {
+    "lexical_candidate": 0.3333333333333333,
+    "semantic_or_indirect_miss": 0.23333333333333334,
+    "qrel_or_query_ambiguity": 0.43333333333333335
+  },
+  "population_rate_claim_allowed": false
+}

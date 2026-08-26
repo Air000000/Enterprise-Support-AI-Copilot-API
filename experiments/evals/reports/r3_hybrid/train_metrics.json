@@ -1,0 +1,31 @@
+{
+  "query_count": 450,
+  "dense_metrics": {
+    "recall@20": 0.74,
+    "recall@100": 0.86,
+    "mrr@10": 0.5104770723104056
+  },
+  "bm25_metrics": {
+    "recall@20": 0.6955555555555556,
+    "recall@100": 0.8333333333333334,
+    "mrr@10": 0.5134285714285715
+  },
+  "hybrid_metrics": {
+    "recall@20": 0.7777777777777778,
+    "recall@100": 0.8933333333333333,
+    "mrr@10": 0.5470899470899471
+  },
+  "dense_hit100": 387,
+  "bm25_hit100": 375,
+  "hybrid_hit100": 402,
+  "dense_only_hits": 37,
+  "bm25_only_hits": 25,
+  "both_hits": 350,
+  "neither_hits": 38,
+  "recovered_dense_misses": 19,
+  "lost_dense_hits": 4,
+  "bm25_latency_p50_ms": 0.9380000001328881,
+  "bm25_latency_p95_ms": 2.0795849993191946,
+  "fusion_latency_p50_ms": 0.07860000005166512,
+  "fusion_latency_p95_ms": 0.11224000036236244
+}
