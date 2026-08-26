@@ -50,7 +50,7 @@ Use the same frozen TechQA chunk identity as E0 Dense:
 - `min_chunk_size=150`
 - same deterministic `chunk_id`, `document_id`, `chunk_index`, and `content`
 
-The audit must reuse existing local/frozen corpus content and must not call an embedding provider.
+The audit must reuse or deterministically reconstruct the existing frozen chunk corpus and must verify the frozen corpus/chunk identity before running. It must not call an embedding provider.
 
 ## 4. Frozen BM25 configuration
 
@@ -97,22 +97,34 @@ For every K, compute at minimum:
 
 - `unique_document_count@K` per query
 - aggregate p50 / p95 or equivalent distribution summaries
-- `duplicate_slot_count@K = K - unique_document_count@K` when at least K results exist
-- `duplicate_ratio@K = 1 - unique_document_count@K / returned_chunk_count`
+- `duplicate_slot_count@K = returned_chunk_count@K - unique_document_count@K`
+- `duplicate_ratio@K = 1 - unique_document_count@K / returned_chunk_count@K`
 
 The denominator must use the number of actually returned chunks so queries with fewer than K results are not misreported.
 
-### 7.2 Gold-document coverage
+### 7.2 Raw chunk-slot gold coverage
 
-Collapse each raw chunk ranking to first-occurrence document order and compute document-level:
+For each raw chunk cutoff K, measure how much of the document-level qrel set is represented by the first K chunk candidates:
+
+`gold_document_recall_within_chunk_k = represented_relevant_document_count / relevant_document_count`
+
+Aggregate this over TRAIN for K=20/50/100.
+
+This is the primary metric for the specific diversity question because it preserves the finite chunk-slot budget. If repeated chunks from one document crowd out other documents, this metric can expose the loss directly.
+
+### 7.3 Collapsed document-ranking comparability
+
+Separately, collapse the raw chunk ranking by first occurrence of `document_id` and compute document-level ranking metrics for comparability with prior TechQA retrieval evidence.
+
+At minimum report:
 
 - Recall@20
 - Recall@50
-- Recall@100
+- Recall@100 where the available unique-document ranking supports the cutoff
 
-These are evaluation metrics only; they do not change the chunk-level internal pipeline.
+These are evaluation-adapter metrics only. They must not replace the raw chunk-slot coverage metric in Section 7.2 and they do not change the chunk-level internal pipeline.
 
-### 7.3 Latency
+### 7.4 Latency
 
 Measure BM25 query latency only:
 
@@ -121,17 +133,18 @@ Measure BM25 query latency only:
 
 Index build time may be reported separately but must not be mixed into per-query latency.
 
-### 7.4 Diagnostic cases
+### 7.5 Diagnostic cases
 
 Produce a deterministic compact case report containing representative high-duplication queries. At minimum capture:
 
 - question_id
 - question
+- cutoff K
 - returned chunk count
 - unique document count
 - duplicate ratio
 - relevant document IDs
-- whether a relevant document is present by K
+- raw chunk-slot gold coverage at K
 - enough chunk/document identity to inspect the duplication pattern
 
 Case selection must be deterministic, e.g. sort by duplicate ratio descending then `question_id` ascending. Do not use DEV or model judgment.
@@ -193,9 +206,10 @@ The first RED should define behavior before implementation for:
 
 1. chunk-level candidate identity
 2. diversity metrics
-3. first-occurrence document collapse for audit recall
-4. frozen audit manifest / zero-provider contract
-5. deterministic diagnostic-case ordering
+3. raw chunk-slot gold coverage
+4. first-occurrence document collapse for comparable audit metrics
+5. frozen audit manifest / zero-provider contract
+6. deterministic diagnostic-case ordering
 
 No production implementation code may be written before the failing test is observed locally.
 
@@ -204,7 +218,7 @@ No production implementation code may be written before the failing test is obse
 The audit is complete when:
 
 - TRAIN 450 queries are evaluated at K=20/50/100
-- diversity, document recall, and latency outputs are produced
+- diversity, raw chunk-slot gold coverage, collapsed document metrics, and latency outputs are produced
 - deterministic diagnostic cases are available
 - focused tests pass
 - relevant/full test suite remains green
