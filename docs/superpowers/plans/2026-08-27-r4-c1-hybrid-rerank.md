@@ -733,8 +733,8 @@ Gate:
 
 ```python
 success = (
-    metrics["mrr@10"] >= 0.577206
-    and metrics["recall@20"] >= 0.810556
+    metrics["mrr@10"] >= 0.5772063492063492
+    and metrics["recall@20"] >= 0.8111111111111111
 )
 ```
 
@@ -929,9 +929,9 @@ Primary decision:
 
 ```text
 PASS C1:
-MRR@10 >= 0.577206
+MRR@10 >= 0.5772063492063492
 AND
-Recall@20 >= 0.810556
+Recall@20 >= 0.8111111111111111
 
 otherwise:
 C1 does not satisfy the pre-registered success gate.

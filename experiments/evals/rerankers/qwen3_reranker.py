@@ -62,7 +62,11 @@ def get_rerank_client() -> OpenAI:
             "Missing required rerank configuration: " + ", ".join(missing)
         )
 
-    return OpenAI(api_key=api_key, base_url=base_url)
+    return OpenAI(
+        api_key=api_key,
+        base_url=base_url,
+        max_retries=0,
+    )
 
 
 def _as_mapping(value: Any, *, label: str) -> Mapping[str, Any]:

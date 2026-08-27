@@ -150,7 +150,7 @@ The threshold may be exceeded by the final already-issued request.
 
 ### Monetary safety envelope
 
-Absolute experiment budget envelope:
+Approved monetary safety envelope:
 
 `USD 1.50`
 
@@ -184,9 +184,9 @@ Primary metrics:
 Pre-registered C1 success gate:
 
 ```text
-MRR@10 >= 0.577206
+MRR@10 >= 0.5772063492063492
 AND
-Recall@20 >= 0.810556
+Recall@20 >= 0.8111111111111111
 ```
 
 This corresponds to:
