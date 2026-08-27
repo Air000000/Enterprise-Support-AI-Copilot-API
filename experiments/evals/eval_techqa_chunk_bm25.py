@@ -271,3 +271,241 @@ def build_cutoff_observation(
         ),
         crowding_rescue=crowding_rescue,
     )
+
+def percentile(
+    values: Sequence[float],
+    p: float,
+) -> float:
+    if not values:
+        return 0.0
+
+    ordered = sorted(float(value) for value in values)
+
+    if len(ordered) == 1:
+        return ordered[0]
+
+    position = (len(ordered) - 1) * p
+    lower_index = int(position)
+    upper_index = min(
+        lower_index + 1,
+        len(ordered) - 1,
+    )
+    fraction = position - lower_index
+
+    return ordered[lower_index] + (
+        ordered[upper_index] - ordered[lower_index]
+    ) * fraction
+
+
+def build_audit_summary(
+    results: Sequence[TechQAChunkBM25AuditResult],
+) -> dict[str, object]:
+    query_count = len(results)
+
+    cutoffs: dict[str, dict[str, float | int]] = {}
+
+    for cutoff in RAW_CUTOFFS:
+        observations = [
+            next(
+                observation
+                for observation in result.cutoff_observations
+                if observation.cutoff == cutoff
+            )
+            for result in results
+        ]
+
+        unique_document_counts = [
+            observation.unique_document_count
+            for observation in observations
+        ]
+        duplicate_ratios = [
+            observation.duplicate_ratio
+            for observation in observations
+        ]
+
+        gold_hit_count = sum(
+            observation.gold_document_hit_within_chunk_k
+            for observation in observations
+        )
+        crowding_rescue_count = sum(
+            observation.crowding_rescue
+            for observation in observations
+        )
+
+        cutoffs[str(cutoff)] = {
+            "unique_document_count_p05": percentile(
+                unique_document_counts,
+                0.05,
+            ),
+            "unique_document_count_p50": percentile(
+                unique_document_counts,
+                0.50,
+            ),
+            "duplicate_ratio_p50": percentile(
+                duplicate_ratios,
+                0.50,
+            ),
+            "duplicate_ratio_p95": percentile(
+                duplicate_ratios,
+                0.95,
+            ),
+            "gold_document_hit_count": gold_hit_count,
+            "gold_document_hit_rate": (
+                gold_hit_count / query_count
+                if query_count
+                else 0.0
+            ),
+            "crowding_rescue_count": crowding_rescue_count,
+            "crowding_rescue_rate": (
+                crowding_rescue_count / query_count
+                if query_count
+                else 0.0
+            ),
+        }
+
+    collapsed_document_recall: dict[str, float] = {}
+
+    for cutoff in RAW_CUTOFFS:
+        hit_count = sum(
+            first_relevant_rank(
+                result.document_top100[:cutoff],
+                result.relevant_document_ids,
+            )
+            is not None
+            for result in results
+        )
+
+        collapsed_document_recall[f"recall@{cutoff}"] = (
+            hit_count / query_count
+            if query_count
+            else 0.0
+        )
+
+    crowding_gaps = [
+        result.crowding_gap
+        for result in results
+        if result.crowding_gap is not None
+    ]
+
+    latencies_ms = [
+        result.latency_ms
+        for result in results
+    ]
+
+    return {
+        "query_count": query_count,
+        "cutoffs": cutoffs,
+        "collapsed_document_recall": (
+            collapsed_document_recall
+        ),
+        "crowding_gap": {
+            "observed_count": len(crowding_gaps),
+            "p50": percentile(crowding_gaps, 0.50),
+            "p95": percentile(crowding_gaps, 0.95),
+        },
+        "latency_ms": {
+            "p50": percentile(latencies_ms, 0.50),
+            "p95": percentile(latencies_ms, 0.95),
+        },
+    }
+
+def build_diagnostic_cases(
+    results: Sequence[TechQAChunkBM25AuditResult],
+    *,
+    limit_per_group: int = 10,
+) -> dict[str, list[dict[str, object]]]:
+    def build_record(
+        result: TechQAChunkBM25AuditResult,
+        observation: ChunkCutoffObservation,
+    ) -> dict[str, object]:
+        return {
+            "question_id": result.question_id,
+            "question": result.question,
+            "cutoff": observation.cutoff,
+            "returned_chunk_count": (
+                observation.returned_chunk_count
+            ),
+            "unique_document_count": (
+                observation.unique_document_count
+            ),
+            "duplicate_ratio": observation.duplicate_ratio,
+            "relevant_document_ids": (
+                result.relevant_document_ids
+            ),
+            "first_gold_chunk_rank": (
+                result.first_gold_chunk_rank
+            ),
+            "first_gold_document_rank": (
+                result.first_gold_document_rank
+            ),
+            "crowding_gap": result.crowding_gap,
+            "crowding_rescue": observation.crowding_rescue,
+            "raw_top100_chunk_ids": (
+                result.raw_top100_chunk_ids
+            ),
+            "raw_top100_document_ids": (
+                result.raw_top100_document_ids
+            ),
+        }
+
+    high_duplication_cases: list[dict[str, object]] = []
+    crowding_rescue_cases: list[dict[str, object]] = []
+
+    for result in results:
+        top100_observation = next(
+            observation
+            for observation in result.cutoff_observations
+            if observation.cutoff == 100
+        )
+
+        high_duplication_cases.append(
+            build_record(
+                result,
+                top100_observation,
+            )
+        )
+
+        for observation in result.cutoff_observations:
+            if observation.crowding_rescue:
+                crowding_rescue_cases.append(
+                    build_record(
+                        result,
+                        observation,
+                    )
+                )
+
+    high_duplication_cases.sort(
+        key=lambda row: (
+            -float(row["duplicate_ratio"]),
+            str(row["question_id"]),
+        )
+    )
+
+    def crowding_sort_key(
+        row: dict[str, object],
+    ) -> tuple[int, int, str]:
+        crowding_gap = row["crowding_gap"]
+        gap = (
+            int(crowding_gap)
+            if crowding_gap is not None
+            else -1
+        )
+
+        return (
+            int(row["cutoff"]),
+            -gap,
+            str(row["question_id"]),
+        )
+
+    crowding_rescue_cases.sort(
+        key=crowding_sort_key
+    )
+
+    return {
+        "high_duplication_cases": (
+            high_duplication_cases[:limit_per_group]
+        ),
+        "crowding_rescue_cases": (
+            crowding_rescue_cases[:limit_per_group]
+        ),
+    }

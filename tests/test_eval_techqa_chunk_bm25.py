@@ -184,3 +184,292 @@ def test_evaluate_audit_case_keeps_raw_chunk_and_unique_document_budgets_separat
     assert result.crowding_gap == 1
 
     assert result.cutoff_observations[0].cutoff == 20
+
+def test_build_audit_summary_aggregates_diversity_coverage_and_document_recall() -> None:
+    module = _load_module()
+
+    def observation(
+        cutoff: int,
+        *,
+        unique_document_count: int,
+        duplicate_ratio: float,
+        gold_hit: bool,
+        crowding_rescue: bool,
+    ):
+        returned_chunk_count = cutoff
+        duplicate_slot_count = round(
+            returned_chunk_count * duplicate_ratio
+        )
+
+        return module.ChunkCutoffObservation(
+            cutoff=cutoff,
+            returned_chunk_count=returned_chunk_count,
+            unique_document_count=unique_document_count,
+            duplicate_slot_count=duplicate_slot_count,
+            duplicate_ratio=duplicate_ratio,
+            gold_document_hit_within_chunk_k=gold_hit,
+            crowding_rescue=crowding_rescue,
+        )
+
+    results = [
+        module.TechQAChunkBM25AuditResult(
+            question_id="TRAIN_Q1",
+            question="q1",
+            relevant_document_ids=("gold1",),
+            audit_search_depth=500,
+            latency_ms=10.0,
+            raw_top100_chunk_ids=("c1",),
+            raw_top100_document_ids=("gold1",),
+            document_top100=("gold1", "x"),
+            first_gold_chunk_rank=1,
+            first_gold_document_rank=1,
+            crowding_gap=0,
+            cutoff_observations=(
+                observation(
+                    20,
+                    unique_document_count=18,
+                    duplicate_ratio=0.10,
+                    gold_hit=True,
+                    crowding_rescue=False,
+                ),
+                observation(
+                    50,
+                    unique_document_count=40,
+                    duplicate_ratio=0.20,
+                    gold_hit=True,
+                    crowding_rescue=False,
+                ),
+                observation(
+                    100,
+                    unique_document_count=75,
+                    duplicate_ratio=0.25,
+                    gold_hit=True,
+                    crowding_rescue=False,
+                ),
+            ),
+        ),
+        module.TechQAChunkBM25AuditResult(
+            question_id="TRAIN_Q2",
+            question="q2",
+            relevant_document_ids=("gold2",),
+            audit_search_depth=1000,
+            latency_ms=30.0,
+            raw_top100_chunk_ids=("c2",),
+            raw_top100_document_ids=("x",),
+            document_top100=("x", "gold2"),
+            first_gold_chunk_rank=25,
+            first_gold_document_rank=2,
+            crowding_gap=23,
+            cutoff_observations=(
+                observation(
+                    20,
+                    unique_document_count=10,
+                    duplicate_ratio=0.50,
+                    gold_hit=False,
+                    crowding_rescue=True,
+                ),
+                observation(
+                    50,
+                    unique_document_count=30,
+                    duplicate_ratio=0.40,
+                    gold_hit=True,
+                    crowding_rescue=False,
+                ),
+                observation(
+                    100,
+                    unique_document_count=60,
+                    duplicate_ratio=0.40,
+                    gold_hit=True,
+                    crowding_rescue=False,
+                ),
+            ),
+        ),
+    ]
+
+    summary = module.build_audit_summary(results)
+
+    assert summary["query_count"] == 2
+
+    cutoff20 = summary["cutoffs"]["20"]
+
+    assert (
+        cutoff20["unique_document_count_p05"]
+        <= cutoff20["unique_document_count_p50"]
+    )
+    assert (
+        cutoff20["duplicate_ratio_p95"]
+        >= cutoff20["duplicate_ratio_p50"]
+    )
+
+    assert cutoff20["gold_document_hit_count"] == 1
+    assert cutoff20["gold_document_hit_rate"] == pytest.approx(0.5)
+
+    assert cutoff20["crowding_rescue_count"] == 1
+    assert cutoff20["crowding_rescue_rate"] == pytest.approx(0.5)
+
+    assert summary["collapsed_document_recall"] == {
+        "recall@20": pytest.approx(1.0),
+        "recall@50": pytest.approx(1.0),
+        "recall@100": pytest.approx(1.0),
+    }
+
+    assert summary["crowding_gap"]["observed_count"] == 2
+    assert summary["latency_ms"]["p50"] == pytest.approx(20.0)
+    assert summary["latency_ms"]["p95"] > summary["latency_ms"]["p50"]
+
+def test_build_diagnostic_cases_orders_high_duplication_and_crowding_rescue_deterministically() -> None:
+    module = _load_module()
+
+    def make_observation(
+        cutoff: int,
+        *,
+        duplicate_ratio: float,
+        crowding_rescue: bool,
+    ):
+        returned_chunk_count = cutoff
+        unique_document_count = round(
+            returned_chunk_count * (1.0 - duplicate_ratio)
+        )
+
+        return module.ChunkCutoffObservation(
+            cutoff=cutoff,
+            returned_chunk_count=returned_chunk_count,
+            unique_document_count=unique_document_count,
+            duplicate_slot_count=(
+                returned_chunk_count - unique_document_count
+            ),
+            duplicate_ratio=duplicate_ratio,
+            gold_document_hit_within_chunk_k=(
+                not crowding_rescue
+            ),
+            crowding_rescue=crowding_rescue,
+        )
+
+    results = [
+        module.TechQAChunkBM25AuditResult(
+            question_id="TRAIN_Q1",
+            question="q1",
+            relevant_document_ids=("gold1",),
+            audit_search_depth=500,
+            latency_ms=10.0,
+            raw_top100_chunk_ids=("q1_c1",),
+            raw_top100_document_ids=("a",),
+            document_top100=("a", "gold1"),
+            first_gold_chunk_rank=80,
+            first_gold_document_rank=10,
+            crowding_gap=70,
+            cutoff_observations=(
+                make_observation(
+                    20,
+                    duplicate_ratio=0.20,
+                    crowding_rescue=True,
+                ),
+                make_observation(
+                    50,
+                    duplicate_ratio=0.30,
+                    crowding_rescue=False,
+                ),
+                make_observation(
+                    100,
+                    duplicate_ratio=0.40,
+                    crowding_rescue=False,
+                ),
+            ),
+        ),
+        module.TechQAChunkBM25AuditResult(
+            question_id="TRAIN_Q2",
+            question="q2",
+            relevant_document_ids=("gold2",),
+            audit_search_depth=500,
+            latency_ms=20.0,
+            raw_top100_chunk_ids=("q2_c1",),
+            raw_top100_document_ids=("b",),
+            document_top100=("b", "gold2"),
+            first_gold_chunk_rank=95,
+            first_gold_document_rank=15,
+            crowding_gap=80,
+            cutoff_observations=(
+                make_observation(
+                    20,
+                    duplicate_ratio=0.50,
+                    crowding_rescue=True,
+                ),
+                make_observation(
+                    50,
+                    duplicate_ratio=0.40,
+                    crowding_rescue=False,
+                ),
+                make_observation(
+                    100,
+                    duplicate_ratio=0.60,
+                    crowding_rescue=False,
+                ),
+            ),
+        ),
+        module.TechQAChunkBM25AuditResult(
+            question_id="TRAIN_Q0",
+            question="q0",
+            relevant_document_ids=("gold0",),
+            audit_search_depth=500,
+            latency_ms=30.0,
+            raw_top100_chunk_ids=("q0_c1",),
+            raw_top100_document_ids=("c",),
+            document_top100=("c", "gold0"),
+            first_gold_chunk_rank=90,
+            first_gold_document_rank=10,
+            crowding_gap=80,
+            cutoff_observations=(
+                make_observation(
+                    20,
+                    duplicate_ratio=0.10,
+                    crowding_rescue=True,
+                ),
+                make_observation(
+                    50,
+                    duplicate_ratio=0.20,
+                    crowding_rescue=False,
+                ),
+                make_observation(
+                    100,
+                    duplicate_ratio=0.60,
+                    crowding_rescue=False,
+                ),
+            ),
+        ),
+    ]
+
+    diagnostics = module.build_diagnostic_cases(
+        results,
+        limit_per_group=10,
+    )
+
+    assert list(diagnostics) == [
+        "high_duplication_cases",
+        "crowding_rescue_cases",
+    ]
+
+    assert [
+        row["question_id"]
+        for row in diagnostics["high_duplication_cases"]
+    ] == [
+        "TRAIN_Q0",
+        "TRAIN_Q2",
+        "TRAIN_Q1",
+    ]
+
+    assert [
+        row["question_id"]
+        for row in diagnostics["crowding_rescue_cases"]
+    ] == [
+        "TRAIN_Q0",
+        "TRAIN_Q2",
+        "TRAIN_Q1",
+    ]
+
+    assert all(
+        row["crowding_rescue"] is True
+        for row in diagnostics["crowding_rescue_cases"]
+    )
+
+    assert diagnostics["crowding_rescue_cases"][0]["cutoff"] == 20
+    assert diagnostics["crowding_rescue_cases"][0]["crowding_gap"] == 80
