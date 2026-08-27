@@ -45,9 +45,10 @@ def test_get_rerank_client_uses_only_dedicated_rerank_environment(monkeypatch):
     observed = {}
 
     class FakeOpenAI:
-        def __init__(self, *, api_key, base_url):
+        def __init__(self, *, api_key, base_url, max_retries):
             observed["api_key"] = api_key
             observed["base_url"] = base_url
+            observed["max_retries"] = max_retries
 
     monkeypatch.setattr(reranker, "OpenAI", FakeOpenAI, raising=False)
 
@@ -58,6 +59,7 @@ def test_get_rerank_client_uses_only_dedicated_rerank_environment(monkeypatch):
         "base_url": (
             "https://workspace.ap-southeast-1.maas.aliyuncs.com/compatible-api/v1"
         ),
+        "max_retries": 0,
     }
 
 
