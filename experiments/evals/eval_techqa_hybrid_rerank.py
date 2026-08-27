@@ -5,6 +5,7 @@ import hashlib
 import json
 import subprocess
 import sys
+import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from importlib.metadata import version
@@ -19,10 +20,15 @@ from experiments.evals.eval_techqa_chunk_bm25 import (
 from experiments.evals.eval_techqa_rerank import (
     load_frozen_e0_rerank_records,
 )
+from experiments.evals.ir.ranx_adapter import (
+    collapse_chunk_results_to_document_ranking,
+)
 from experiments.evals.ir.rrf import fuse_rrf
 from experiments.evals.rerankers.qwen3_reranker import (
     DEFAULT_RERANK_INSTRUCTION,
     DEFAULT_RERANK_MODEL,
+    RerankCandidate,
+    rerank_candidates,
 )
 from experiments.evals.retrievers.bm25_techqa_chunks import (
     TechQAChunk,
@@ -602,6 +608,88 @@ def prepare_frozen_snapshot(
 
     return preflight
 
+
+
+@dataclass(frozen=True)
+class HybridRerankResult:
+    question_id: str
+    relevant_document_ids: tuple[str, ...]
+    fused_chunk_ids: tuple[str, ...]
+    reranked_chunk_ids: tuple[str, ...]
+    reranked_document_ids: tuple[str, ...]
+    document_ranking: tuple[str, ...]
+    rerank_latency_ms: float
+    request_id: str | None
+    total_tokens: int | None
+
+
+def rerank_snapshot_record(
+    record: HybridSnapshotRecord,
+    *,
+    reranker: Callable[..., Any] = rerank_candidates,
+    clock: Callable[[], float] = time.perf_counter,
+) -> HybridRerankResult:
+    if not record.question_id.startswith("TRAIN_"):
+        raise RuntimeError("C1 requires TRAIN-only input")
+
+    fused_chunk_ids = _require_unique_exact(
+        [
+            candidate.chunk_id
+            for candidate in record.fused_candidates
+        ],
+        expected=CANDIDATE_K,
+        label="Hybrid rerank input",
+    )
+
+    candidates = [
+        RerankCandidate(
+            chunk_id=candidate.chunk_id,
+            document_id=candidate.document_id,
+            content=candidate.content,
+        )
+        for candidate in record.fused_candidates
+    ]
+
+    started = clock()
+
+    rerank_result = reranker(
+        record.question.rstrip(),
+        candidates,
+    )
+
+    rerank_latency_ms = (
+        clock() - started
+    ) * 1000.0
+
+    reranked_chunk_ids = tuple(
+        str(candidate.chunk_id)
+        for candidate in rerank_result.results
+    )
+
+    reranked_document_ids = tuple(
+        str(candidate.document_id)
+        for candidate in rerank_result.results
+    )
+
+    document_ranking = tuple(
+        collapse_chunk_results_to_document_ranking(
+            rerank_result.results
+        )
+    )
+
+    return HybridRerankResult(
+        question_id=record.question_id,
+        relevant_document_ids=(
+            record.relevant_document_ids
+        ),
+        fused_chunk_ids=fused_chunk_ids,
+        reranked_chunk_ids=reranked_chunk_ids,
+        reranked_document_ids=reranked_document_ids,
+        document_ranking=document_ranking,
+        rerank_latency_ms=rerank_latency_ms,
+        request_id=rerank_result.request_id,
+        total_tokens=rerank_result.total_tokens,
+    )
 
 def main(
     argv: Sequence[str] | None = None,
