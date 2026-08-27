@@ -522,7 +522,41 @@ def test_paid_runner_safety_contract(tmp_path, monkeypatch):
     assert uncertain_calls == []
 
     # --------------------------------------------------------
-    # 9. qwen3-rerank SDK automatic retries must be disabled.
+    # 9. Missing provider token usage must fail closed.
+    # --------------------------------------------------------
+
+    missing_token_checkpoint = (
+        tmp_path / "missing-token-checkpoint.jsonl"
+    )
+    missing_token_inflight = (
+        tmp_path / "missing-token-inflight.json"
+    )
+
+    def missing_token_evaluator(record):
+        return completed_result(
+            record.question_id,
+            total_tokens=None,
+        )
+
+    with pytest.raises(
+        RuntimeError,
+        match="total_tokens",
+    ):
+        module.run_resumable_paid_eval(
+            [record],
+            evaluator=missing_token_evaluator,
+            checkpoint_path=missing_token_checkpoint,
+            inflight_path=missing_token_inflight,
+        )
+
+    assert json.loads(
+        missing_token_inflight.read_text(
+            encoding="utf-8",
+        )
+    )["question_id"] == "TRAIN_Q1"
+
+    # --------------------------------------------------------
+    # 10. qwen3-rerank SDK automatic retries must be disabled.
     # --------------------------------------------------------
 
     from experiments.evals.rerankers import (

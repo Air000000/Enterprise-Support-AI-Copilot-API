@@ -1198,6 +1198,12 @@ def run_resumable_paid_eval(
                 "provider result question_id mismatch"
             )
 
+        if result.total_tokens is None:
+            raise RuntimeError(
+                "provider result missing total_tokens; "
+                "paid token accounting cannot continue"
+            )
+
         _append_durable_result(
             checkpoint,
             result,
