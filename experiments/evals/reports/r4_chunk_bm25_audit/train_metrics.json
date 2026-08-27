@@ -1,0 +1,50 @@
+{
+  "query_count": 450,
+  "cutoffs": {
+    "20": {
+      "unique_document_count_p05": 13.0,
+      "unique_document_count_p50": 18.0,
+      "duplicate_ratio_p50": 0.1,
+      "duplicate_ratio_p95": 0.35,
+      "gold_document_hit_count": 309,
+      "gold_document_hit_rate": 0.6866666666666666,
+      "crowding_rescue_count": 4,
+      "crowding_rescue_rate": 0.008888888888888889
+    },
+    "50": {
+      "unique_document_count_p05": 33.0,
+      "unique_document_count_p50": 42.0,
+      "duplicate_ratio_p50": 0.16,
+      "duplicate_ratio_p95": 0.34,
+      "gold_document_hit_count": 340,
+      "gold_document_hit_rate": 0.7555555555555555,
+      "crowding_rescue_count": 5,
+      "crowding_rescue_rate": 0.011111111111111112
+    },
+    "100": {
+      "unique_document_count_p05": 57.45,
+      "unique_document_count_p50": 78.0,
+      "duplicate_ratio_p50": 0.22,
+      "duplicate_ratio_p95": 0.42549999999999955,
+      "gold_document_hit_count": 361,
+      "gold_document_hit_rate": 0.8022222222222222,
+      "crowding_rescue_count": 8,
+      "crowding_rescue_rate": 0.017777777777777778
+    }
+  },
+  "collapsed_document_recall": {
+    "recall@20": 0.6955555555555556,
+    "recall@50": 0.7666666666666667,
+    "recall@100": 0.82
+  },
+  "crowding_gap": {
+    "observed_count": 405,
+    "p50": 0.0,
+    "p95": 57.99999999999977
+  },
+  "latency_ms": {
+    "p50": 3.3743499989213888,
+    "p95": 6.666095002219661
+  },
+  "index_build_seconds": 12.89378249999936
+}
