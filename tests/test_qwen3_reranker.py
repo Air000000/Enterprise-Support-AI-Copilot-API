@@ -91,7 +91,31 @@ def test_qwen3_reranker_rejects_incomplete_provider_permutation():
 def test_qwen3_reranker_surfaces_provider_failure_without_dense_fallback():
     reranker = _reranker_module()
     candidates = [reranker.RerankCandidate("c0", "d0", "zero")]
-    client = FakeRerankClient(error=RuntimeError("provider unavailable"))
 
-    with pytest.raises(reranker.RerankProviderError, match="provider unavailable"):
-        reranker.rerank_candidates("question", candidates, client=client)
+    class FakeBadRequestError(Exception):
+        status_code = 400
+        request_id = "req-400"
+        body = {
+            "code": "InvalidParameter",
+            "message": "documents invalid",
+        }
+
+    client = FakeRerankClient(
+        error=FakeBadRequestError("Bad Request")
+    )
+
+    with pytest.raises(reranker.RerankProviderError) as exc_info:
+        reranker.rerank_candidates(
+            "question",
+            candidates,
+            client=client,
+        )
+
+    message = str(exc_info.value)
+
+    assert "Bad Request" in message
+    assert "status_code=400" in message
+    assert "request_id=req-400" in message
+    assert "InvalidParameter" in message
+    assert "documents invalid" in message
+    assert len(client.calls) == 1

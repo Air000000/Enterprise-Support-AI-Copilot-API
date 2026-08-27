@@ -69,6 +69,35 @@ def get_rerank_client() -> OpenAI:
     )
 
 
+def _format_provider_error(error: Exception) -> str:
+    details = [str(error)]
+
+    status_code = getattr(error, "status_code", None)
+    if status_code is not None:
+        details.append(f"status_code={status_code}")
+
+    request_id = getattr(error, "request_id", None)
+    if request_id:
+        details.append(f"request_id={request_id}")
+
+    body = getattr(error, "body", None)
+
+    if isinstance(body, Mapping):
+        code = body.get("code")
+        message = body.get("message")
+
+        if code is not None:
+            details.append(f"code={code}")
+
+        if message is not None:
+            details.append(f"message={message}")
+
+    elif body is not None:
+        details.append(f"body={body}")
+
+    return "; ".join(details)
+
+
 def _as_mapping(value: Any, *, label: str) -> Mapping[str, Any]:
     if not isinstance(value, Mapping):
         raise RerankProviderError(f"invalid rerank provider {label}")
@@ -96,7 +125,10 @@ def rerank_candidates(
     try:
         raw_response = provider.post("/reranks", body=body, cast_to=object)
     except Exception as error:
-        raise RerankProviderError(f"rerank provider failed: {error}") from error
+        raise RerankProviderError(
+            "rerank provider failed: "
+            + _format_provider_error(error)
+        ) from error
 
     response = _as_mapping(raw_response, label="response")
     raw_results = response.get("results")
