@@ -2,9 +2,41 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
-from experiments.evals.adapters.techqa import TechQARetrievalCase
+import json
+from pathlib import Path
+
+import hashlib
+import subprocess
+from importlib.metadata import version
+from experiments.evals.adapters.techqa import (
+    TechQARetrievalCase,
+    build_techqa_documents,
+)
+from experiments.evals.retrievers.bm25_techqa_chunks import (
+    TechQAChunkBM25Retriever,
+    build_techqa_chunks,
+)
+
+EXPECTED_SPLITTER_BLOB_SHA = (
+    "64026b4434f1eea46b95bfce9f667680a37a2103"
+)
+EXPECTED_TECHQA_CHUNK_COUNT = 172614
+EXPECTED_TECHQA_TRAIN_QUERY_COUNT = 450
+
+DEFAULT_TECHQA_MANIFEST_PATH = Path(
+    "experiments/evals/datasets/techqa/manifest.json"
+)
+DEFAULT_E0_TRAIN_RESULTS_PATH = Path(
+    "experiments/evals/reports/e0_dense/train_results.jsonl"
+)
+DEFAULT_R3_MANIFEST_PATH = Path(
+    "experiments/evals/reports/r3_hybrid/train_manifest.json"
+)
+DEFAULT_OUTPUT_DIR = Path(
+    "experiments/evals/reports/r4_chunk_bm25_audit"
+)
 
 @dataclass(frozen=True)
 class ChunkCutoffObservation:
@@ -509,3 +541,421 @@ def build_diagnostic_cases(
             crowding_rescue_cases[:limit_per_group]
         ),
     }
+
+def load_frozen_train_cases_from_e0(
+    path: str | Path,
+    *,
+    expected_count: int | None = 450,
+) -> list[TechQARetrievalCase]:
+    cases: list[TechQARetrievalCase] = []
+    seen_question_ids: set[str] = set()
+
+    for line in Path(path).read_text(
+        encoding="utf-8",
+    ).splitlines():
+        if not line.strip():
+            continue
+
+        payload = json.loads(line)
+        question_id = str(payload["question_id"])
+
+        if not question_id.startswith("TRAIN_"):
+            raise RuntimeError(
+                "R4 chunk BM25 audit requires TRAIN-only input"
+            )
+
+        if question_id in seen_question_ids:
+            raise RuntimeError(
+                "duplicate TRAIN question_id: "
+                f"{question_id}"
+            )
+
+        seen_question_ids.add(question_id)
+
+        relevant_document_ids = tuple(
+            str(document_id)
+            for document_id in payload[
+                "relevant_document_ids"
+            ]
+        )
+
+        if len(relevant_document_ids) != 1:
+            raise RuntimeError(
+                "TRAIN case requires exactly one relevant document: "
+                f"question_id={question_id}, "
+                f"count={len(relevant_document_ids)}"
+            )
+
+        cases.append(
+            TechQARetrievalCase(
+                question_id=question_id,
+                question=str(payload["question"]),
+                relevant_document_ids=relevant_document_ids,
+                split="train",
+            )
+        )
+
+    if (
+        expected_count is not None
+        and len(cases) != expected_count
+    ):
+        raise RuntimeError(
+            "TRAIN query count mismatch: "
+            f"expected={expected_count}, actual={len(cases)}"
+        )
+
+    return cases
+
+def run_preflight(
+    *,
+    train_results_path: str | Path,
+    r3_manifest_path: str | Path,
+    dataset_manifest_path: str | Path,
+    train_query_count: int,
+    observed_chunk_count: int,
+    splitter_blob_loader: Callable[[], str],
+    version_loader: Callable[[str], str],
+) -> dict[str, object]:
+    actual_train_results_sha = hashlib.sha256(
+        Path(train_results_path).read_bytes()
+    ).hexdigest()
+
+    r3_manifest = json.loads(
+        Path(r3_manifest_path).read_text(
+            encoding="utf-8",
+        )
+    )
+    historical_train_results_sha = str(
+        r3_manifest["dense_source"]["results_sha256"]
+    )
+
+    train_results_sha_matches_historical = (
+        actual_train_results_sha
+        == historical_train_results_sha
+    )
+
+    bm25_version = version_loader("bm25s")
+
+    if bm25_version != "0.3.10":
+        raise RuntimeError(
+            "bm25s version mismatch: "
+            f"expected=0.3.10, actual={bm25_version}"
+        )
+
+    splitter_blob_sha = splitter_blob_loader()
+
+    if splitter_blob_sha != EXPECTED_SPLITTER_BLOB_SHA:
+        raise RuntimeError(
+            "splitter blob mismatch: "
+            f"expected={EXPECTED_SPLITTER_BLOB_SHA}, "
+            f"actual={splitter_blob_sha}"
+        )
+
+    if observed_chunk_count != EXPECTED_TECHQA_CHUNK_COUNT:
+        raise RuntimeError(
+            "TechQA chunk count mismatch: "
+            f"expected={EXPECTED_TECHQA_CHUNK_COUNT}, "
+            f"actual={observed_chunk_count}"
+        )
+
+    if train_query_count != EXPECTED_TECHQA_TRAIN_QUERY_COUNT:
+        raise RuntimeError(
+            "TRAIN query count mismatch: "
+            f"expected={EXPECTED_TECHQA_TRAIN_QUERY_COUNT}, "
+            f"actual={train_query_count}"
+        )
+
+    dataset_manifest = json.loads(
+        Path(dataset_manifest_path).read_text(
+            encoding="utf-8",
+        )
+    )
+
+    return {
+        "split": "train",
+        "query_count": train_query_count,
+        "chunk_count": observed_chunk_count,
+        "bm25_version": bm25_version,
+        "splitter_blob_sha": splitter_blob_sha,
+        "provider_calls": 0,
+        "dev_artifact_opened": False,
+        "historical_e0_train_results_sha256": (
+            historical_train_results_sha
+        ),
+        "input_e0_train_results_sha256": (
+            actual_train_results_sha
+        ),
+        "e0_train_results_sha_matches_historical": (
+            train_results_sha_matches_historical
+        ),
+        "retrieval_dataset": (
+            dataset_manifest["retrieval_dataset"]
+        ),
+    }
+
+def build_run_manifest(
+    preflight_report: dict[str, object],
+) -> dict[str, object]:
+    return {
+        "benchmark": "TechQA-RAG-Eval",
+        "run": "r4_chunk_bm25_candidate_audit",
+        "split": preflight_report["split"],
+        "query_count": preflight_report["query_count"],
+        "provider_calls": preflight_report["provider_calls"],
+        "dev_artifact_opened": preflight_report[
+            "dev_artifact_opened"
+        ],
+        "chunking": {
+            "strategy": "paragraph_aware_character",
+            "chunk_size": 800,
+            "chunk_overlap": 120,
+            "min_chunk_size": 150,
+            "splitter_blob_sha": preflight_report[
+                "splitter_blob_sha"
+            ],
+            "observed_chunk_count": preflight_report[
+                "chunk_count"
+            ],
+        },
+        "bm25": {
+            "library": "bm25s",
+            "version": preflight_report["bm25_version"],
+            "method": "lucene",
+            "k1": 1.5,
+            "b": 0.75,
+            "backend": "numpy",
+            "indexed_unit": "chunk",
+            "tokenizer_regex": (
+                r"[A-Za-z0-9]+(?:[._:/+-][A-Za-z0-9]+)*"
+            ),
+            "query_normalization": "rstrip",
+        },
+        "audit": {
+            "raw_chunk_cutoffs": [20, 50, 100],
+            "initial_search_depth": 500,
+            "required_unique_documents": 100,
+            "depth_growth_factor": 2,
+            "max_search_depth": EXPECTED_TECHQA_CHUNK_COUNT,
+        },
+        "retrieval_dataset": preflight_report[
+            "retrieval_dataset"
+        ],
+        "input_e0_train_results_sha256": preflight_report[
+            "input_e0_train_results_sha256"
+        ],
+        "historical_e0_train_results_sha256": (
+            preflight_report.get(
+                "historical_e0_train_results_sha256"
+            )
+        ),
+        "e0_train_results_sha_matches_historical": (
+            preflight_report.get(
+                "e0_train_results_sha_matches_historical"
+            )
+        ),
+    }
+
+def run_audit_cases(
+    *,
+    cases: Sequence[TechQARetrievalCase],
+    chunks: Sequence[TechQAChunkRef],
+    retriever_factory: Callable[..., object],
+) -> tuple[list[TechQAChunkBM25AuditResult], float]:
+    started = time.perf_counter()
+
+    retriever = retriever_factory(chunks)
+
+    index_build_seconds = (
+        time.perf_counter() - started
+    )
+
+    results: list[TechQAChunkBM25AuditResult] = []
+
+    for case in cases:
+        result = evaluate_audit_case(
+            case,
+            searcher=retriever.search,
+        )
+        results.append(result)
+
+    return results, index_build_seconds
+
+def write_audit_artifacts(
+    *,
+    output_dir: str | Path,
+    manifest: dict[str, object],
+    metrics: dict[str, object],
+    results: Sequence[TechQAChunkBM25AuditResult],
+    diagnostics: dict[str, object],
+) -> None:
+    output_path = Path(output_dir)
+    output_path.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    (output_path / "train_manifest.json").write_text(
+        json.dumps(
+            manifest,
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    (output_path / "train_metrics.json").write_text(
+        json.dumps(
+            metrics,
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    results_text = "".join(
+        json.dumps(
+            asdict(result),
+            ensure_ascii=False,
+        )
+        + "\n"
+        for result in results
+    )
+    (output_path / "train_results.jsonl").write_text(
+        results_text,
+        encoding="utf-8",
+    )
+
+    (output_path / "diagnostic_cases.json").write_text(
+        json.dumps(
+            diagnostics,
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+def execute_audit(
+    *,
+    cases: Sequence[TechQARetrievalCase],
+    chunks: Sequence[TechQAChunkRef],
+    preflight_report: dict[str, object],
+    output_dir: str | Path,
+    retriever_factory: Callable[..., object],
+) -> dict[str, object]:
+    results, index_build_seconds = run_audit_cases(
+        cases=cases,
+        chunks=chunks,
+        retriever_factory=retriever_factory,
+    )
+
+    metrics = build_audit_summary(results)
+    metrics["index_build_seconds"] = index_build_seconds
+
+    diagnostics = build_diagnostic_cases(results)
+    manifest = build_run_manifest(preflight_report)
+
+    write_audit_artifacts(
+        output_dir=output_dir,
+        manifest=manifest,
+        metrics=metrics,
+        results=results,
+        diagnostics=diagnostics,
+    )
+
+    return metrics
+
+def _resolve_splitter_blob_sha() -> str:
+    completed = subprocess.run(
+        [
+            "git",
+            "hash-object",
+            "rag_runtime/text_splitter.py",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return completed.stdout.strip()
+
+
+def main() -> None:
+    print("[R4] Loading frozen E0 TRAIN cases...")
+
+    cases = load_frozen_train_cases_from_e0(
+        DEFAULT_E0_TRAIN_RESULTS_PATH,
+        expected_count=EXPECTED_TECHQA_TRAIN_QUERY_COUNT,
+    )
+
+    dataset_manifest = json.loads(
+        DEFAULT_TECHQA_MANIFEST_PATH.read_text(
+            encoding="utf-8",
+        )
+    )
+    retrieval_dataset = dataset_manifest[
+        "retrieval_dataset"
+    ]
+
+    print("[R4] Loading frozen TechQA corpus...")
+
+    from datasets import load_dataset
+
+    corpus_rows = load_dataset(
+        retrieval_dataset["repo"],
+        "corpus",
+        split="train",
+        revision=retrieval_dataset["revision"],
+    )
+
+    documents = build_techqa_documents(corpus_rows)
+
+    print(
+        "[R4] Building deterministic chunks: "
+        f"documents={len(documents)}"
+    )
+
+    chunks = build_techqa_chunks(documents)
+
+    print(
+        "[R4] Chunk universe built: "
+        f"chunks={len(chunks)}"
+    )
+
+    preflight_report = run_preflight(
+        train_results_path=DEFAULT_E0_TRAIN_RESULTS_PATH,
+        r3_manifest_path=DEFAULT_R3_MANIFEST_PATH,
+        dataset_manifest_path=DEFAULT_TECHQA_MANIFEST_PATH,
+        train_query_count=len(cases),
+        observed_chunk_count=len(chunks),
+        splitter_blob_loader=_resolve_splitter_blob_sha,
+        version_loader=version,
+    )
+
+    print(
+        "[R4] Preflight passed: "
+        "TRAIN-only, provider_calls=0"
+    )
+    print("[R4] Building chunk BM25 index and running audit...")
+
+    metrics = execute_audit(
+        cases=cases,
+        chunks=chunks,
+        preflight_report=preflight_report,
+        output_dir=DEFAULT_OUTPUT_DIR,
+        retriever_factory=TechQAChunkBM25Retriever,
+    )
+
+    print("[R4] Audit complete.")
+    print(
+        json.dumps(
+            metrics,
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+
+
+if __name__ == "__main__":
+    main()

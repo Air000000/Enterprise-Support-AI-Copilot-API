@@ -2,6 +2,8 @@ from importlib import import_module
 
 import pytest
 from experiments.evals.adapters.techqa import TechQARetrievalCase
+import json
+import hashlib
 
 def _load_module():
     try:
@@ -473,3 +475,823 @@ def test_build_diagnostic_cases_orders_high_duplication_and_crowding_rescue_dete
 
     assert diagnostics["crowding_rescue_cases"][0]["cutoff"] == 20
     assert diagnostics["crowding_rescue_cases"][0]["crowding_gap"] == 80
+
+def test_load_frozen_train_cases_rejects_dev_rows(
+    tmp_path,
+) -> None:
+    module = _load_module()
+
+    path = tmp_path / "train_results.jsonl"
+    path.write_text(
+        "\n".join(
+            [
+                (
+                    '{"question_id":"TRAIN_Q0",'
+                    '"question":"q",'
+                    '"relevant_document_ids":["g"]}'
+                ),
+                (
+                    '{"question_id":"DEV_Q0",'
+                    '"question":"dev",'
+                    '"relevant_document_ids":["g"]}'
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="TRAIN-only input",
+    ):
+        module.load_frozen_train_cases_from_e0(
+            path,
+            expected_count=None,
+        )
+
+def test_load_frozen_train_cases_requires_expected_query_count(
+    tmp_path,
+) -> None:
+    module = _load_module()
+
+    path = tmp_path / "train_results.jsonl"
+    path.write_text(
+        "".join(
+            (
+                f'{{"question_id":"TRAIN_Q{index:03d}",'
+                f'"question":"q{index}",'
+                '"relevant_document_ids":["gold"]}\n'
+            )
+            for index in range(449)
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="TRAIN query count mismatch",
+    ):
+        module.load_frozen_train_cases_from_e0(
+            path,
+            expected_count=450,
+        )
+
+def test_load_frozen_train_cases_rejects_duplicate_question_ids(
+    tmp_path,
+) -> None:
+    module = _load_module()
+
+    path = tmp_path / "train_results.jsonl"
+    path.write_text(
+        "\n".join(
+            [
+                (
+                    '{"question_id":"TRAIN_Q001",'
+                    '"question":"q1",'
+                    '"relevant_document_ids":["gold1"]}'
+                ),
+                (
+                    '{"question_id":"TRAIN_Q001",'
+                    '"question":"q1 duplicate",'
+                    '"relevant_document_ids":["gold1"]}'
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="duplicate TRAIN question_id",
+    ):
+        module.load_frozen_train_cases_from_e0(
+            path,
+            expected_count=None,
+        )
+
+@pytest.mark.parametrize(
+    "relevant_document_ids",
+    [
+        [],
+        ["gold1", "gold2"],
+    ],
+)
+def test_load_frozen_train_cases_requires_exactly_one_relevant_document(
+    tmp_path,
+    relevant_document_ids,
+) -> None:
+    module = _load_module()
+
+    path = tmp_path / "train_results.jsonl"
+    path.write_text(
+        (
+            '{"question_id":"TRAIN_Q001",'
+            '"question":"q",'
+            f'"relevant_document_ids":{relevant_document_ids!r}'
+            "}\n"
+        ).replace("'", '"'),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="exactly one relevant document",
+    ):
+        module.load_frozen_train_cases_from_e0(
+            path,
+            expected_count=None,
+        )
+
+def test_run_preflight_records_historical_e0_sha_mismatch(
+    tmp_path,
+) -> None:
+    module = _load_module()
+
+    train_results_path = tmp_path / "train_results.jsonl"
+    train_results_path.write_text(
+        '{"question_id":"TRAIN_Q001"}\n',
+        encoding="utf-8",
+    )
+
+    r3_manifest_path = tmp_path / "r3_manifest.json"
+    r3_manifest_path.write_text(
+        json.dumps(
+            {
+                "dense_source": {
+                    "results_sha256": "wrong-sha",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    dataset_manifest_path = tmp_path / "dataset_manifest.json"
+    dataset_manifest_path.write_text(
+        json.dumps(
+            {
+                "retrieval_dataset": {
+                    "repo": "bowang0911/TechQA-RAG-Eval",
+                    "revision": "frozen-revision",
+                    "corpus_sha256": "frozen-corpus-sha",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    report = module.run_preflight(
+        train_results_path=train_results_path,
+        r3_manifest_path=r3_manifest_path,
+        dataset_manifest_path=dataset_manifest_path,
+        train_query_count=450,
+        observed_chunk_count=172614,
+        splitter_blob_loader=lambda: (
+            "64026b4434f1eea46b95bfce9f667680a37a2103"
+        ),
+        version_loader=lambda package: "0.3.10",
+    )
+
+    historical_sha = json.loads(
+        r3_manifest_path.read_text(
+            encoding="utf-8",
+        )
+    )["dense_source"]["results_sha256"]
+
+    assert report[
+        "historical_e0_train_results_sha256"
+    ] == historical_sha
+
+    assert report[
+        "input_e0_train_results_sha256"
+    ] != historical_sha
+
+    assert report[
+        "e0_train_results_sha_matches_historical"
+    ] is False
+
+    manifest = module.build_run_manifest(report)
+
+    assert manifest[
+        "historical_e0_train_results_sha256"
+    ] == historical_sha
+
+    assert manifest[
+        "input_e0_train_results_sha256"
+    ] == report[
+        "input_e0_train_results_sha256"
+    ]
+
+    assert manifest[
+        "e0_train_results_sha_matches_historical"
+    ] is False
+
+def test_run_preflight_rejects_bm25_version_mismatch(
+    tmp_path,
+) -> None:
+    module = _load_module()
+
+    train_results_path = tmp_path / "train_results.jsonl"
+    train_results_path.write_text(
+        '{"question_id":"TRAIN_Q001"}\n',
+        encoding="utf-8",
+    )
+
+    train_results_sha = hashlib.sha256(
+        train_results_path.read_bytes()
+    ).hexdigest()
+
+    r3_manifest_path = tmp_path / "r3_manifest.json"
+    r3_manifest_path.write_text(
+        json.dumps(
+            {
+                "dense_source": {
+                    "results_sha256": train_results_sha,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    dataset_manifest_path = tmp_path / "dataset_manifest.json"
+    dataset_manifest_path.write_text(
+        json.dumps(
+            {
+                "retrieval_dataset": {
+                    "repo": "bowang0911/TechQA-RAG-Eval",
+                    "revision": "frozen-revision",
+                    "corpus_sha256": "frozen-corpus-sha",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="bm25s version mismatch",
+    ):
+        module.run_preflight(
+            train_results_path=train_results_path,
+            r3_manifest_path=r3_manifest_path,
+            dataset_manifest_path=dataset_manifest_path,
+            train_query_count=450,
+            observed_chunk_count=172614,
+            splitter_blob_loader=lambda: (
+                "64026b4434f1eea46b95bfce9f667680a37a2103"
+            ),
+            version_loader=lambda package: "0.3.11",
+        )
+
+def test_run_preflight_rejects_splitter_blob_mismatch(
+    tmp_path,
+) -> None:
+    module = _load_module()
+
+    train_results_path = tmp_path / "train_results.jsonl"
+    train_results_path.write_text(
+        '{"question_id":"TRAIN_Q001"}\n',
+        encoding="utf-8",
+    )
+
+    train_results_sha = hashlib.sha256(
+        train_results_path.read_bytes()
+    ).hexdigest()
+
+    r3_manifest_path = tmp_path / "r3_manifest.json"
+    r3_manifest_path.write_text(
+        json.dumps(
+            {
+                "dense_source": {
+                    "results_sha256": train_results_sha,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    dataset_manifest_path = tmp_path / "dataset_manifest.json"
+    dataset_manifest_path.write_text(
+        json.dumps(
+            {
+                "retrieval_dataset": {
+                    "repo": "bowang0911/TechQA-RAG-Eval",
+                    "revision": "frozen-revision",
+                    "corpus_sha256": "frozen-corpus-sha",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="splitter blob mismatch",
+    ):
+        module.run_preflight(
+            train_results_path=train_results_path,
+            r3_manifest_path=r3_manifest_path,
+            dataset_manifest_path=dataset_manifest_path,
+            train_query_count=450,
+            observed_chunk_count=172614,
+            splitter_blob_loader=lambda: "wrong-splitter-blob",
+            version_loader=lambda package: "0.3.10",
+        )
+
+def test_run_preflight_rejects_chunk_count_mismatch(
+    tmp_path,
+) -> None:
+    module = _load_module()
+
+    train_results_path = tmp_path / "train_results.jsonl"
+    train_results_path.write_text(
+        '{"question_id":"TRAIN_Q001"}\n',
+        encoding="utf-8",
+    )
+
+    train_results_sha = hashlib.sha256(
+        train_results_path.read_bytes()
+    ).hexdigest()
+
+    r3_manifest_path = tmp_path / "r3_manifest.json"
+    r3_manifest_path.write_text(
+        json.dumps(
+            {
+                "dense_source": {
+                    "results_sha256": train_results_sha,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    dataset_manifest_path = tmp_path / "dataset_manifest.json"
+    dataset_manifest_path.write_text(
+        json.dumps(
+            {
+                "retrieval_dataset": {
+                    "repo": "bowang0911/TechQA-RAG-Eval",
+                    "revision": "frozen-revision",
+                    "corpus_sha256": "frozen-corpus-sha",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="TechQA chunk count mismatch",
+    ):
+        module.run_preflight(
+            train_results_path=train_results_path,
+            r3_manifest_path=r3_manifest_path,
+            dataset_manifest_path=dataset_manifest_path,
+            train_query_count=450,
+            observed_chunk_count=172613,
+            splitter_blob_loader=lambda: (
+                "64026b4434f1eea46b95bfce9f667680a37a2103"
+            ),
+            version_loader=lambda package: "0.3.10",
+        )
+
+def test_run_preflight_rejects_train_query_count_mismatch(
+    tmp_path,
+) -> None:
+    module = _load_module()
+
+    train_results_path = tmp_path / "train_results.jsonl"
+    train_results_path.write_text(
+        '{"question_id":"TRAIN_Q001"}\n',
+        encoding="utf-8",
+    )
+
+    train_results_sha = hashlib.sha256(
+        train_results_path.read_bytes()
+    ).hexdigest()
+
+    r3_manifest_path = tmp_path / "r3_manifest.json"
+    r3_manifest_path.write_text(
+        json.dumps(
+            {
+                "dense_source": {
+                    "results_sha256": train_results_sha,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    dataset_manifest_path = tmp_path / "dataset_manifest.json"
+    dataset_manifest_path.write_text(
+        json.dumps(
+            {
+                "retrieval_dataset": {
+                    "repo": "bowang0911/TechQA-RAG-Eval",
+                    "revision": "frozen-revision",
+                    "corpus_sha256": "frozen-corpus-sha",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="TRAIN query count mismatch",
+    ):
+        module.run_preflight(
+            train_results_path=train_results_path,
+            r3_manifest_path=r3_manifest_path,
+            dataset_manifest_path=dataset_manifest_path,
+            train_query_count=449,
+            observed_chunk_count=172614,
+            splitter_blob_loader=lambda: (
+                "64026b4434f1eea46b95bfce9f667680a37a2103"
+            ),
+            version_loader=lambda package: "0.3.10",
+        )
+
+def test_run_preflight_returns_frozen_audit_evidence(
+    tmp_path,
+) -> None:
+    module = _load_module()
+
+    train_results_path = tmp_path / "train_results.jsonl"
+    train_results_path.write_text(
+        '{"question_id":"TRAIN_Q001"}\n',
+        encoding="utf-8",
+    )
+
+    train_results_sha = hashlib.sha256(
+        train_results_path.read_bytes()
+    ).hexdigest()
+
+    r3_manifest_path = tmp_path / "r3_manifest.json"
+    r3_manifest_path.write_text(
+        json.dumps(
+            {
+                "dense_source": {
+                    "results_sha256": train_results_sha,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    dataset_manifest_path = tmp_path / "dataset_manifest.json"
+    dataset_manifest_path.write_text(
+        json.dumps(
+            {
+                "retrieval_dataset": {
+                    "repo": "bowang0911/TechQA-RAG-Eval",
+                    "revision": "frozen-revision",
+                    "corpus_sha256": "frozen-corpus-sha",
+                    "queries_sha256": "frozen-queries-sha",
+                    "qrels_sha256": "frozen-qrels-sha",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    report = module.run_preflight(
+        train_results_path=train_results_path,
+        r3_manifest_path=r3_manifest_path,
+        dataset_manifest_path=dataset_manifest_path,
+        train_query_count=450,
+        observed_chunk_count=172614,
+        splitter_blob_loader=lambda: (
+            "64026b4434f1eea46b95bfce9f667680a37a2103"
+        ),
+        version_loader=lambda package: "0.3.10",
+    )
+
+    assert report["split"] == "train"
+    assert report["query_count"] == 450
+    assert report["chunk_count"] == 172614
+    assert report["bm25_version"] == "0.3.10"
+    assert report["splitter_blob_sha"] == (
+        "64026b4434f1eea46b95bfce9f667680a37a2103"
+    )
+    assert report["provider_calls"] == 0
+    assert report["dev_artifact_opened"] is False
+    assert (
+        report["input_e0_train_results_sha256"]
+        == train_results_sha
+    )
+    assert report["retrieval_dataset"] == {
+        "repo": "bowang0911/TechQA-RAG-Eval",
+        "revision": "frozen-revision",
+        "corpus_sha256": "frozen-corpus-sha",
+        "queries_sha256": "frozen-queries-sha",
+        "qrels_sha256": "frozen-qrels-sha",
+    }
+
+def test_build_run_manifest_freezes_chunk_bm25_audit_contract() -> None:
+    module = _load_module()
+
+    preflight_report = {
+        "split": "train",
+        "query_count": 450,
+        "chunk_count": 172614,
+        "bm25_version": "0.3.10",
+        "splitter_blob_sha": (
+            "64026b4434f1eea46b95bfce9f667680a37a2103"
+        ),
+        "provider_calls": 0,
+        "dev_artifact_opened": False,
+        "input_e0_train_results_sha256": "frozen-e0-train-sha",
+        "retrieval_dataset": {
+            "repo": "bowang0911/TechQA-RAG-Eval",
+            "revision": "frozen-revision",
+            "corpus_sha256": "frozen-corpus-sha",
+            "queries_sha256": "frozen-queries-sha",
+            "qrels_sha256": "frozen-qrels-sha",
+        },
+    }
+
+    manifest = module.build_run_manifest(preflight_report)
+
+    assert manifest["benchmark"] == "TechQA-RAG-Eval"
+    assert manifest["run"] == "r4_chunk_bm25_candidate_audit"
+    assert manifest["split"] == "train"
+    assert manifest["query_count"] == 450
+    assert manifest["provider_calls"] == 0
+    assert manifest["dev_artifact_opened"] is False
+
+    assert manifest["chunking"] == {
+        "strategy": "paragraph_aware_character",
+        "chunk_size": 800,
+        "chunk_overlap": 120,
+        "min_chunk_size": 150,
+        "splitter_blob_sha": (
+            "64026b4434f1eea46b95bfce9f667680a37a2103"
+        ),
+        "observed_chunk_count": 172614,
+    }
+
+    assert manifest["bm25"] == {
+        "library": "bm25s",
+        "version": "0.3.10",
+        "method": "lucene",
+        "k1": 1.5,
+        "b": 0.75,
+        "backend": "numpy",
+        "indexed_unit": "chunk",
+        "tokenizer_regex": (
+            r"[A-Za-z0-9]+(?:[._:/+-][A-Za-z0-9]+)*"
+        ),
+        "query_normalization": "rstrip",
+    }
+
+    assert manifest["audit"] == {
+        "raw_chunk_cutoffs": [20, 50, 100],
+        "initial_search_depth": 500,
+        "required_unique_documents": 100,
+        "depth_growth_factor": 2,
+        "max_search_depth": 172614,
+    }
+
+    assert manifest["retrieval_dataset"] == (
+        preflight_report["retrieval_dataset"]
+    )
+    assert manifest["input_e0_train_results_sha256"] == (
+        "frozen-e0-train-sha"
+    )
+
+    assert "chunk_corpus_sha256" not in manifest
+    assert "rerank_model" not in manifest
+    assert "rrf" not in manifest
+
+def test_run_audit_cases_builds_retriever_once_for_all_queries() -> None:
+    module = _load_module()
+
+    chunks = [
+        module.TechQAChunkRef(
+            chunk_id=f"chunk-{index}",
+            document_id=f"doc-{index}",
+            chunk_index=index,
+        )
+        for index in range(100)
+    ]
+
+    cases = [
+        module.TechQARetrievalCase(
+            question_id="TRAIN_Q001",
+            question="first query",
+            relevant_document_ids=("doc-0",),
+            split="train",
+        ),
+        module.TechQARetrievalCase(
+            question_id="TRAIN_Q002",
+            question="second query",
+            relevant_document_ids=("doc-0",),
+            split="train",
+        ),
+    ]
+
+    build_count = 0
+
+    class FakeRetriever:
+        def search(
+            self,
+            query: str,
+            *,
+            top_k: int = 100,
+        ):
+            del query
+            return chunks[:top_k]
+
+    def retriever_factory(input_chunks):
+        nonlocal build_count
+        build_count += 1
+        assert input_chunks is chunks
+        return FakeRetriever()
+
+    results, index_build_seconds = module.run_audit_cases(
+        cases=cases,
+        chunks=chunks,
+        retriever_factory=retriever_factory,
+    )
+
+    assert build_count == 1
+    assert len(results) == 2
+    assert [
+        result.question_id
+        for result in results
+    ] == [
+        "TRAIN_Q001",
+        "TRAIN_Q002",
+    ]
+    assert index_build_seconds >= 0.0
+
+def test_write_audit_artifacts_writes_complete_report_set(
+    tmp_path,
+) -> None:
+    module = _load_module()
+
+    result = module.TechQAChunkBM25AuditResult(
+        question_id="TRAIN_Q001",
+        question="test query",
+        relevant_document_ids=("gold-doc",),
+        audit_search_depth=500,
+        latency_ms=12.5,
+        raw_top100_chunk_ids=["chunk-1"],
+        raw_top100_document_ids=["gold-doc"],
+        document_top100=["gold-doc"],
+        first_gold_chunk_rank=1,
+        first_gold_document_rank=1,
+        crowding_gap=0,
+        cutoff_observations=[
+            module.ChunkCutoffObservation(
+                cutoff=20,
+                returned_chunk_count=1,
+                unique_document_count=1,
+                duplicate_slot_count=0,
+                duplicate_ratio=0.0,
+                gold_document_hit_within_chunk_k=True,
+                crowding_rescue=False,
+            )
+        ],
+    )
+
+    manifest = {
+        "run": "r4_chunk_bm25_candidate_audit",
+        "split": "train",
+        "provider_calls": 0,
+        "dev_artifact_opened": False,
+    }
+    metrics = {
+        "query_count": 1,
+        "index_build_seconds": 1.25,
+    }
+    diagnostics = {
+        "high_duplication_cases": [],
+        "crowding_rescue_cases": [],
+    }
+
+    module.write_audit_artifacts(
+        output_dir=tmp_path,
+        manifest=manifest,
+        metrics=metrics,
+        results=[result],
+        diagnostics=diagnostics,
+    )
+
+    manifest_path = tmp_path / "train_manifest.json"
+    metrics_path = tmp_path / "train_metrics.json"
+    results_path = tmp_path / "train_results.jsonl"
+    diagnostics_path = tmp_path / "diagnostic_cases.json"
+
+    assert manifest_path.exists()
+    assert metrics_path.exists()
+    assert results_path.exists()
+    assert diagnostics_path.exists()
+
+    assert json.loads(
+        manifest_path.read_text(encoding="utf-8")
+    ) == manifest
+
+    assert json.loads(
+        metrics_path.read_text(encoding="utf-8")
+    ) == metrics
+
+    result_payload = json.loads(
+        results_path.read_text(
+            encoding="utf-8",
+        ).strip()
+    )
+    assert result_payload["question_id"] == "TRAIN_Q001"
+    assert result_payload["relevant_document_ids"] == [
+        "gold-doc"
+    ]
+    assert result_payload["raw_top100_chunk_ids"] == [
+        "chunk-1"
+    ]
+
+    assert json.loads(
+        diagnostics_path.read_text(encoding="utf-8")
+    ) == diagnostics
+
+def test_execute_audit_writes_zero_provider_report(
+    tmp_path,
+) -> None:
+    module = _load_module()
+
+    chunks = [
+        module.TechQAChunkRef(
+            chunk_id=f"chunk-{index}",
+            document_id=f"doc-{index}",
+            chunk_index=index,
+        )
+        for index in range(100)
+    ]
+
+    case = module.TechQARetrievalCase(
+        question_id="TRAIN_Q001",
+        question="test query",
+        relevant_document_ids=("doc-0",),
+        split="train",
+    )
+
+    class FakeRetriever:
+        def search(
+            self,
+            query: str,
+            *,
+            top_k: int = 100,
+        ):
+            del query
+            return chunks[:top_k]
+
+    preflight_report = {
+        "split": "train",
+        "query_count": 1,
+        "chunk_count": 100,
+        "bm25_version": "0.3.10",
+        "splitter_blob_sha": (
+            "64026b4434f1eea46b95bfce9f667680a37a2103"
+        ),
+        "provider_calls": 0,
+        "dev_artifact_opened": False,
+        "input_e0_train_results_sha256": "test-sha",
+        "retrieval_dataset": {
+            "repo": "test-repo",
+            "revision": "test-revision",
+            "corpus_sha256": "corpus-sha",
+            "queries_sha256": "queries-sha",
+            "qrels_sha256": "qrels-sha",
+        },
+    }
+
+    metrics = module.execute_audit(
+        cases=[case],
+        chunks=chunks,
+        preflight_report=preflight_report,
+        output_dir=tmp_path,
+        retriever_factory=lambda input_chunks: FakeRetriever(),
+    )
+
+    assert metrics["query_count"] == 1
+    assert metrics["index_build_seconds"] >= 0.0
+
+    manifest = json.loads(
+        (tmp_path / "train_manifest.json").read_text(
+            encoding="utf-8",
+        )
+    )
+
+    assert manifest["provider_calls"] == 0
+    assert manifest["dev_artifact_opened"] is False
+
+    assert {
+        path.name
+        for path in tmp_path.iterdir()
+    } == {
+        "train_manifest.json",
+        "train_metrics.json",
+        "train_results.jsonl",
+        "diagnostic_cases.json",
+    }
