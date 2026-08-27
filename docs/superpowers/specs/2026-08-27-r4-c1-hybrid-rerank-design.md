@@ -196,13 +196,19 @@ This corresponds to:
 
 Recall@5 is reported but is not a hard success condition.
 
-Paired diagnostic evidence is also reported:
+Paired diagnostic evidence is reported only if complete preserved E1
+per-query evidence is available for all 450 TRAIN queries.
 
-- MRR@10 improved / regressed / unchanged
-- Recall@5 fixed / regressed
-- Recall@20 fixed / regressed
+The repository does not preserve the complete historical E1 per-query
+rerank artifact. C1 must therefore NOT rerun E1 solely to recreate paired
+counts.
 
-These paired counts explain the result but do not redefine the gate.
+The authoritative C1 comparison is the frozen aggregate E1 baseline and
+the pre-registered success gate above.
+
+Any partial historical paired evidence may be reported only as
+supplementary evidence and must not be presented as a full-population
+450-query comparison.
 
 ## 8. Provenance boundary
 
@@ -234,7 +240,7 @@ Paid phase:
 - resumable checkpoint/results
 - run manifest
 - metrics
-- paired comparison against E1
+- aggregate comparison against the frozen E1 baseline; paired comparison only if complete preserved E1 per-query evidence exists
 - provider token usage
 - latency summary
 - final gate decision
@@ -321,3 +327,4 @@ C1 will not:
 
 Any such optimization belongs to C2 and is considered only after C1
 results are known.
+
