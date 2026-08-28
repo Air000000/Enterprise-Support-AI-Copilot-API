@@ -1,0 +1,20 @@
+{
+  "query_count": 450,
+  "metrics": {
+    "recall@5": 0.7022222222222222,
+    "recall@20": 0.8311111111111111,
+    "mrr@10": 0.5709294532627865
+  },
+  "rerank_latency_p50_ms": 3059.273350001604,
+  "rerank_latency_p95_ms": 3588.326039999082,
+  "provider_total_tokens": 12080467,
+  "stopped_reason": null,
+  "gate": {
+    "complete_train_run": true,
+    "mrr@10_threshold": 0.5772063492063492,
+    "recall@20_threshold": 0.8111111111111111,
+    "mrr@10_pass": false,
+    "recall@20_pass": true,
+    "c1_pass": false
+  }
+}

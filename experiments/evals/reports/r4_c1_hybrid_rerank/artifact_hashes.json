@@ -1,0 +1,20 @@
+{
+  "run": "r4_c1_hybrid_rerank",
+  "split": "train",
+  "large_local_artifacts": {
+    "train_fused_snapshot.jsonl": {
+      "sha256": "12db56e50efaf11dab4a28ff3c1b4df223e2ad985a8b48021f4c7dd9fdd889d2",
+      "bytes": 35537598
+    },
+    "train_checkpoint.jsonl": {
+      "sha256": "12b312a8403cda2c5fe8afe53aa18853891a7e87feaf863e2d438ca15367ee5b",
+      "bytes": 4057204
+    },
+    "train_results.jsonl": {
+      "sha256": "12b312a8403cda2c5fe8afe53aa18853891a7e87feaf863e2d438ca15367ee5b",
+      "bytes": 4057204
+    },
+    "checkpoint_equals_results": true
+  },
+  "versioning_policy": "Large snapshot/checkpoint/results remain local; repository stores compact evidence and SHA256 identities."
+}

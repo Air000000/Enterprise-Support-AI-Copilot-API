@@ -1,0 +1,37 @@
+{
+  "benchmark": "TechQA-RAG-Eval",
+  "run": "r4_c1_hybrid_rerank",
+  "split": "train",
+  "query_count": 450,
+  "snapshot_sha256": "12db56e50efaf11dab4a28ff3c1b4df223e2ad985a8b48021f4c7dd9fdd889d2",
+  "snapshot_manifest_sha256": "48983d7e2bef876e332f0ef9c33f2bdc827aed56f8b749e38ae9bb1690a52398",
+  "candidate_contract": {
+    "dense_candidate_k": 100,
+    "bm25_candidate_k": 100,
+    "rrf_k": 60,
+    "fused_candidate_k": 100
+  },
+  "reranker": {
+    "model": "qwen3-rerank",
+    "instruction": "Rank the candidate passages by relevance to resolving the technical support query.",
+    "candidate_chunk_k": 100,
+    "query_normalization": "rstrip",
+    "provider_region": "Singapore",
+    "sdk_max_retries": 0
+  },
+  "paid_safety": {
+    "token_stop_threshold": 13500000,
+    "monetary_safety_envelope_usd": 1.5,
+    "stopped_reason": null
+  },
+  "provider_total_tokens": 12080467,
+  "gate": {
+    "complete_train_run": true,
+    "mrr@10_threshold": 0.5772063492063492,
+    "recall@20_threshold": 0.8111111111111111,
+    "mrr@10_pass": false,
+    "recall@20_pass": true,
+    "c1_pass": false
+  },
+  "project_sha": "0bb586f4376d06d610b5528481722b052d5ea5e0"
+}
