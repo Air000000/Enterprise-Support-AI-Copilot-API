@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+
+import httpx
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -62,10 +64,15 @@ def get_rerank_client() -> OpenAI:
             "Missing required rerank configuration: " + ", ".join(missing)
         )
 
+    http_client = httpx.Client(
+        trust_env=False,
+    )
+
     return OpenAI(
         api_key=api_key,
         base_url=base_url,
         max_retries=0,
+        http_client=http_client,
     )
 
 
