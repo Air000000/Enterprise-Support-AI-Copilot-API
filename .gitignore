@@ -243,3 +243,9 @@ tmp_manual_docs/
 # Large local E1 rerank artifacts; compact manifests/metrics/evidence stay versioned.
 experiments/evals/reports/e1_rerank/*_checkpoint.jsonl
 experiments/evals/reports/e1_rerank/*_results.jsonl
+
+# Large/local R4 C1 artifacts; compact manifests/metrics/evidence stay versioned.
+experiments/evals/reports/r4_c1_hybrid_rerank/train_fused_snapshot.jsonl
+experiments/evals/reports/r4_c1_hybrid_rerank/train_checkpoint.jsonl
+experiments/evals/reports/r4_c1_hybrid_rerank/train_results.jsonl
+experiments/evals/reports/r4_c1_hybrid_rerank/train_inflight*.json

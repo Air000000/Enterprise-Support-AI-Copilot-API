@@ -44,21 +44,52 @@ def test_get_rerank_client_uses_only_dedicated_rerank_environment(monkeypatch):
 
     observed = {}
 
+    class FakeHttpClient:
+        pass
+
+    class FakeHttpx:
+        @staticmethod
+        def Client(*, trust_env):
+            observed["http_trust_env"] = trust_env
+            return FakeHttpClient()
+
     class FakeOpenAI:
-        def __init__(self, *, api_key, base_url):
+        def __init__(
+            self,
+            *,
+            api_key,
+            base_url,
+            max_retries,
+            http_client=None,
+        ):
             observed["api_key"] = api_key
             observed["base_url"] = base_url
+            observed["max_retries"] = max_retries
+            observed["http_client"] = http_client
 
-    monkeypatch.setattr(reranker, "OpenAI", FakeOpenAI, raising=False)
+    monkeypatch.setattr(
+        reranker,
+        "httpx",
+        FakeHttpx,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        reranker,
+        "OpenAI",
+        FakeOpenAI,
+        raising=False,
+    )
 
     getter()
 
-    assert observed == {
-        "api_key": "rerank-key",
-        "base_url": (
-            "https://workspace.ap-southeast-1.maas.aliyuncs.com/compatible-api/v1"
-        ),
-    }
+    assert observed["api_key"] == "rerank-key"
+    assert observed["base_url"] == (
+        "https://workspace.ap-southeast-1.maas.aliyuncs.com/compatible-api/v1"
+    )
+    assert observed["max_retries"] == 0
+    assert observed.get("http_trust_env") is False
+    assert isinstance(observed["http_client"], FakeHttpClient)
+
 
 
 def test_get_rerank_client_rejects_missing_dedicated_config_even_if_chat_config_exists(

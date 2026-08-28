@@ -1,0 +1,78 @@
+{
+  "benchmark": "TechQA-RAG-Eval",
+  "run": "r4_c1_hybrid_rerank",
+  "split": "train",
+  "query_count": 450,
+  "provider_calls": 0,
+  "dev_artifact_opened": false,
+  "candidate_construction": {
+    "dense_candidate_k": 100,
+    "bm25_candidate_k": 100,
+    "rrf_k": 60,
+    "rrf_weights": "equal",
+    "rrf_unit": "chunk_id",
+    "fused_candidate_k": 100,
+    "cross_source_overlap_rule": "retain both source rank contributions"
+  },
+  "snapshot": {
+    "path": "experiments\\evals\\reports\\r4_c1_hybrid_rerank\\train_fused_snapshot.jsonl",
+    "sha256": "12db56e50efaf11dab4a28ff3c1b4df223e2ad985a8b48021f4c7dd9fdd889d2",
+    "format": "jsonl"
+  },
+  "reranker": {
+    "model": "qwen3-rerank",
+    "instruction": "Rank the candidate passages by relevance to resolving the technical support query.",
+    "candidate_chunk_k": 100,
+    "query_normalization": "rstrip",
+    "provider_region": "Singapore"
+  },
+  "paid_safety": {
+    "token_stop_threshold": 13500000,
+    "monetary_safety_envelope_usd": 1.5
+  },
+  "chunking": {
+    "strategy": "paragraph_aware_character",
+    "chunk_size": 800,
+    "chunk_overlap": 120,
+    "min_chunk_size": 150,
+    "splitter_blob_sha": "64026b4434f1eea46b95bfce9f667680a37a2103",
+    "observed_chunk_count": 172614
+  },
+  "bm25": {
+    "library": "bm25s",
+    "version": "0.3.10",
+    "method": "lucene",
+    "k1": 1.5,
+    "b": 0.75,
+    "backend": "numpy",
+    "indexed_unit": "chunk",
+    "candidate_chunk_k": 100,
+    "query_normalization": "rstrip",
+    "tokenizer_regex": "[A-Za-z0-9]+(?:[._:/+-][A-Za-z0-9]+)*"
+  },
+  "retrieval_dataset": {
+    "repo": "bowang0911/TechQA-RAG-Eval",
+    "revision": "68323f8f191fd5df93e2b2673d79a5da3a805638",
+    "license_declared": "apache-2.0",
+    "corpus_file": "corpus/train-00000-of-00001.parquet",
+    "queries_file": "queries/train-00000-of-00001.parquet",
+    "qrels_file": "data/train-00000-of-00001.parquet",
+    "corpus_sha256": "3c4c4fe05204efa99101a402dc4d1c6206bcd160eb20be28e6a0b594415b3edb",
+    "queries_sha256": "ac0151d80b930b07b4d4214ff7f914f9d74cbe9fca39d82a51a79a5ad9792fb9",
+    "qrels_sha256": "1e739923a9549d93c9613bb6d29ecfa747addef1d7cbadbb5ac8422b280c6735",
+    "loaded_corpus_documents": 28481,
+    "loaded_retrieval_queries": 610,
+    "qrels_rows": 610,
+    "unique_gold_documents": 496,
+    "qrels_per_query_distribution": {
+      "1": 610
+    },
+    "relevance_score_distribution": {
+      "1": 610
+    }
+  },
+  "input_e0_train_results_sha256": "c09401ea3ebd2774a0972a557436e1baff48cf317689b4ea44284ef44badfd82",
+  "historical_e1_e0_train_results_sha256": "4abf6365de33fe14adfbac2cd53669a434f5506b928fa890b3acd37e4d999953",
+  "e0_train_results_sha_matches_historical": false,
+  "project_sha": "61886eefa07ae04b609d4c111ef43921b9949f0a"
+}

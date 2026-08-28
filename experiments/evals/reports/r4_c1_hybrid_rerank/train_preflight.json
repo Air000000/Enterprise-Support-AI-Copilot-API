@@ -1,0 +1,19 @@
+{
+  "split": "train",
+  "query_count": 450,
+  "document_count": 28481,
+  "chunk_count": 172614,
+  "dense_candidate_k": 100,
+  "bm25_candidate_k": 100,
+  "rrf_k": 60,
+  "fused_candidate_k": 100,
+  "all_dense_rankings_unique": true,
+  "all_bm25_rankings_unique": true,
+  "all_fused_rankings_unique": true,
+  "snapshot_sha256": "12db56e50efaf11dab4a28ff3c1b4df223e2ad985a8b48021f4c7dd9fdd889d2",
+  "provider_calls": 0,
+  "dev_artifact_opened": false,
+  "reranker_model": "qwen3-rerank",
+  "token_stop_threshold": 13500000,
+  "monetary_safety_envelope_usd": 1.5
+}
