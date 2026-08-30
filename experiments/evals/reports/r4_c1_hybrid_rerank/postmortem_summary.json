@@ -1,0 +1,32 @@
+{
+  "query_count": 450,
+  "provider_calls": 0,
+  "dev_artifact_opened": false,
+  "candidate_complementarity": {
+    "dense_only_gold_hit_count": 52,
+    "bm25_only_gold_hit_count": 26,
+    "both_gold_hit_count": 335,
+    "neither_gold_hit_count": 37,
+    "hybrid_rescued_dense_misses": 19,
+    "hybrid_lost_dense_hits": 12,
+    "net_candidate_gain": 7
+  },
+  "residual_attribution": {
+    "resolved_top20_count": 374,
+    "ranking_miss_top20_count": 20,
+    "candidate_miss_top100_count": 56
+  },
+  "crowding": {
+    "fused_unique_document_count_p50": 75.0,
+    "fused_unique_document_count_p95": 90.54999999999995,
+    "fused_duplicate_ratio_p50": 0.25,
+    "fused_duplicate_ratio_p95": 0.43999999999999995,
+    "fused_duplicate_ratio_max": 0.69,
+    "max_chunks_per_document_p95": 8.0
+  },
+  "source_composition": {
+    "dense_only_chunk_count_total": 16570,
+    "bm25_only_chunk_count_total": 16345,
+    "shared_chunk_count_total": 12085
+  }
+}

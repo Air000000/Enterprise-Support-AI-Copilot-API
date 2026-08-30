@@ -1,0 +1,313 @@
+{
+  "run": "r4_c1_fusion_loss_audit",
+  "split": "train",
+  "provider_calls": 0,
+  "dev_artifact_opened": false,
+  "loss_case_count": 19,
+  "cases": [
+    {
+      "question_id": "TRAIN_Q005",
+      "gold_document_ids": [
+        "swg21903536.txt"
+      ],
+      "source_case": "bm25_only",
+      "overlap_case": "single_source_only",
+      "dense_best_gold_rank": null,
+      "bm25_best_gold_rank": 78,
+      "full_rrf_best_gold_rank": 150,
+      "distance_below_top100": 50,
+      "union_chunk_count": 194,
+      "dense_gold_chunk_count": 0,
+      "bm25_gold_chunk_count": 1,
+      "shared_gold_chunk_count": 0
+    },
+    {
+      "question_id": "TRAIN_Q011",
+      "gold_document_ids": [
+        "swg21966637.txt"
+      ],
+      "source_case": "dense_only",
+      "overlap_case": "single_source_only",
+      "dense_best_gold_rank": 68,
+      "bm25_best_gold_rank": null,
+      "full_rrf_best_gold_rank": 126,
+      "distance_below_top100": 26,
+      "union_chunk_count": 179,
+      "dense_gold_chunk_count": 2,
+      "bm25_gold_chunk_count": 0,
+      "shared_gold_chunk_count": 0
+    },
+    {
+      "question_id": "TRAIN_Q098",
+      "gold_document_ids": [
+        "swg21902654.txt"
+      ],
+      "source_case": "bm25_only",
+      "overlap_case": "single_source_only",
+      "dense_best_gold_rank": null,
+      "bm25_best_gold_rank": 99,
+      "full_rrf_best_gold_rank": 159,
+      "distance_below_top100": 59,
+      "union_chunk_count": 161,
+      "dense_gold_chunk_count": 0,
+      "bm25_gold_chunk_count": 1,
+      "shared_gold_chunk_count": 0
+    },
+    {
+      "question_id": "TRAIN_Q122",
+      "gold_document_ids": [
+        "swg21647572.txt"
+      ],
+      "source_case": "dense_only",
+      "overlap_case": "single_source_only",
+      "dense_best_gold_rank": 60,
+      "bm25_best_gold_rank": null,
+      "full_rrf_best_gold_rank": 119,
+      "distance_below_top100": 19,
+      "union_chunk_count": 194,
+      "dense_gold_chunk_count": 1,
+      "bm25_gold_chunk_count": 0,
+      "shared_gold_chunk_count": 0
+    },
+    {
+      "question_id": "TRAIN_Q130",
+      "gold_document_ids": [
+        "swg21246298.txt"
+      ],
+      "source_case": "bm25_only",
+      "overlap_case": "single_source_only",
+      "dense_best_gold_rank": null,
+      "bm25_best_gold_rank": 77,
+      "full_rrf_best_gold_rank": 135,
+      "distance_below_top100": 35,
+      "union_chunk_count": 180,
+      "dense_gold_chunk_count": 0,
+      "bm25_gold_chunk_count": 1,
+      "shared_gold_chunk_count": 0
+    },
+    {
+      "question_id": "TRAIN_Q135",
+      "gold_document_ids": [
+        "swg21497604.txt"
+      ],
+      "source_case": "dense_only",
+      "overlap_case": "single_source_only",
+      "dense_best_gold_rank": 66,
+      "bm25_best_gold_rank": null,
+      "full_rrf_best_gold_rank": 113,
+      "distance_below_top100": 13,
+      "union_chunk_count": 174,
+      "dense_gold_chunk_count": 1,
+      "bm25_gold_chunk_count": 0,
+      "shared_gold_chunk_count": 0
+    },
+    {
+      "question_id": "TRAIN_Q137",
+      "gold_document_ids": [
+        "swg21443723.txt"
+      ],
+      "source_case": "bm25_only",
+      "overlap_case": "single_source_only",
+      "dense_best_gold_rank": null,
+      "bm25_best_gold_rank": 65,
+      "full_rrf_best_gold_rank": 102,
+      "distance_below_top100": 2,
+      "union_chunk_count": 156,
+      "dense_gold_chunk_count": 0,
+      "bm25_gold_chunk_count": 1,
+      "shared_gold_chunk_count": 0
+    },
+    {
+      "question_id": "TRAIN_Q141",
+      "gold_document_ids": [
+        "swg21244384.txt"
+      ],
+      "source_case": "dense_only",
+      "overlap_case": "single_source_only",
+      "dense_best_gold_rank": 80,
+      "bm25_best_gold_rank": null,
+      "full_rrf_best_gold_rank": 152,
+      "distance_below_top100": 52,
+      "union_chunk_count": 182,
+      "dense_gold_chunk_count": 1,
+      "bm25_gold_chunk_count": 0,
+      "shared_gold_chunk_count": 0
+    },
+    {
+      "question_id": "TRAIN_Q207",
+      "gold_document_ids": [
+        "swg24041563.txt"
+      ],
+      "source_case": "dense_only",
+      "overlap_case": "single_source_only",
+      "dense_best_gold_rank": 63,
+      "bm25_best_gold_rank": null,
+      "full_rrf_best_gold_rank": 116,
+      "distance_below_top100": 16,
+      "union_chunk_count": 187,
+      "dense_gold_chunk_count": 1,
+      "bm25_gold_chunk_count": 0,
+      "shared_gold_chunk_count": 0
+    },
+    {
+      "question_id": "TRAIN_Q261",
+      "gold_document_ids": [
+        "swg21405302.txt"
+      ],
+      "source_case": "bm25_only",
+      "overlap_case": "single_source_only",
+      "dense_best_gold_rank": null,
+      "bm25_best_gold_rank": 63,
+      "full_rrf_best_gold_rank": 113,
+      "distance_below_top100": 13,
+      "union_chunk_count": 166,
+      "dense_gold_chunk_count": 0,
+      "bm25_gold_chunk_count": 1,
+      "shared_gold_chunk_count": 0
+    },
+    {
+      "question_id": "TRAIN_Q318",
+      "gold_document_ids": [
+        "swg21974546.txt"
+      ],
+      "source_case": "bm25_only",
+      "overlap_case": "single_source_only",
+      "dense_best_gold_rank": null,
+      "bm25_best_gold_rank": 73,
+      "full_rrf_best_gold_rank": 108,
+      "distance_below_top100": 8,
+      "union_chunk_count": 156,
+      "dense_gold_chunk_count": 0,
+      "bm25_gold_chunk_count": 1,
+      "shared_gold_chunk_count": 0
+    },
+    {
+      "question_id": "TRAIN_Q319",
+      "gold_document_ids": [
+        "swg1PM66670.txt"
+      ],
+      "source_case": "both_sources",
+      "overlap_case": "same_gold_document_different_chunks",
+      "dense_best_gold_rank": 65,
+      "bm25_best_gold_rank": 72,
+      "full_rrf_best_gold_rank": 116,
+      "distance_below_top100": 16,
+      "union_chunk_count": 167,
+      "dense_gold_chunk_count": 1,
+      "bm25_gold_chunk_count": 1,
+      "shared_gold_chunk_count": 0
+    },
+    {
+      "question_id": "TRAIN_Q328",
+      "gold_document_ids": [
+        "swg21449103.txt"
+      ],
+      "source_case": "dense_only",
+      "overlap_case": "single_source_only",
+      "dense_best_gold_rank": 67,
+      "bm25_best_gold_rank": null,
+      "full_rrf_best_gold_rank": 129,
+      "distance_below_top100": 29,
+      "union_chunk_count": 192,
+      "dense_gold_chunk_count": 2,
+      "bm25_gold_chunk_count": 0,
+      "shared_gold_chunk_count": 0
+    },
+    {
+      "question_id": "TRAIN_Q343",
+      "gold_document_ids": [
+        "swg22010419.txt"
+      ],
+      "source_case": "dense_only",
+      "overlap_case": "single_source_only",
+      "dense_best_gold_rank": 91,
+      "bm25_best_gold_rank": null,
+      "full_rrf_best_gold_rank": 142,
+      "distance_below_top100": 42,
+      "union_chunk_count": 161,
+      "dense_gold_chunk_count": 1,
+      "bm25_gold_chunk_count": 0,
+      "shared_gold_chunk_count": 0
+    },
+    {
+      "question_id": "TRAIN_Q372",
+      "gold_document_ids": [
+        "swg21985946.txt"
+      ],
+      "source_case": "dense_only",
+      "overlap_case": "single_source_only",
+      "dense_best_gold_rank": 52,
+      "bm25_best_gold_rank": null,
+      "full_rrf_best_gold_rank": 104,
+      "distance_below_top100": 4,
+      "union_chunk_count": 189,
+      "dense_gold_chunk_count": 1,
+      "bm25_gold_chunk_count": 0,
+      "shared_gold_chunk_count": 0
+    },
+    {
+      "question_id": "TRAIN_Q460",
+      "gold_document_ids": [
+        "swg21592093.txt"
+      ],
+      "source_case": "bm25_only",
+      "overlap_case": "single_source_only",
+      "dense_best_gold_rank": null,
+      "bm25_best_gold_rank": 61,
+      "full_rrf_best_gold_rank": 106,
+      "distance_below_top100": 6,
+      "union_chunk_count": 172,
+      "dense_gold_chunk_count": 0,
+      "bm25_gold_chunk_count": 1,
+      "shared_gold_chunk_count": 0
+    },
+    {
+      "question_id": "TRAIN_Q497",
+      "gold_document_ids": [
+        "swg21632844.txt"
+      ],
+      "source_case": "dense_only",
+      "overlap_case": "single_source_only",
+      "dense_best_gold_rank": 75,
+      "bm25_best_gold_rank": null,
+      "full_rrf_best_gold_rank": 123,
+      "distance_below_top100": 23,
+      "union_chunk_count": 164,
+      "dense_gold_chunk_count": 1,
+      "bm25_gold_chunk_count": 0,
+      "shared_gold_chunk_count": 0
+    },
+    {
+      "question_id": "TRAIN_Q543",
+      "gold_document_ids": [
+        "swg21681093.txt"
+      ],
+      "source_case": "dense_only",
+      "overlap_case": "single_source_only",
+      "dense_best_gold_rank": 74,
+      "bm25_best_gold_rank": null,
+      "full_rrf_best_gold_rank": 128,
+      "distance_below_top100": 28,
+      "union_chunk_count": 169,
+      "dense_gold_chunk_count": 1,
+      "bm25_gold_chunk_count": 0,
+      "shared_gold_chunk_count": 0
+    },
+    {
+      "question_id": "TRAIN_Q565",
+      "gold_document_ids": [
+        "swg21312967.txt"
+      ],
+      "source_case": "dense_only",
+      "overlap_case": "single_source_only",
+      "dense_best_gold_rank": 87,
+      "bm25_best_gold_rank": null,
+      "full_rrf_best_gold_rank": 171,
+      "distance_below_top100": 71,
+      "union_chunk_count": 197,
+      "dense_gold_chunk_count": 2,
+      "bm25_gold_chunk_count": 0,
+      "shared_gold_chunk_count": 0
+    }
+  ]
+}
