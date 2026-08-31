@@ -1,0 +1,336 @@
+{
+  "run": "r2_union_rerank_counterfactual",
+  "split": "train",
+  "diagnostic_only": true,
+  "representative_benchmark": false,
+  "code_identity": {
+    "git_sha": "fbad0561c3ea324fc332799f644f5da3be925bd0"
+  },
+  "frozen_inputs": {
+    "contract_sha256": "7eb4a5071ed3c62eeb4bdc6beb0e088143df7870815167eb8690d255ba4aa915",
+    "preflight_sha256": "c3b49c26a4b83ab88dbb039cf5700ef9b3abc6e70fa042d260207c5daf4475a1",
+    "c1_snapshot_sha256": "12db56e50efaf11dab4a28ff3c1b4df223e2ad985a8b48021f4c7dd9fdd889d2",
+    "c1_results_sha256": "12b312a8403cda2c5fe8afe53aa18853891a7e87feaf863e2d438ca15367ee5b"
+  },
+  "routing_incident_before_formal_run": {
+    "http_attempts": 1,
+    "successful_model_calls": 0,
+    "http_status": 404,
+    "usage_observed": false,
+    "billing_observable": false,
+    "root_cause": "non-workspace shared compatible-mode endpoint did not expose /reranks",
+    "correction": "workspace-specific Singapore compatible-api/v1 endpoint",
+    "workspace_id_recorded": false,
+    "archived_inflight_sha256": "44c8c7920a5f7bbc2088b85c78b122daa976c1d049977685d6ccfe9f7b963ccd",
+    "incident_sha256": "dcd9745ef35026aeee548b50c5adc71d0713214e759505b06b4eb3a717906ddb"
+  },
+  "formal_execution": {
+    "query_count": 23,
+    "successful_provider_calls": 23,
+    "provider_total_tokens": 1101402,
+    "estimated_successful_call_cost_usd": 0.11014020000000001,
+    "pricing_usd_per_million_input_tokens": 0.1,
+    "rerank_latency_p50_ms": 2078.585100000055,
+    "rerank_latency_p95_ms": 2674.446950000492,
+    "non_null_request_id_count": 23,
+    "unique_non_null_request_id_count": 23,
+    "stopped_reason": null,
+    "endpoint_family": "workspace_specific_ap_southeast_1_compatible_api_v1",
+    "workspace_id_recorded": false
+  },
+  "cohort_a_document_fusion_loss": {
+    "summary": {
+      "query_count": 19,
+      "r2_gold_document_hit_at_5": 2,
+      "r2_gold_document_hit_at_20": 8,
+      "gold_document_recovered_at_5": 2,
+      "gold_document_recovered_at_20": 8,
+      "entered_from_outside_c1_ranking": 19
+    },
+    "cases": [
+      {
+        "question_id": "TRAIN_Q005",
+        "gold_document_id": "swg21903536.txt",
+        "c1_document_rank": null,
+        "r2_document_rank": 3,
+        "r2_hit_at_5": true,
+        "r2_hit_at_20": true,
+        "recovered_at_5": true,
+        "recovered_at_20": true,
+        "entered_from_outside_c1_ranking": true
+      },
+      {
+        "question_id": "TRAIN_Q011",
+        "gold_document_id": "swg21966637.txt",
+        "c1_document_rank": null,
+        "r2_document_rank": 31,
+        "r2_hit_at_5": false,
+        "r2_hit_at_20": false,
+        "recovered_at_5": false,
+        "recovered_at_20": false,
+        "entered_from_outside_c1_ranking": true
+      },
+      {
+        "question_id": "TRAIN_Q098",
+        "gold_document_id": "swg21902654.txt",
+        "c1_document_rank": null,
+        "r2_document_rank": 89,
+        "r2_hit_at_5": false,
+        "r2_hit_at_20": false,
+        "recovered_at_5": false,
+        "recovered_at_20": false,
+        "entered_from_outside_c1_ranking": true
+      },
+      {
+        "question_id": "TRAIN_Q122",
+        "gold_document_id": "swg21647572.txt",
+        "c1_document_rank": null,
+        "r2_document_rank": 6,
+        "r2_hit_at_5": false,
+        "r2_hit_at_20": true,
+        "recovered_at_5": false,
+        "recovered_at_20": true,
+        "entered_from_outside_c1_ranking": true
+      },
+      {
+        "question_id": "TRAIN_Q130",
+        "gold_document_id": "swg21246298.txt",
+        "c1_document_rank": null,
+        "r2_document_rank": 48,
+        "r2_hit_at_5": false,
+        "r2_hit_at_20": false,
+        "recovered_at_5": false,
+        "recovered_at_20": false,
+        "entered_from_outside_c1_ranking": true
+      },
+      {
+        "question_id": "TRAIN_Q135",
+        "gold_document_id": "swg21497604.txt",
+        "c1_document_rank": null,
+        "r2_document_rank": 13,
+        "r2_hit_at_5": false,
+        "r2_hit_at_20": true,
+        "recovered_at_5": false,
+        "recovered_at_20": true,
+        "entered_from_outside_c1_ranking": true
+      },
+      {
+        "question_id": "TRAIN_Q137",
+        "gold_document_id": "swg21443723.txt",
+        "c1_document_rank": null,
+        "r2_document_rank": 78,
+        "r2_hit_at_5": false,
+        "r2_hit_at_20": false,
+        "recovered_at_5": false,
+        "recovered_at_20": false,
+        "entered_from_outside_c1_ranking": true
+      },
+      {
+        "question_id": "TRAIN_Q141",
+        "gold_document_id": "swg21244384.txt",
+        "c1_document_rank": null,
+        "r2_document_rank": 27,
+        "r2_hit_at_5": false,
+        "r2_hit_at_20": false,
+        "recovered_at_5": false,
+        "recovered_at_20": false,
+        "entered_from_outside_c1_ranking": true
+      },
+      {
+        "question_id": "TRAIN_Q207",
+        "gold_document_id": "swg24041563.txt",
+        "c1_document_rank": null,
+        "r2_document_rank": 60,
+        "r2_hit_at_5": false,
+        "r2_hit_at_20": false,
+        "recovered_at_5": false,
+        "recovered_at_20": false,
+        "entered_from_outside_c1_ranking": true
+      },
+      {
+        "question_id": "TRAIN_Q261",
+        "gold_document_id": "swg21405302.txt",
+        "c1_document_rank": null,
+        "r2_document_rank": 102,
+        "r2_hit_at_5": false,
+        "r2_hit_at_20": false,
+        "recovered_at_5": false,
+        "recovered_at_20": false,
+        "entered_from_outside_c1_ranking": true
+      },
+      {
+        "question_id": "TRAIN_Q318",
+        "gold_document_id": "swg21974546.txt",
+        "c1_document_rank": null,
+        "r2_document_rank": 61,
+        "r2_hit_at_5": false,
+        "r2_hit_at_20": false,
+        "recovered_at_5": false,
+        "recovered_at_20": false,
+        "entered_from_outside_c1_ranking": true
+      },
+      {
+        "question_id": "TRAIN_Q319",
+        "gold_document_id": "swg1PM66670.txt",
+        "c1_document_rank": null,
+        "r2_document_rank": 1,
+        "r2_hit_at_5": true,
+        "r2_hit_at_20": true,
+        "recovered_at_5": true,
+        "recovered_at_20": true,
+        "entered_from_outside_c1_ranking": true
+      },
+      {
+        "question_id": "TRAIN_Q328",
+        "gold_document_id": "swg21449103.txt",
+        "c1_document_rank": null,
+        "r2_document_rank": 9,
+        "r2_hit_at_5": false,
+        "r2_hit_at_20": true,
+        "recovered_at_5": false,
+        "recovered_at_20": true,
+        "entered_from_outside_c1_ranking": true
+      },
+      {
+        "question_id": "TRAIN_Q343",
+        "gold_document_id": "swg22010419.txt",
+        "c1_document_rank": null,
+        "r2_document_rank": 19,
+        "r2_hit_at_5": false,
+        "r2_hit_at_20": true,
+        "recovered_at_5": false,
+        "recovered_at_20": true,
+        "entered_from_outside_c1_ranking": true
+      },
+      {
+        "question_id": "TRAIN_Q372",
+        "gold_document_id": "swg21985946.txt",
+        "c1_document_rank": null,
+        "r2_document_rank": 10,
+        "r2_hit_at_5": false,
+        "r2_hit_at_20": true,
+        "recovered_at_5": false,
+        "recovered_at_20": true,
+        "entered_from_outside_c1_ranking": true
+      },
+      {
+        "question_id": "TRAIN_Q460",
+        "gold_document_id": "swg21592093.txt",
+        "c1_document_rank": null,
+        "r2_document_rank": 54,
+        "r2_hit_at_5": false,
+        "r2_hit_at_20": false,
+        "recovered_at_5": false,
+        "recovered_at_20": false,
+        "entered_from_outside_c1_ranking": true
+      },
+      {
+        "question_id": "TRAIN_Q497",
+        "gold_document_id": "swg21632844.txt",
+        "c1_document_rank": null,
+        "r2_document_rank": 44,
+        "r2_hit_at_5": false,
+        "r2_hit_at_20": false,
+        "recovered_at_5": false,
+        "recovered_at_20": false,
+        "entered_from_outside_c1_ranking": true
+      },
+      {
+        "question_id": "TRAIN_Q543",
+        "gold_document_id": "swg21681093.txt",
+        "c1_document_rank": null,
+        "r2_document_rank": 7,
+        "r2_hit_at_5": false,
+        "r2_hit_at_20": true,
+        "recovered_at_5": false,
+        "recovered_at_20": true,
+        "entered_from_outside_c1_ranking": true
+      },
+      {
+        "question_id": "TRAIN_Q565",
+        "gold_document_id": "swg21312967.txt",
+        "c1_document_rank": null,
+        "r2_document_rank": 89,
+        "r2_hit_at_5": false,
+        "r2_hit_at_20": false,
+        "recovered_at_5": false,
+        "recovered_at_20": false,
+        "entered_from_outside_c1_ranking": true
+      }
+    ]
+  },
+  "cohort_b_answer_evidence_compression_loss": {
+    "summary": {
+      "query_count": 5,
+      "r2_answer_evidence_hit_at_5": 0,
+      "r2_answer_evidence_hit_at_20": 1,
+      "answer_evidence_recovered_at_5": 0,
+      "answer_evidence_recovered_at_20": 1,
+      "entered_from_outside_c1_ranking": 5
+    },
+    "cases": [
+      {
+        "question_id": "TRAIN_Q045",
+        "answer_evidence_chunk_id": "swg21598974.txt_chunk_1",
+        "c1_evidence_rank": null,
+        "r2_evidence_rank": 38,
+        "r2_hit_at_5": false,
+        "r2_hit_at_20": false,
+        "recovered_at_5": false,
+        "recovered_at_20": false,
+        "entered_from_outside_c1_ranking": true
+      },
+      {
+        "question_id": "TRAIN_Q122",
+        "answer_evidence_chunk_id": "swg21647572.txt_chunk_1",
+        "c1_evidence_rank": null,
+        "r2_evidence_rank": 6,
+        "r2_hit_at_5": false,
+        "r2_hit_at_20": true,
+        "recovered_at_5": false,
+        "recovered_at_20": true,
+        "entered_from_outside_c1_ranking": true
+      },
+      {
+        "question_id": "TRAIN_Q152",
+        "answer_evidence_chunk_id": "swg21978641.txt_chunk_1",
+        "c1_evidence_rank": null,
+        "r2_evidence_rank": 33,
+        "r2_hit_at_5": false,
+        "r2_hit_at_20": false,
+        "recovered_at_5": false,
+        "recovered_at_20": false,
+        "entered_from_outside_c1_ranking": true
+      },
+      {
+        "question_id": "TRAIN_Q524",
+        "answer_evidence_chunk_id": "swg21647026.txt_chunk_2",
+        "c1_evidence_rank": null,
+        "r2_evidence_rank": 24,
+        "r2_hit_at_5": false,
+        "r2_hit_at_20": false,
+        "recovered_at_5": false,
+        "recovered_at_20": false,
+        "entered_from_outside_c1_ranking": true
+      },
+      {
+        "question_id": "TRAIN_Q579",
+        "answer_evidence_chunk_id": "swg21507587.txt_chunk_6",
+        "c1_evidence_rank": null,
+        "r2_evidence_rank": 73,
+        "r2_hit_at_5": false,
+        "r2_hit_at_20": false,
+        "recovered_at_5": false,
+        "recovered_at_20": false,
+        "entered_from_outside_c1_ranking": true
+      }
+    ]
+  },
+  "artifacts": {
+    "checkpoint_sha256": "cda82d431257919ed4fff8a012f9d96f49c3117127bfdf3687ca152373be3c72",
+    "results_sha256": "e60deef39acb09cdbddcb8875876fadbd1440437f1503c55850aa19489d5a276"
+  },
+  "decision_rule": "Interpret Cohort A and Cohort B separately. This is a targeted diagnostic counterfactual, not a representative benchmark. No post-hoc numerical pass threshold may be invented.",
+  "stop_condition": "If full-union reranking cannot reliably recover the preregistered document/evidence losses on these targeted cohorts, stop this route and do not expand to 450 TRAIN.",
+  "dev_artifact_opened": false
+}
