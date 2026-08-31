@@ -277,3 +277,176 @@ def build_annotation_pack_markdown(
         sections.append("\n".join(lines))
 
     return "\n".join(sections)
+
+
+def answer_evidence_hit_at_k(
+    retrieved_chunk_ids: Sequence[str],
+    evidence_labels: Mapping[str, int],
+    *,
+    k: int,
+) -> int:
+    return int(
+        any(
+            evidence_labels.get(chunk_id) == 2
+            for chunk_id in retrieved_chunk_ids[:k]
+        )
+    )
+
+
+def answer_evidence_reciprocal_rank_at_k(
+    retrieved_chunk_ids: Sequence[str],
+    evidence_labels: Mapping[str, int],
+    *,
+    k: int,
+) -> float:
+    for rank, chunk_id in enumerate(
+        retrieved_chunk_ids[:k],
+        start=1,
+    ):
+        if evidence_labels.get(chunk_id) == 2:
+            return 1.0 / rank
+
+    return 0.0
+
+
+def useful_evidence_hit_at_k(
+    retrieved_chunk_ids: Sequence[str],
+    evidence_labels: Mapping[str, int],
+    *,
+    k: int,
+) -> int:
+    return int(
+        any(
+            evidence_labels.get(chunk_id) in (1, 2)
+            for chunk_id in retrieved_chunk_ids[:k]
+        )
+    )
+
+
+def gold_doc_hit_but_evidence_miss_at_k(
+    retrieved_chunk_ids: Sequence[str],
+    evidence_labels: Mapping[str, int],
+    *,
+    gold_document_id: str,
+    k: int,
+) -> int:
+    top_k_chunk_ids = retrieved_chunk_ids[:k]
+
+    gold_doc_hit = any(
+        chunk_id.startswith(f"{gold_document_id}_chunk_")
+        for chunk_id in top_k_chunk_ids
+    )
+
+    answer_evidence_hit = any(
+        evidence_labels.get(chunk_id) == 2
+        for chunk_id in top_k_chunk_ids
+    )
+
+    return int(gold_doc_hit and not answer_evidence_hit)
+
+
+def build_evidence_summary(
+    retrieval_rows: Sequence[Mapping[str, Any]],
+    label_rows: Sequence[Mapping[str, Any]],
+    *,
+    hit_k: int,
+    mrr_k: int,
+) -> dict[str, int | float]:
+    retrieval_by_question_id = {
+        str(row["question_id"]): row
+        for row in retrieval_rows
+    }
+
+    questionable_gold_count = sum(
+        bool(row["questionable_gold"])
+        for row in label_rows
+    )
+
+    evaluated_rows = [
+        row
+        for row in label_rows
+        if not bool(row["questionable_gold"])
+    ]
+
+    answer_hits: list[int] = []
+    answer_rrs: list[float] = []
+    useful_hits: list[int] = []
+    gold_doc_hits: list[int] = []
+    gold_doc_evidence_misses: list[int] = []
+
+    for label_row in evaluated_rows:
+        question_id = str(label_row["question_id"])
+        retrieval_row = retrieval_by_question_id[question_id]
+
+        retrieved_chunk_ids = list(retrieval_row["raw_chunk_ids"])
+        evidence_labels = {
+            str(candidate["chunk_id"]): int(candidate["evidence_label"])
+            for candidate in label_row["candidate_labels"]
+        }
+        gold_document_id = str(
+            retrieval_row["relevant_document_ids"][0]
+        )
+
+        answer_hits.append(
+            answer_evidence_hit_at_k(
+                retrieved_chunk_ids,
+                evidence_labels,
+                k=hit_k,
+            )
+        )
+        answer_rrs.append(
+            answer_evidence_reciprocal_rank_at_k(
+                retrieved_chunk_ids,
+                evidence_labels,
+                k=mrr_k,
+            )
+        )
+        useful_hits.append(
+            useful_evidence_hit_at_k(
+                retrieved_chunk_ids,
+                evidence_labels,
+                k=hit_k,
+            )
+        )
+        gold_doc_hits.append(
+            int(
+                any(
+                    chunk_id.startswith(
+                        f"{gold_document_id}_chunk_"
+                    )
+                    for chunk_id
+                    in retrieved_chunk_ids[:hit_k]
+                )
+            )
+        )
+        gold_doc_evidence_misses.append(
+            gold_doc_hit_but_evidence_miss_at_k(
+                retrieved_chunk_ids,
+                evidence_labels,
+                gold_document_id=gold_document_id,
+                k=hit_k,
+            )
+        )
+
+    evaluated_query_count = len(evaluated_rows)
+
+    return {
+        "labeled_query_count": len(label_rows),
+        "evaluated_query_count": evaluated_query_count,
+        "questionable_gold_count": questionable_gold_count,
+        "answer_evidence_hit_rate": (
+            sum(answer_hits) / evaluated_query_count
+        ),
+        "answer_evidence_mrr": (
+            sum(answer_rrs) / evaluated_query_count
+        ),
+        "useful_evidence_hit_rate": (
+            sum(useful_hits) / evaluated_query_count
+        ),
+        "gold_doc_hit_but_evidence_miss_rate": (
+            sum(gold_doc_evidence_misses)
+            / sum(gold_doc_hits)
+            if sum(gold_doc_hits)
+            else 0.0
+        ),
+    }

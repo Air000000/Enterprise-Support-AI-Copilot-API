@@ -399,3 +399,276 @@ def test_annotation_pack_markdown_is_train_only_and_annotation_ready():
 
     assert "questionable_gold: ___" in markdown
     assert "notes:" in markdown
+
+def test_answer_evidence_hit_at_k_requires_answer_bearing_chunk_within_k():
+    from experiments.evals import techqa_evidence_audit as audit
+
+    assert hasattr(
+        audit,
+        "answer_evidence_hit_at_k",
+    ), "AnswerEvidenceHit@K is not implemented yet"
+
+    retrieved_chunk_ids = [
+        "doc.txt_chunk_0",
+        "doc.txt_chunk_1",
+        "doc.txt_chunk_2",
+    ]
+    evidence_labels = {
+        "doc.txt_chunk_0": 0,
+        "doc.txt_chunk_1": 1,
+        "doc.txt_chunk_2": 2,
+    }
+
+    assert (
+        audit.answer_evidence_hit_at_k(
+            retrieved_chunk_ids,
+            evidence_labels,
+            k=2,
+        )
+        == 0
+    )
+    assert (
+        audit.answer_evidence_hit_at_k(
+            retrieved_chunk_ids,
+            evidence_labels,
+            k=3,
+        )
+        == 1
+    )
+
+
+def test_answer_evidence_reciprocal_rank_uses_first_answer_bearing_chunk():
+    from experiments.evals import techqa_evidence_audit as audit
+
+    assert hasattr(
+        audit,
+        "answer_evidence_reciprocal_rank_at_k",
+    ), "AnswerEvidence reciprocal rank is not implemented yet"
+
+    retrieved_chunk_ids = [
+        "doc.txt_chunk_0",
+        "doc.txt_chunk_1",
+        "doc.txt_chunk_2",
+    ]
+    evidence_labels = {
+        "doc.txt_chunk_0": 0,
+        "doc.txt_chunk_1": 1,
+        "doc.txt_chunk_2": 2,
+    }
+
+    assert (
+        audit.answer_evidence_reciprocal_rank_at_k(
+            retrieved_chunk_ids,
+            evidence_labels,
+            k=2,
+        )
+        == 0.0
+    )
+    assert (
+        audit.answer_evidence_reciprocal_rank_at_k(
+            retrieved_chunk_ids,
+            evidence_labels,
+            k=3,
+        )
+        == 1 / 3
+    )
+
+
+def test_useful_evidence_hit_at_k_accepts_useful_or_answer_bearing_chunk():
+    from experiments.evals import techqa_evidence_audit as audit
+
+    assert hasattr(
+        audit,
+        "useful_evidence_hit_at_k",
+    ), "UsefulEvidenceHit@K is not implemented yet"
+
+    retrieved_chunk_ids = [
+        "doc.txt_chunk_0",
+        "doc.txt_chunk_1",
+        "doc.txt_chunk_2",
+    ]
+    evidence_labels = {
+        "doc.txt_chunk_0": 0,
+        "doc.txt_chunk_1": 1,
+        "doc.txt_chunk_2": 2,
+    }
+
+    assert (
+        audit.useful_evidence_hit_at_k(
+            retrieved_chunk_ids,
+            evidence_labels,
+            k=1,
+        )
+        == 0
+    )
+    assert (
+        audit.useful_evidence_hit_at_k(
+            retrieved_chunk_ids,
+            evidence_labels,
+            k=2,
+        )
+        == 1
+    )
+
+
+def test_gold_doc_hit_but_evidence_miss_requires_doc_hit_without_answer_evidence():
+    from experiments.evals import techqa_evidence_audit as audit
+
+    assert hasattr(
+        audit,
+        "gold_doc_hit_but_evidence_miss_at_k",
+    ), "GoldDocHitButEvidenceMiss@K is not implemented yet"
+
+    retrieved_chunk_ids = [
+        "gold.txt_chunk_0",
+        "other.txt_chunk_0",
+        "gold.txt_chunk_1",
+    ]
+    evidence_labels = {
+        "gold.txt_chunk_0": 1,
+        "gold.txt_chunk_1": 2,
+    }
+
+    assert (
+        audit.gold_doc_hit_but_evidence_miss_at_k(
+            retrieved_chunk_ids,
+            evidence_labels,
+            gold_document_id="gold.txt",
+            k=2,
+        )
+        == 1
+    )
+
+    assert (
+        audit.gold_doc_hit_but_evidence_miss_at_k(
+            retrieved_chunk_ids,
+            evidence_labels,
+            gold_document_id="gold.txt",
+            k=3,
+        )
+        == 0
+    )
+
+
+def test_build_evidence_summary_uses_raw_chunks_and_excludes_questionable_gold():
+    from experiments.evals import techqa_evidence_audit as audit
+
+    assert hasattr(
+        audit,
+        "build_evidence_summary",
+    ), "Evidence summary orchestration is not implemented yet"
+
+    retrieval_rows = [
+        {
+            "question_id": "TRAIN_Q001",
+            "raw_chunk_ids": [
+                "gold.txt_chunk_0",
+                "other.txt_chunk_0",
+                "gold.txt_chunk_1",
+            ],
+            "relevant_document_ids": ["gold.txt"],
+        },
+        {
+            "question_id": "TRAIN_Q002",
+            "raw_chunk_ids": [
+                "questionable.txt_chunk_0",
+            ],
+            "relevant_document_ids": ["questionable.txt"],
+        },
+    ]
+
+    label_rows = [
+        {
+            "question_id": "TRAIN_Q002",
+            "candidate_labels": [
+                {
+                    "chunk_id": "questionable.txt_chunk_0",
+                    "evidence_label": 2,
+                },
+            ],
+            "questionable_gold": True,
+        },
+        {
+            "question_id": "TRAIN_Q001",
+            "candidate_labels": [
+                {
+                    "chunk_id": "gold.txt_chunk_0",
+                    "evidence_label": 1,
+                },
+                {
+                    "chunk_id": "gold.txt_chunk_1",
+                    "evidence_label": 2,
+                },
+            ],
+            "questionable_gold": False,
+        },
+    ]
+
+    summary = audit.build_evidence_summary(
+        retrieval_rows,
+        label_rows,
+        hit_k=2,
+        mrr_k=10,
+    )
+
+    assert summary["labeled_query_count"] == 2
+    assert summary["evaluated_query_count"] == 1
+    assert summary["questionable_gold_count"] == 1
+
+    assert summary["answer_evidence_hit_rate"] == 0.0
+    assert summary["answer_evidence_mrr"] == 1 / 3
+    assert summary["useful_evidence_hit_rate"] == 1.0
+    assert summary["gold_doc_hit_but_evidence_miss_rate"] == 1.0
+
+
+def test_gold_doc_hit_but_evidence_miss_rate_is_conditioned_on_gold_doc_hits():
+    from experiments.evals import techqa_evidence_audit as audit
+
+    retrieval_rows = [
+        {
+            "question_id": "TRAIN_Q001",
+            "raw_chunk_ids": [
+                "gold1.txt_chunk_0",
+            ],
+            "relevant_document_ids": ["gold1.txt"],
+        },
+        {
+            "question_id": "TRAIN_Q002",
+            "raw_chunk_ids": [
+                "other.txt_chunk_0",
+            ],
+            "relevant_document_ids": ["gold2.txt"],
+        },
+    ]
+
+    label_rows = [
+        {
+            "question_id": "TRAIN_Q001",
+            "candidate_labels": [
+                {
+                    "chunk_id": "gold1.txt_chunk_0",
+                    "evidence_label": 1,
+                },
+            ],
+            "questionable_gold": False,
+        },
+        {
+            "question_id": "TRAIN_Q002",
+            "candidate_labels": [
+                {
+                    "chunk_id": "gold2.txt_chunk_0",
+                    "evidence_label": 2,
+                },
+            ],
+            "questionable_gold": False,
+        },
+    ]
+
+    summary = audit.build_evidence_summary(
+        retrieval_rows,
+        label_rows,
+        hit_k=1,
+        mrr_k=10,
+    )
+
+    assert summary["gold_doc_hit_but_evidence_miss_rate"] == 1.0
