@@ -1,0 +1,17 @@
+{
+  "run": "r2_union_rerank_counterfactual",
+  "question_id": "TRAIN_Q005",
+  "stage": "provider_route_failure",
+  "http_attempts": 1,
+  "http_status": 404,
+  "response_body": "",
+  "request_id": null,
+  "usage_observed": false,
+  "successful_model_calls": 0,
+  "checkpoint_rows_after_failure": 0,
+  "failed_base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "failed_path": "/reranks",
+  "classification": "routing_failure_before_successful_rerank_response",
+  "automatic_replay": false,
+  "dev_artifact_opened": false
+}
