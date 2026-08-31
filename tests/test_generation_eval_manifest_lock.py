@@ -57,7 +57,7 @@ def test_build_generation_run_manifest_freezes_experiment_identity(tmp_path):
 
     identity = run_manifest["identity"]
     assert identity["benchmark"] == "TechQA-RAG-Eval"
-    assert identity["run"] == "e0_generation"
+    assert identity["run"] == "g0_generation"
     assert identity["split"] == "train"
     assert identity["data"] == {
         "corpus_sha256": "corpus-sha",
@@ -74,7 +74,14 @@ def test_build_generation_run_manifest_freezes_experiment_identity(tmp_path):
         "chunk_size_chars": 800,
         "chunk_overlap_chars": 120,
         "min_chunk_size_chars": 150,
-        "top_k": 3,
+        "candidate_k": 100,
+        "reranker_model": "qwen3-rerank",
+        "reranker_instruction": (
+            "Rank the candidate passages by relevance to resolving "
+            "the technical support query."
+        ),
+        "context_top_k": 3,
+        "refusal_signal": "dense_top1_distance",
         "refusal_max_distance": 0.9,
     }
     assert identity["generation"]["model"] == "qwen3.5-plus"
@@ -88,7 +95,7 @@ def test_build_generation_run_manifest_freezes_experiment_identity(tmp_path):
         generation_eval.CORRECTNESS_EVALUATION_STEPS
     )
     assert identity["latency"] == {
-        "e2e_definition": "retrieval + generation",
+        "e2e_definition": "dense retrieval + rerank + generation",
         "judge_included": False,
     }
     assert run_manifest["provenance"]["project_sha"] == "project-sha"

@@ -1,6 +1,8 @@
 from pathlib import Path
 
 from experiments.evals.eval_techqa_generation import (
+    DEFAULT_DEV_GENERATION_CHECKPOINT_PATH,
+    DEFAULT_DEV_GENERATION_RUN_MANIFEST_PATH,
     DEFAULT_GENERATION_CHECKPOINT_PATH,
     DEFAULT_GENERATION_REPORT_DIR,
     DEFAULT_GENERATION_RUN_MANIFEST_PATH,
@@ -46,8 +48,8 @@ def _summary() -> TechQAGenerationEvalSummary:
     )
 
 
-def test_default_generation_artifacts_share_e0_dense_without_colliding_with_retrieval():
-    expected_dir = Path("experiments/evals/reports/e0_dense")
+def test_default_generation_artifacts_are_isolated_in_g0_generation():
+    expected_dir = Path("experiments/evals/reports/g0_generation")
 
     assert DEFAULT_GENERATION_REPORT_DIR == expected_dir
     assert DEFAULT_GENERATION_CHECKPOINT_PATH == (
@@ -56,7 +58,15 @@ def test_default_generation_artifacts_share_e0_dense_without_colliding_with_retr
     assert DEFAULT_GENERATION_RUN_MANIFEST_PATH == (
         expected_dir / "train_generation_manifest.json"
     )
-    assert DEFAULT_JUDGE_CALIBRATION_PATH == expected_dir / "judge_calibration.jsonl"
+    assert DEFAULT_DEV_GENERATION_CHECKPOINT_PATH == (
+        expected_dir / "dev_generation_checkpoint.jsonl"
+    )
+    assert DEFAULT_DEV_GENERATION_RUN_MANIFEST_PATH == (
+        expected_dir / "dev_generation_manifest.json"
+    )
+    assert DEFAULT_JUDGE_CALIBRATION_PATH == (
+        expected_dir / "judge_calibration.jsonl"
+    )
 
 
 def test_generation_report_writer_preserves_retrieval_artifacts(tmp_path):

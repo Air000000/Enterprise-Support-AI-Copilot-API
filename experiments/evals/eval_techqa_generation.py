@@ -28,13 +28,19 @@ from experiments.evals.build_techqa_index import (
     DEFAULT_TECHQA_COLLECTION_NAME,
     search_techqa_index,
 )
+from experiments.evals.rerankers.qwen3_reranker import (
+    DEFAULT_RERANK_INSTRUCTION,
+    DEFAULT_RERANK_MODEL,
+    RerankCandidate,
+    rerank_candidates,
+)
 from experiments.evals.judges.deepeval_dashscope import DashScopeDeepEvalModel
 from rag_runtime.query_rag_chroma import generate_answer
 
 DEFAULT_TECHQA_MANIFEST_PATH = Path(
     "experiments/evals/datasets/techqa/manifest.json"
 )
-DEFAULT_GENERATION_REPORT_DIR = Path("experiments/evals/reports/e0_dense")
+DEFAULT_GENERATION_REPORT_DIR = Path("experiments/evals/reports/g0_generation")
 DEFAULT_GENERATION_CHECKPOINT_PATH = (
     DEFAULT_GENERATION_REPORT_DIR / "train_generation_checkpoint.jsonl"
 )
@@ -47,8 +53,19 @@ DEFAULT_DEV_GENERATION_CHECKPOINT_PATH = (
 DEFAULT_DEV_GENERATION_RUN_MANIFEST_PATH = (
     DEFAULT_GENERATION_REPORT_DIR / "dev_generation_manifest.json"
 )
+DEFAULT_G0_PILOT_REPORT_DIR = DEFAULT_GENERATION_REPORT_DIR / "pilot"
+DEFAULT_G0_PILOT_CHECKPOINT_PATH = (
+    DEFAULT_G0_PILOT_REPORT_DIR / "train_generation_checkpoint.jsonl"
+)
+DEFAULT_G0_PILOT_RUN_MANIFEST_PATH = (
+    DEFAULT_G0_PILOT_REPORT_DIR / "train_generation_manifest.json"
+)
 DEFAULT_JUDGE_CALIBRATION_PATH = DEFAULT_GENERATION_REPORT_DIR / "judge_calibration.jsonl"
+DEFAULT_GENERATION_CANDIDATE_K = 100
 DEFAULT_GENERATION_TOP_K = 3
+DEFAULT_G0_PILOT_SIZE = 12
+DEFAULT_G0_PILOT_PER_CLASS = 6
+DEFAULT_G0_PILOT_SEED = "techqa-g0-generation-pilot-v1"
 DEFAULT_REFUSAL_MAX_DISTANCE = 0.9
 DEFAULT_REFUSAL_ANSWER = "我在已提供资料中没有找到足够依据。"
 CORRECTNESS_EVALUATION_STEPS = [
@@ -81,6 +98,21 @@ class GenerationJudgeResult:
     correctness_reason: str
     faithfulness_score: float
     faithfulness_reason: str
+
+
+@dataclass(frozen=True)
+class G0RetrievedChunk:
+    chunk_id: str
+    document_id: str
+    chunk_index: int
+    content: str
+    distance: float
+
+
+@dataclass(frozen=True)
+class G0RetrievalOutcome:
+    results: tuple[G0RetrievedChunk, ...]
+    dense_top_distance: float | None
 
 
 @dataclass(frozen=True)
@@ -174,6 +206,134 @@ def load_frozen_techqa_generation_cases(
         )
 
     return cases
+
+
+def retrieve_g0_e1_context(
+    question: str,
+    *,
+    dense_searcher: Searcher = search_techqa_index,
+    reranker: Callable[..., Any] = rerank_candidates,
+) -> G0RetrievalOutcome:
+    """Apply the frozen E1 retrieval path for G0 generation context."""
+    dense_results = dense_searcher(
+        question,
+        top_k=DEFAULT_GENERATION_CANDIDATE_K,
+    )
+
+    dense_top_distance = (
+        float(dense_results[0].distance)
+        if dense_results
+        else None
+    )
+
+    candidates = [
+        RerankCandidate(
+            chunk_id=str(result.chunk_id),
+            document_id=str(result.document_id),
+            content=str(result.content),
+        )
+        for result in dense_results
+    ]
+
+    rerank_result = reranker(
+        question.rstrip(),
+        candidates,
+    )
+
+    dense_by_chunk_id = {
+        str(result.chunk_id): result
+        for result in dense_results
+    }
+
+    selected: list[G0RetrievedChunk] = []
+
+    for reranked in rerank_result.results[
+        :DEFAULT_GENERATION_TOP_K
+    ]:
+        chunk_id = str(reranked.chunk_id)
+        source = dense_by_chunk_id.get(chunk_id)
+
+        if source is None:
+            raise RuntimeError(
+                "Reranker returned a chunk outside "
+                f"the frozen Dense candidate pool: {chunk_id}"
+            )
+
+        selected.append(
+            G0RetrievedChunk(
+                chunk_id=chunk_id,
+                document_id=str(source.document_id),
+                chunk_index=int(source.chunk_index),
+                content=str(source.content),
+                distance=float(source.distance),
+            )
+        )
+
+    return G0RetrievalOutcome(
+        results=tuple(selected),
+        dense_top_distance=dense_top_distance,
+    )
+
+
+def _g0_pilot_sample_key(
+    case: TechQAGenerationCase,
+) -> tuple[str, str]:
+    digest = hashlib.sha256(
+        (
+            f"{DEFAULT_G0_PILOT_SEED}:"
+            f"{case.question_id}"
+        ).encode("utf-8")
+    ).hexdigest()
+    return digest, case.question_id
+
+
+def select_g0_train_pilot_cases(
+    cases: Iterable[TechQAGenerationCase],
+) -> list[TechQAGenerationCase]:
+    """Select the frozen balanced 12-case G0 TRAIN pilot."""
+    train_cases = [
+        case
+        for case in cases
+        if case.split == "train"
+    ]
+
+    answerable = sorted(
+        (
+            case
+            for case in train_cases
+            if case.answerable
+        ),
+        key=_g0_pilot_sample_key,
+    )
+
+    impossible = sorted(
+        (
+            case
+            for case in train_cases
+            if not case.answerable
+        ),
+        key=_g0_pilot_sample_key,
+    )
+
+    if len(answerable) < DEFAULT_G0_PILOT_PER_CLASS:
+        raise ValueError(
+            "Insufficient answerable TRAIN cases for G0 pilot."
+        )
+
+    if len(impossible) < DEFAULT_G0_PILOT_PER_CLASS:
+        raise ValueError(
+            "Insufficient impossible TRAIN cases for G0 pilot."
+        )
+
+    selected = (
+        answerable[:DEFAULT_G0_PILOT_PER_CLASS]
+        + impossible[:DEFAULT_G0_PILOT_PER_CLASS]
+    )
+
+    return sorted(
+        selected,
+        key=lambda case: case.question_id,
+    )
 
 
 def build_techqa_retrieved_context(results: Iterable[Any]) -> str:
@@ -319,6 +479,7 @@ def evaluate_techqa_generation_cases(
     cases: Iterable[TechQAGenerationCase],
     *,
     searcher: Searcher = search_techqa_index,
+    retriever: Callable[[str], G0RetrievalOutcome] | None = None,
     generator: Generator = generate_answer,
     judge: Judge = judge_techqa_generation,
     split: EvalSplit = "train",
@@ -341,10 +502,20 @@ def evaluate_techqa_generation_cases(
 
     for case in selected_cases:
         started = clock()
-        retrieved = searcher(case.question, top_k=top_k)
+        if retriever is None:
+            retrieved = searcher(case.question, top_k=top_k)
+            top_distance = (
+                float(retrieved[0].distance)
+                if retrieved
+                else None
+            )
+        else:
+            retrieval_outcome = retriever(case.question)
+            retrieved = list(retrieval_outcome.results)
+            top_distance = retrieval_outcome.dense_top_distance
+
         retrieval_context = [str(result.content) for result in retrieved]
         context = build_techqa_retrieved_context(retrieved)
-        top_distance = float(retrieved[0].distance) if retrieved else None
 
         if not retrieved:
             retrieval_status = "no_context"
@@ -556,7 +727,11 @@ def _append_generation_checkpoint(
 def _evaluate_single_generation_case(
     case: TechQAGenerationCase,
 ) -> TechQAGenerationEvalResult:
-    summary = evaluate_techqa_generation_cases([case], split=case.split)
+    summary = evaluate_techqa_generation_cases(
+        [case],
+        split=case.split,
+        retriever=retrieve_g0_e1_context,
+    )
     return summary.results[0]
 
 
@@ -680,7 +855,7 @@ def build_generation_run_manifest(
 
     identity = {
         "benchmark": frozen["benchmark"],
-        "run": "e0_generation",
+        "run": "g0_generation",
         "split": split,
         "data": {
             "corpus_sha256": retrieval_dataset["corpus_sha256"],
@@ -697,7 +872,11 @@ def build_generation_run_manifest(
             "chunk_size_chars": baseline_rag["chunk_size_chars"],
             "chunk_overlap_chars": baseline_rag["chunk_overlap_chars"],
             "min_chunk_size_chars": baseline_rag["min_chunk_size_chars"],
-            "top_k": DEFAULT_GENERATION_TOP_K,
+            "candidate_k": DEFAULT_GENERATION_CANDIDATE_K,
+            "reranker_model": DEFAULT_RERANK_MODEL,
+            "reranker_instruction": DEFAULT_RERANK_INSTRUCTION,
+            "context_top_k": DEFAULT_GENERATION_TOP_K,
+            "refusal_signal": "dense_top1_distance",
             "refusal_max_distance": DEFAULT_REFUSAL_MAX_DISTANCE,
         },
         "generation": {
@@ -716,7 +895,7 @@ def build_generation_run_manifest(
             "correctness_evaluation_steps": CORRECTNESS_EVALUATION_STEPS,
         },
         "latency": {
-            "e2e_definition": "retrieval + generation",
+            "e2e_definition": "dense retrieval + rerank + generation",
             "judge_included": False,
         },
     }
@@ -818,11 +997,26 @@ def write_generation_reports(
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Evaluate frozen TechQA generation.")
     parser.add_argument("--split", choices=("train", "dev"), default="train")
+    parser.add_argument("--pilot", action="store_true")
     args = parser.parse_args([] if argv is None else argv)
     split: EvalSplit = args.split
 
-    print("Validating TechQA E0 generation run identity...")
-    if split == "dev":
+    if args.pilot and split != "train":
+        parser.error("--pilot is only supported with --split train")
+
+    print("Validating TechQA G0 generation run identity...")
+    if args.pilot and split == "train":
+        run_manifest = build_generation_run_manifest(
+            split="train",
+            query_count=DEFAULT_G0_PILOT_SIZE,
+        )
+        ensure_generation_run_manifest(
+            run_manifest,
+            run_manifest_path=DEFAULT_G0_PILOT_RUN_MANIFEST_PATH,
+            checkpoint_path=DEFAULT_G0_PILOT_CHECKPOINT_PATH,
+        )
+        checkpoint_path = DEFAULT_G0_PILOT_CHECKPOINT_PATH
+    elif split == "dev":
         run_manifest = build_generation_run_manifest(split="dev", query_count=310)
         ensure_generation_run_manifest(
             run_manifest,
@@ -841,13 +1035,24 @@ def main(argv: Sequence[str] | None = None) -> None:
     dev_count = sum(case.split == "dev" for case in cases)
     print(f"Loaded cases: {len(cases)} (TRAIN={train_count}, DEV={dev_count})")
 
-    print(f"Running resumable E0 generation evaluation on {split.upper()} only...")
+    run_cases = (
+        select_g0_train_pilot_cases(cases)
+        if args.pilot and split == "train"
+        else cases
+    )
+
+    print(f"Running resumable G0 generation evaluation on {split.upper()} only...")
     summary = run_resumable_generation_eval(
-        cases,
+        run_cases,
         checkpoint_path=checkpoint_path,
         split=split,
     )
-    if split == "dev":
+    if args.pilot and split == "train":
+        write_generation_reports(
+            summary,
+            report_dir=DEFAULT_G0_PILOT_REPORT_DIR,
+        )
+    elif split == "dev":
         write_generation_reports(summary, report_dir=DEFAULT_GENERATION_REPORT_DIR)
     else:
         write_generation_reports(summary)
