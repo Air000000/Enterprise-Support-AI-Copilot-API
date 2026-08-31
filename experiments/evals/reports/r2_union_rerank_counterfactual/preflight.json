@@ -1,0 +1,354 @@
+{
+  "run": "r2_union_rerank_counterfactual",
+  "stage": "zero_cost_preflight",
+  "split": "train",
+  "provider_calls": 0,
+  "dev_artifact_opened": false,
+  "project_head": "8daa0566d32946fb673d61844f1b5cf2aeeb4d8f",
+  "branch": "feat/r2-union-rerank-counterfactual",
+  "hypothesis": "C1 fixed-budget RRF Top100 compression may discard useful single-source tail evidence before the reranker sees it; rerank the full Dense100/BM25100 unique union instead.",
+  "input_artifacts": {
+    "c1_snapshot": {
+      "path": "experiments/evals/reports/r4_c1_hybrid_rerank/train_fused_snapshot.jsonl",
+      "sha256": "12db56e50efaf11dab4a28ff3c1b4df223e2ad985a8b48021f4c7dd9fdd889d2"
+    },
+    "c1_results": {
+      "path": "experiments/evals/reports/r4_c1_hybrid_rerank/train_results.jsonl",
+      "sha256": "12b312a8403cda2c5fe8afe53aa18853891a7e87feaf863e2d438ca15367ee5b"
+    },
+    "r1_evidence_metrics": {
+      "path": "experiments/evals/reports/r1_evidence_audit/evidence_metrics.json",
+      "sha256": "e2567fc66794ab199369121362f34856006b9948ee04ebc70b40bc04d1684200"
+    },
+    "r1_evidence_labels": {
+      "path": "experiments/evals/reports/r1_evidence_audit/evidence_labels.jsonl",
+      "sha256": "d522eff8daba8435d34ee0e51ad8c56fbbbb759b3f71dbf3a253cd9a1b506013"
+    },
+    "fusion_loss_audit": {
+      "path": "experiments/evals/reports/r4_c1_hybrid_rerank/fusion_loss_audit.json",
+      "sha256": "848a7bb9a31b3bd8347c51bd875f0e07bc40ffc3ec8e92c6d0d519edc70ec599"
+    }
+  },
+  "selection": {
+    "policy": "frozen_two_cohort_no_posthoc_selection",
+    "fusion_loss_ids": [
+      "TRAIN_Q005",
+      "TRAIN_Q011",
+      "TRAIN_Q098",
+      "TRAIN_Q122",
+      "TRAIN_Q130",
+      "TRAIN_Q135",
+      "TRAIN_Q137",
+      "TRAIN_Q141",
+      "TRAIN_Q207",
+      "TRAIN_Q261",
+      "TRAIN_Q318",
+      "TRAIN_Q319",
+      "TRAIN_Q328",
+      "TRAIN_Q343",
+      "TRAIN_Q372",
+      "TRAIN_Q460",
+      "TRAIN_Q497",
+      "TRAIN_Q543",
+      "TRAIN_Q565"
+    ],
+    "evidence_loss_ids": [
+      "TRAIN_Q045",
+      "TRAIN_Q122",
+      "TRAIN_Q152",
+      "TRAIN_Q524",
+      "TRAIN_Q579"
+    ],
+    "overlap_ids": [
+      "TRAIN_Q122"
+    ],
+    "unique_query_ids": [
+      "TRAIN_Q005",
+      "TRAIN_Q011",
+      "TRAIN_Q098",
+      "TRAIN_Q122",
+      "TRAIN_Q130",
+      "TRAIN_Q135",
+      "TRAIN_Q137",
+      "TRAIN_Q141",
+      "TRAIN_Q207",
+      "TRAIN_Q261",
+      "TRAIN_Q318",
+      "TRAIN_Q319",
+      "TRAIN_Q328",
+      "TRAIN_Q343",
+      "TRAIN_Q372",
+      "TRAIN_Q460",
+      "TRAIN_Q497",
+      "TRAIN_Q543",
+      "TRAIN_Q565",
+      "TRAIN_Q045",
+      "TRAIN_Q152",
+      "TRAIN_Q524",
+      "TRAIN_Q579"
+    ],
+    "fusion_loss_count": 19,
+    "evidence_loss_count": 5,
+    "overlap_count": 1,
+    "unique_query_count": 23,
+    "representative_benchmark": false
+  },
+  "candidate_construction": {
+    "dense_candidate_k": 100,
+    "bm25_candidate_k": 100,
+    "union_policy": "dense_rank_then_append_unseen_bm25",
+    "rrf": false,
+    "parameter_search": false,
+    "second_selection": false,
+    "union_candidate_count": {
+      "min": 156,
+      "median": 179,
+      "max": 197,
+      "sum": 4059
+    },
+    "per_query": [
+      {
+        "question_id": "TRAIN_Q005",
+        "cohorts": [
+          "A_document_fusion_loss"
+        ],
+        "dense_candidate_count": 100,
+        "bm25_candidate_count": 100,
+        "union_candidate_count": 194
+      },
+      {
+        "question_id": "TRAIN_Q011",
+        "cohorts": [
+          "A_document_fusion_loss"
+        ],
+        "dense_candidate_count": 100,
+        "bm25_candidate_count": 100,
+        "union_candidate_count": 179
+      },
+      {
+        "question_id": "TRAIN_Q098",
+        "cohorts": [
+          "A_document_fusion_loss"
+        ],
+        "dense_candidate_count": 100,
+        "bm25_candidate_count": 100,
+        "union_candidate_count": 161
+      },
+      {
+        "question_id": "TRAIN_Q122",
+        "cohorts": [
+          "A_document_fusion_loss",
+          "B_answer_evidence_compression_loss"
+        ],
+        "dense_candidate_count": 100,
+        "bm25_candidate_count": 100,
+        "union_candidate_count": 194
+      },
+      {
+        "question_id": "TRAIN_Q130",
+        "cohorts": [
+          "A_document_fusion_loss"
+        ],
+        "dense_candidate_count": 100,
+        "bm25_candidate_count": 100,
+        "union_candidate_count": 180
+      },
+      {
+        "question_id": "TRAIN_Q135",
+        "cohorts": [
+          "A_document_fusion_loss"
+        ],
+        "dense_candidate_count": 100,
+        "bm25_candidate_count": 100,
+        "union_candidate_count": 174
+      },
+      {
+        "question_id": "TRAIN_Q137",
+        "cohorts": [
+          "A_document_fusion_loss"
+        ],
+        "dense_candidate_count": 100,
+        "bm25_candidate_count": 100,
+        "union_candidate_count": 156
+      },
+      {
+        "question_id": "TRAIN_Q141",
+        "cohorts": [
+          "A_document_fusion_loss"
+        ],
+        "dense_candidate_count": 100,
+        "bm25_candidate_count": 100,
+        "union_candidate_count": 182
+      },
+      {
+        "question_id": "TRAIN_Q207",
+        "cohorts": [
+          "A_document_fusion_loss"
+        ],
+        "dense_candidate_count": 100,
+        "bm25_candidate_count": 100,
+        "union_candidate_count": 187
+      },
+      {
+        "question_id": "TRAIN_Q261",
+        "cohorts": [
+          "A_document_fusion_loss"
+        ],
+        "dense_candidate_count": 100,
+        "bm25_candidate_count": 100,
+        "union_candidate_count": 166
+      },
+      {
+        "question_id": "TRAIN_Q318",
+        "cohorts": [
+          "A_document_fusion_loss"
+        ],
+        "dense_candidate_count": 100,
+        "bm25_candidate_count": 100,
+        "union_candidate_count": 156
+      },
+      {
+        "question_id": "TRAIN_Q319",
+        "cohorts": [
+          "A_document_fusion_loss"
+        ],
+        "dense_candidate_count": 100,
+        "bm25_candidate_count": 100,
+        "union_candidate_count": 167
+      },
+      {
+        "question_id": "TRAIN_Q328",
+        "cohorts": [
+          "A_document_fusion_loss"
+        ],
+        "dense_candidate_count": 100,
+        "bm25_candidate_count": 100,
+        "union_candidate_count": 192
+      },
+      {
+        "question_id": "TRAIN_Q343",
+        "cohorts": [
+          "A_document_fusion_loss"
+        ],
+        "dense_candidate_count": 100,
+        "bm25_candidate_count": 100,
+        "union_candidate_count": 161
+      },
+      {
+        "question_id": "TRAIN_Q372",
+        "cohorts": [
+          "A_document_fusion_loss"
+        ],
+        "dense_candidate_count": 100,
+        "bm25_candidate_count": 100,
+        "union_candidate_count": 189
+      },
+      {
+        "question_id": "TRAIN_Q460",
+        "cohorts": [
+          "A_document_fusion_loss"
+        ],
+        "dense_candidate_count": 100,
+        "bm25_candidate_count": 100,
+        "union_candidate_count": 172
+      },
+      {
+        "question_id": "TRAIN_Q497",
+        "cohorts": [
+          "A_document_fusion_loss"
+        ],
+        "dense_candidate_count": 100,
+        "bm25_candidate_count": 100,
+        "union_candidate_count": 164
+      },
+      {
+        "question_id": "TRAIN_Q543",
+        "cohorts": [
+          "A_document_fusion_loss"
+        ],
+        "dense_candidate_count": 100,
+        "bm25_candidate_count": 100,
+        "union_candidate_count": 169
+      },
+      {
+        "question_id": "TRAIN_Q565",
+        "cohorts": [
+          "A_document_fusion_loss"
+        ],
+        "dense_candidate_count": 100,
+        "bm25_candidate_count": 100,
+        "union_candidate_count": 197
+      },
+      {
+        "question_id": "TRAIN_Q045",
+        "cohorts": [
+          "B_answer_evidence_compression_loss"
+        ],
+        "dense_candidate_count": 100,
+        "bm25_candidate_count": 100,
+        "union_candidate_count": 185
+      },
+      {
+        "question_id": "TRAIN_Q152",
+        "cohorts": [
+          "B_answer_evidence_compression_loss"
+        ],
+        "dense_candidate_count": 100,
+        "bm25_candidate_count": 100,
+        "union_candidate_count": 160
+      },
+      {
+        "question_id": "TRAIN_Q524",
+        "cohorts": [
+          "B_answer_evidence_compression_loss"
+        ],
+        "dense_candidate_count": 100,
+        "bm25_candidate_count": 100,
+        "union_candidate_count": 181
+      },
+      {
+        "question_id": "TRAIN_Q579",
+        "cohorts": [
+          "B_answer_evidence_compression_loss"
+        ],
+        "dense_candidate_count": 100,
+        "bm25_candidate_count": 100,
+        "union_candidate_count": 193
+      }
+    ]
+  },
+  "reranker": {
+    "model": "qwen3-rerank",
+    "instruction": "Rank the candidate passages by relevance to resolving the technical support query.",
+    "query_normalization": "rstrip",
+    "same_as_c1": true
+  },
+  "c1_baseline_token_reference": {
+    "selected_query_count": 23,
+    "total_tokens": 631544,
+    "median_tokens": 25282,
+    "max_tokens": 63954
+  },
+  "paid_safety": {
+    "max_provider_calls": 23,
+    "max_tokens_per_request": 120000,
+    "absolute_token_ceiling": 2760000,
+    "pricing_assumption_usd_per_million_input_tokens": 0.1,
+    "pricing_reverification_required_before_paid_run": true,
+    "absolute_cost_ceiling_usd_under_assumption": 0.27599999999999997
+  },
+  "evaluation": {
+    "cohort_a": [
+      "gold_document_recovered_at_5",
+      "gold_document_recovered_at_20",
+      "gold_document_rank_movement"
+    ],
+    "cohort_b": [
+      "answer_evidence_recovered_at_5",
+      "answer_evidence_recovered_at_20",
+      "answer_evidence_rank_movement"
+    ],
+    "report_cohorts_separately": true
+  },
+  "stop_condition": "If full-union reranking cannot reliably recover the preregistered document/evidence losses on these targeted cohorts, stop this route and do not expand to 450 TRAIN."
+}

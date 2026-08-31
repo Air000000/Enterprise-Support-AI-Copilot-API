@@ -1,0 +1,119 @@
+{
+  "run": "r2_union_rerank_counterfactual",
+  "stage": "paid_run_contract",
+  "split": "train",
+  "provider_calls_at_freeze": 0,
+  "dev_artifact_opened": false,
+  "hypothesis": "C1 fixed-budget RRF Top100 compression may discard useful single-source tail evidence before reranking; rerank the complete unique Dense100/BM25100 union without RRF.",
+  "code_identity": {
+    "base_git_head": "8daa0566d32946fb673d61844f1b5cf2aeeb4d8f",
+    "branch": "feat/r2-union-rerank-counterfactual",
+    "evaluator_path": "experiments/evals/eval_techqa_union_rerank_counterfactual.py",
+    "evaluator_sha256": "97e321f500279b5858c603e7a7f531da4942c6c728ab9c3b37a6dea07933dbca",
+    "test_path": "tests/test_techqa_union_rerank_counterfactual.py",
+    "test_sha256": "2e88b1251b9b582a75367cfb13482ab0112748e993c57a9eb2472bc9cf164f37"
+  },
+  "frozen_preflight": {
+    "path": "experiments/evals/reports/r2_union_rerank_counterfactual/preflight.json",
+    "sha256": "c3b49c26a4b83ab88dbb039cf5700ef9b3abc6e70fa042d260207c5daf4475a1"
+  },
+  "selection": {
+    "policy": "frozen_two_cohort_no_posthoc_selection",
+    "fusion_loss_count": 19,
+    "evidence_loss_count": 5,
+    "overlap_count": 1,
+    "unique_query_count": 23,
+    "query_ids": [
+      "TRAIN_Q005",
+      "TRAIN_Q011",
+      "TRAIN_Q098",
+      "TRAIN_Q122",
+      "TRAIN_Q130",
+      "TRAIN_Q135",
+      "TRAIN_Q137",
+      "TRAIN_Q141",
+      "TRAIN_Q207",
+      "TRAIN_Q261",
+      "TRAIN_Q318",
+      "TRAIN_Q319",
+      "TRAIN_Q328",
+      "TRAIN_Q343",
+      "TRAIN_Q372",
+      "TRAIN_Q460",
+      "TRAIN_Q497",
+      "TRAIN_Q543",
+      "TRAIN_Q565",
+      "TRAIN_Q045",
+      "TRAIN_Q152",
+      "TRAIN_Q524",
+      "TRAIN_Q579"
+    ],
+    "representative_benchmark": false
+  },
+  "candidate_contract": {
+    "dense_candidate_k": 100,
+    "bm25_candidate_k": 100,
+    "union_policy": "dense_rank_then_append_unseen_bm25",
+    "rrf": false,
+    "parameter_search": false,
+    "second_selection": false,
+    "observed_union_min": 156,
+    "observed_union_median": 179,
+    "observed_union_max": 197,
+    "observed_union_sum": 4059
+  },
+  "reranker": {
+    "provider": "Alibaba Cloud Model Studio",
+    "region": "Singapore",
+    "model": "qwen3-rerank",
+    "instruction": "Rank the candidate passages by relevance to resolving the technical support query.",
+    "query_normalization": "rstrip",
+    "same_model_and_instruction_as_c1": true,
+    "sdk_max_retries": 0
+  },
+  "provider_limits_verified": {
+    "verified_date": "2026-08-31",
+    "max_documents_per_request": 500,
+    "max_input_tokens_per_request": 120000,
+    "pricing_usd_per_million_input_tokens": 0.1,
+    "pricing_rule": "input_tokens_only",
+    "documentation": {
+      "limits": "https://www.alibabacloud.com/help/en/model-studio/text-rerank-api",
+      "pricing": "https://www.alibabacloud.com/help/en/model-studio/model-pricing"
+    }
+  },
+  "paid_safety": {
+    "max_provider_calls": 23,
+    "max_input_tokens_per_request": 120000,
+    "absolute_input_token_ceiling": 2760000,
+    "absolute_cost_ceiling_usd": 0.276,
+    "checkpoint_resume": true,
+    "uncertain_inflight_auto_replay": false
+  },
+  "outputs": {
+    "checkpoint": "experiments/evals/reports/r2_union_rerank_counterfactual/paid_checkpoint.jsonl",
+    "inflight": "experiments/evals/reports/r2_union_rerank_counterfactual/paid_inflight.json",
+    "results": "experiments/evals/reports/r2_union_rerank_counterfactual/paid_results.jsonl",
+    "metrics": "experiments/evals/reports/r2_union_rerank_counterfactual/paid_metrics.json"
+  },
+  "evaluation": {
+    "cohort_a": {
+      "name": "document_level_fusion_loss",
+      "metrics": [
+        "gold_document_recovered_at_5",
+        "gold_document_recovered_at_20",
+        "gold_document_rank_movement"
+      ]
+    },
+    "cohort_b": {
+      "name": "human_confirmed_answer_evidence_compression_loss",
+      "metrics": [
+        "answer_evidence_recovered_at_5",
+        "answer_evidence_recovered_at_20",
+        "answer_evidence_rank_movement"
+      ]
+    },
+    "report_cohorts_separately": true
+  },
+  "stop_condition": "If full-union reranking cannot reliably recover the preregistered document/evidence losses on these targeted cohorts, stop this route and do not expand to 450 TRAIN."
+}
