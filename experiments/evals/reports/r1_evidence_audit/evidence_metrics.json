@@ -1,0 +1,130 @@
+{
+  "annotation_completeness_top20": {
+    "c1_fused_before_rerank": {
+      "residual_count": 13,
+      "residual_with_unjudged": 0,
+      "unjudged_gold_chunk_count": 0
+    },
+    "c1_reranked": {
+      "residual_count": 9,
+      "residual_with_unjudged": 0,
+      "unjudged_gold_chunk_count": 0
+    },
+    "e0_dense": {
+      "residual_count": 10,
+      "residual_with_unjudged": 0,
+      "unjudged_gold_chunk_count": 0
+    }
+  },
+  "audit_set": {
+    "candidate_label_count": 187,
+    "evaluated_query_count": 54,
+    "labeled_query_count": 60,
+    "labels_sha256": "d522eff8daba8435d34ee0e51ad8c56fbbbb759b3f71dbf3a253cd9a1b506013",
+    "questionable_gold_count": 6
+  },
+  "controls": {
+    "dev_artifact_opened": false,
+    "provider_calls": 0
+  },
+  "evidence_metrics": {
+    "c1_fused_before_rerank": {
+      "k20": {
+        "answer_evidence_hit_rate": 0.5370370370370371,
+        "answer_evidence_mrr": 0.2959876543209876,
+        "evaluated_query_count": 54,
+        "gold_doc_hit_but_evidence_miss_rate": 0.30952380952380953,
+        "labeled_query_count": 60,
+        "questionable_gold_count": 6,
+        "useful_evidence_hit_rate": 0.7777777777777778
+      },
+      "k5": {
+        "answer_evidence_hit_rate": 0.46296296296296297,
+        "answer_evidence_mrr": 0.2959876543209876,
+        "evaluated_query_count": 54,
+        "gold_doc_hit_but_evidence_miss_rate": 0.32432432432432434,
+        "labeled_query_count": 60,
+        "questionable_gold_count": 6,
+        "useful_evidence_hit_rate": 0.6851851851851852
+      }
+    },
+    "c1_reranked": {
+      "k20": {
+        "answer_evidence_hit_rate": 0.6481481481481481,
+        "answer_evidence_mrr": 0.33445767195767195,
+        "evaluated_query_count": 54,
+        "gold_doc_hit_but_evidence_miss_rate": 0.20454545454545456,
+        "labeled_query_count": 60,
+        "questionable_gold_count": 6,
+        "useful_evidence_hit_rate": 0.7962962962962963
+      },
+      "k5": {
+        "answer_evidence_hit_rate": 0.5370370370370371,
+        "answer_evidence_mrr": 0.33445767195767195,
+        "evaluated_query_count": 54,
+        "gold_doc_hit_but_evidence_miss_rate": 0.275,
+        "labeled_query_count": 60,
+        "questionable_gold_count": 6,
+        "useful_evidence_hit_rate": 0.7222222222222222
+      }
+    },
+    "e0_dense": {
+      "k20": {
+        "answer_evidence_hit_rate": 0.6111111111111112,
+        "answer_evidence_mrr": 0.27270723104056444,
+        "evaluated_query_count": 54,
+        "gold_doc_hit_but_evidence_miss_rate": 0.23255813953488372,
+        "labeled_query_count": 60,
+        "questionable_gold_count": 6,
+        "useful_evidence_hit_rate": 0.7777777777777778
+      },
+      "k5": {
+        "answer_evidence_hit_rate": 0.4444444444444444,
+        "answer_evidence_mrr": 0.27270723104056444,
+        "evaluated_query_count": 54,
+        "gold_doc_hit_but_evidence_miss_rate": 0.3142857142857143,
+        "labeled_query_count": 60,
+        "questionable_gold_count": 6,
+        "useful_evidence_hit_rate": 0.6296296296296297
+      }
+    }
+  },
+  "notes": [
+    "Evidence metrics exclude cases with questionable_gold=true.",
+    "The representative audit subset is a route-selection sample, not a replacement for the official benchmark.",
+    "Official document metrics and evidence metrics use different ranking units and are not interpreted as the same retrieval budget.",
+    "R3 evidence metrics are unavailable because the stored R3 artifact does not contain chunk rankings."
+  ],
+  "official_document_metrics_same_audit_subset": {
+    "c1_hybrid_rerank": {
+      "mrr_at_10": 0.5621105232216342,
+      "query_count": 54,
+      "recall_at_20": 0.8888888888888888,
+      "recall_at_20_count": 48,
+      "recall_at_5": 0.7592592592592593,
+      "recall_at_5_count": 41
+    },
+    "e0_dense": {
+      "mrr_at_10": 0.5776234567901234,
+      "query_count": 54,
+      "recall_at_20": 0.8333333333333334,
+      "recall_at_20_count": 45,
+      "recall_at_5": 0.7037037037037037,
+      "recall_at_5_count": 38
+    },
+    "r3_hybrid": {
+      "mrr_at_10": 0.5882716049382717,
+      "query_count": 54,
+      "recall_at_20": 0.7962962962962963,
+      "recall_at_20_count": 43,
+      "recall_at_5": 0.6481481481481481,
+      "recall_at_5_count": 35
+    }
+  },
+  "schema_version": 1,
+  "source_artifacts": {
+    "e0_dense_train_results_sha256": "c09401ea3ebd2774a0972a557436e1baff48cf317689b4ea44284ef44badfd82",
+    "r3_hybrid_train_results_sha256": "870445fd7fd2aa9e761bb4473deb11a8d3646ddf8d094b5f0f071f914d5e7e1b",
+    "r4_c1_hybrid_rerank_train_results_sha256": "12b312a8403cda2c5fe8afe53aa18853891a7e87feaf863e2d438ca15367ee5b"
+  }
+}
