@@ -158,3 +158,161 @@ def test_completed_checkpoint_rebuilds_summary_and_reports_without_evaluator(tmp
     assert metrics["correctness_mean"] == pytest.approx(0.8)
     assert metrics["faithfulness_mean"] == pytest.approx(0.9)
     assert len(result_lines) == 2
+
+
+def test_default_single_case_evaluator_uses_frozen_g0_retriever(monkeypatch):
+    from types import SimpleNamespace
+
+    import experiments.evals.eval_techqa_generation as generation_eval
+
+    case = _case("TRAIN_Q001")
+    expected_result = _result("TRAIN_Q001")
+
+    observed: dict[str, object] = {}
+
+    def fake_evaluate(cases, **kwargs):
+        observed["cases"] = list(cases)
+        observed["split"] = kwargs.get("split")
+        observed["retriever"] = kwargs.get("retriever")
+
+        return SimpleNamespace(
+            results=(expected_result,)
+        )
+
+    monkeypatch.setattr(
+        generation_eval,
+        "evaluate_techqa_generation_cases",
+        fake_evaluate,
+    )
+
+    actual = generation_eval._evaluate_single_generation_case(
+        case
+    )
+
+    assert actual is expected_result
+    assert observed["cases"] == [case]
+    assert observed["split"] == "train"
+
+    assert (
+        observed["retriever"]
+        is generation_eval.retrieve_g0_e1_context
+    )
+
+
+def test_g0_train_pilot_selection_is_deterministic_and_balanced():
+    import hashlib
+
+    from experiments.evals import eval_techqa_generation as generation_eval
+
+    train_answerable = [
+        TechQAGenerationCase(
+            question_id=f"TRAIN_Q{index:03d}",
+            question=f"answerable question {index}",
+            gold_answer=f"answer {index}",
+            answerable=True,
+            split="train",
+        )
+        for index in range(12)
+    ]
+
+    train_impossible = [
+        TechQAGenerationCase(
+            question_id=f"TRAIN_I{index:03d}",
+            question=f"impossible question {index}",
+            gold_answer="",
+            answerable=False,
+            split="train",
+        )
+        for index in range(12)
+    ]
+
+    dev_noise = [
+        TechQAGenerationCase(
+            question_id=f"DEV_Q{index:03d}",
+            question=f"dev question {index}",
+            gold_answer=f"dev answer {index}",
+            answerable=True,
+            split="dev",
+        )
+        for index in range(4)
+    ]
+
+    all_cases = (
+        train_answerable
+        + train_impossible
+        + dev_noise
+    )
+
+    selected = generation_eval.select_g0_train_pilot_cases(
+        all_cases
+    )
+
+    selected_from_reversed = (
+        generation_eval.select_g0_train_pilot_cases(
+            list(reversed(all_cases))
+        )
+    )
+
+    assert generation_eval.DEFAULT_G0_PILOT_SIZE == 12
+    assert generation_eval.DEFAULT_G0_PILOT_PER_CLASS == 6
+    assert (
+        generation_eval.DEFAULT_G0_PILOT_SEED
+        == "techqa-g0-generation-pilot-v1"
+    )
+
+    assert len(selected) == 12
+
+    assert sum(
+        case.answerable
+        for case in selected
+    ) == 6
+
+    assert sum(
+        not case.answerable
+        for case in selected
+    ) == 6
+
+    assert all(
+        case.split == "train"
+        for case in selected
+    )
+
+    selected_ids = [
+        case.question_id
+        for case in selected
+    ]
+
+    reversed_ids = [
+        case.question_id
+        for case in selected_from_reversed
+    ]
+
+    assert selected_ids == reversed_ids
+
+    def stable_key(case):
+        return hashlib.sha256(
+            (
+                f"{generation_eval.DEFAULT_G0_PILOT_SEED}:"
+                f"{case.question_id}"
+            ).encode("utf-8")
+        ).hexdigest()
+
+    expected_answerable = sorted(
+        train_answerable,
+        key=stable_key,
+    )[:6]
+
+    expected_impossible = sorted(
+        train_impossible,
+        key=stable_key,
+    )[:6]
+
+    expected_ids = {
+        case.question_id
+        for case in (
+            expected_answerable
+            + expected_impossible
+        )
+    }
+
+    assert set(selected_ids) == expected_ids

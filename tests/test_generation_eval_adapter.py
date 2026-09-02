@@ -257,3 +257,296 @@ def test_impossible_cases_use_deterministic_abstention_without_llm_judge():
     assert summary.hallucination_rate == pytest.approx(0.5)
     assert summary.e2e_latency_p50_ms == pytest.approx(15.0)
     assert summary.e2e_latency_p95_ms == pytest.approx(19.5)
+
+
+def test_g0_retrieval_uses_dense100_rerank_and_returns_bounded_document_context(
+    monkeypatch,
+):
+    from experiments.evals import eval_techqa_generation as generation_eval
+
+    question = "How do I fix the service?   "
+
+    dense_results = [
+        SimpleNamespace(
+            chunk_id=f"doc_{index:03d}_chunk_0",
+            document_id=f"doc_{index:03d}",
+            chunk_index=0,
+            content=f"candidate evidence {index}",
+            distance=0.01 + index * 0.001,
+        )
+        for index in range(100)
+    ]
+
+    dense_calls: list[tuple[str, int]] = []
+    rerank_calls: list[tuple[str, list[object]]] = []
+    collection_get_calls: list[tuple[str, ...]] = []
+    collection_open_calls: list[str] = []
+
+    def fake_dense_searcher(query: str, *, top_k: int):
+        dense_calls.append((query, top_k))
+        return dense_results
+
+    def fake_reranker(query: str, candidates):
+        rerank_calls.append((query, list(candidates)))
+
+        return SimpleNamespace(
+            results=tuple(reversed(candidates)),
+            request_id="g0-test-request",
+            total_tokens=123,
+        )
+
+    class FakeCollection:
+        def get(self, *, ids, include):
+            collection_get_calls.append(
+                tuple(ids)
+            )
+
+            return {
+                "ids": list(ids),
+                "documents": [
+                    f"sibling evidence {chunk_id}"
+                    for chunk_id in ids
+                ],
+                "metadatas": [
+                    {
+                        "document_id": chunk_id.rsplit(
+                            "_chunk_",
+                            1,
+                        )[0],
+                        "chunk_index": int(
+                            chunk_id.rsplit(
+                                "_chunk_",
+                                1,
+                            )[1]
+                        ),
+                    }
+                    for chunk_id in ids
+                ],
+            }
+
+    collection = FakeCollection()
+
+    class FakeClient:
+        def get_collection(
+            self,
+            *,
+            name,
+            embedding_function,
+        ):
+            collection_open_calls.append(
+                name
+            )
+            assert embedding_function is None
+            return collection
+
+    monkeypatch.setattr(
+        generation_eval,
+        "get_chroma_client",
+        lambda path: FakeClient(),
+        raising=False,
+    )
+
+    outcome = generation_eval.retrieve_g0_e1_context(
+        question,
+        dense_searcher=fake_dense_searcher,
+        reranker=fake_reranker,
+    )
+
+    assert dense_calls == [
+        (question, 100)
+    ]
+
+    assert len(rerank_calls) == 1
+    rerank_query, rerank_candidates = rerank_calls[0]
+
+    assert rerank_query == question.rstrip()
+    assert len(rerank_candidates) == 100
+
+    # Refusal remains tied to original Dense rank-1.
+    assert outcome.dense_top_distance == pytest.approx(
+        0.01
+    )
+
+    # Production default must expand the three rerank
+    # anchors plus Dense rank-1 rescue anchor.
+    assert len(outcome.results) == 16
+
+    assert tuple(
+        result.chunk_id
+        for result in outcome.results
+    ) == (
+        "doc_099_chunk_0",
+        "doc_099_chunk_1",
+        "doc_099_chunk_2",
+        "doc_099_chunk_3",
+        "doc_098_chunk_0",
+        "doc_098_chunk_1",
+        "doc_098_chunk_2",
+        "doc_098_chunk_3",
+        "doc_097_chunk_0",
+        "doc_097_chunk_1",
+        "doc_097_chunk_2",
+        "doc_097_chunk_3",
+        "doc_000_chunk_0",
+        "doc_000_chunk_1",
+        "doc_000_chunk_2",
+        "doc_000_chunk_3",
+    )
+
+    # Open the frozen collection once per retrieval,
+    # then fetch three forward siblings per anchor.
+    assert len(collection_open_calls) == 1
+
+    assert collection_get_calls == [
+        (
+            "doc_099_chunk_1",
+            "doc_099_chunk_2",
+            "doc_099_chunk_3",
+        ),
+        (
+            "doc_098_chunk_1",
+            "doc_098_chunk_2",
+            "doc_098_chunk_3",
+        ),
+        (
+            "doc_097_chunk_1",
+            "doc_097_chunk_2",
+            "doc_097_chunk_3",
+        ),
+        (
+            "doc_000_chunk_1",
+            "doc_000_chunk_2",
+            "doc_000_chunk_3",
+        ),
+    ]
+
+
+
+def test_generation_evaluator_consumes_g0_retrieval_outcome():
+    from experiments.evals import eval_techqa_generation as generation_eval
+
+    case = TechQAGenerationCase(
+        question_id="TRAIN_Q001",
+        question="How do I fix the service?",
+        gold_answer="Restart the service.",
+        answerable=True,
+        split="train",
+    )
+
+    retriever_calls: list[str] = []
+    generation_calls: list[tuple[str, str]] = []
+    judge_calls: list[dict[str, object]] = []
+
+    def fake_retriever(question: str):
+        retriever_calls.append(question)
+
+        return generation_eval.G0RetrievalOutcome(
+            results=(
+                generation_eval.G0RetrievedChunk(
+                    chunk_id="reranked_1",
+                    document_id="doc_1",
+                    chunk_index=1,
+                    content="Restart the service.",
+                    distance=1.20,
+                ),
+                generation_eval.G0RetrievedChunk(
+                    chunk_id="reranked_2",
+                    document_id="doc_2",
+                    chunk_index=2,
+                    content="Secondary evidence.",
+                    distance=1.10,
+                ),
+                generation_eval.G0RetrievedChunk(
+                    chunk_id="reranked_3",
+                    document_id="doc_3",
+                    chunk_index=3,
+                    content="Additional evidence.",
+                    distance=1.00,
+                ),
+            ),
+            dense_top_distance=0.25,
+        )
+
+    def fake_generator(
+        question: str,
+        context: str,
+    ) -> str:
+        generation_calls.append(
+            (question, context)
+        )
+        return "Restart the service."
+
+    def fake_judge(**kwargs):
+        judge_calls.append(kwargs)
+
+        return GenerationJudgeResult(
+            correctness_score=1.0,
+            correctness_reason="correct",
+            faithfulness_score=1.0,
+            faithfulness_reason="grounded",
+        )
+
+    clock = iter(
+        [0.000, 0.100]
+    ).__next__
+
+    summary = generation_eval.evaluate_techqa_generation_cases(
+        [case],
+        retriever=fake_retriever,
+        generator=fake_generator,
+        judge=fake_judge,
+        split="train",
+        clock=clock,
+    )
+
+    assert retriever_calls == [
+        case.question
+    ]
+
+    assert len(generation_calls) == 1
+    assert len(judge_calls) == 1
+
+    result = summary.results[0]
+
+    assert result.retrieved_chunk_ids == (
+        "reranked_1",
+        "reranked_2",
+        "reranked_3",
+    )
+
+    assert result.retrieved_document_ids == (
+        "doc_1",
+        "doc_2",
+        "doc_3",
+    )
+
+    # Refusal semantics remain tied to the
+    # original Dense Top1 distance.
+    #
+    # The reranked first chunk has distance 1.20,
+    # which would be rejected by the old direct
+    # Top1 interpretation. Dense Top1 was 0.25,
+    # so G0 should proceed with generation.
+    assert result.top_distance == pytest.approx(
+        0.25
+    )
+
+    assert result.retrieval_status == "ok"
+    assert result.abstained is False
+
+    assert (
+        result.generated_answer
+        == "Restart the service."
+    )
+
+    assert result.retrieval_context == (
+        "Restart the service.",
+        "Secondary evidence.",
+        "Additional evidence.",
+    )
+
+    assert result.correctness_score == 1.0
+    assert result.faithfulness_score == 1.0
+    assert result.e2e_latency_ms == pytest.approx(
+        100.0
+    )

@@ -51,11 +51,21 @@ def test_dev_generation_manifest_locks_split_and_query_count(tmp_path):
     )
 
     identity = manifest["identity"]
-    assert identity["run"] == "e0_generation"
+    assert identity["run"] == "g0_generation"
     assert identity["split"] == "dev"
     assert identity["query_count"] == 310
     assert identity["retrieval"]["retriever"] == "chroma_dense"
-    assert identity["retrieval"]["top_k"] == 3
+    assert identity["retrieval"]["candidate_k"] == 100
+    assert identity["retrieval"]["reranker_model"] == "qwen3-rerank"
+    assert identity["retrieval"]["context_policy"] == (
+        "document_aware_forward_expansion_v1"
+    )
+    assert identity["retrieval"]["rerank_anchor_top_k"] == 3
+    assert identity["retrieval"]["dense_top1_rescue"] is True
+    assert identity["retrieval"]["forward_sibling_chunks"] == 3
+    assert identity["retrieval"]["max_context_chunks"] == 16
+    assert "context_top_k" not in identity["retrieval"]
+    assert identity["retrieval"]["refusal_signal"] == "dense_top1_distance"
     assert identity["generation"]["model"] == "qwen3.5-plus"
     assert identity["judge"]["framework"] == "deepeval"
 
@@ -103,7 +113,7 @@ def test_main_dev_routes_to_independent_generation_artifacts(monkeypatch, tmp_pa
         e2e_latency_p95_ms=2000.0,
     )
     expected_manifest = {
-        "identity": {"run": "e0_generation", "split": "dev", "query_count": 310},
+        "identity": {"run": "g0_generation", "split": "dev", "query_count": 310},
         "provenance": {},
     }
     order = []
