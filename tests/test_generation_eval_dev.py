@@ -57,7 +57,14 @@ def test_dev_generation_manifest_locks_split_and_query_count(tmp_path):
     assert identity["retrieval"]["retriever"] == "chroma_dense"
     assert identity["retrieval"]["candidate_k"] == 100
     assert identity["retrieval"]["reranker_model"] == "qwen3-rerank"
-    assert identity["retrieval"]["context_top_k"] == 3
+    assert identity["retrieval"]["context_policy"] == (
+        "document_aware_forward_expansion_v1"
+    )
+    assert identity["retrieval"]["rerank_anchor_top_k"] == 3
+    assert identity["retrieval"]["dense_top1_rescue"] is True
+    assert identity["retrieval"]["forward_sibling_chunks"] == 3
+    assert identity["retrieval"]["max_context_chunks"] == 16
+    assert "context_top_k" not in identity["retrieval"]
     assert identity["retrieval"]["refusal_signal"] == "dense_top1_distance"
     assert identity["generation"]["model"] == "qwen3.5-plus"
     assert identity["judge"]["framework"] == "deepeval"

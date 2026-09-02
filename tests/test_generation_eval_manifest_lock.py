@@ -80,7 +80,11 @@ def test_build_generation_run_manifest_freezes_experiment_identity(tmp_path):
             "Rank the candidate passages by relevance to resolving "
             "the technical support query."
         ),
-        "context_top_k": 3,
+        "context_policy": "document_aware_forward_expansion_v1",
+        "rerank_anchor_top_k": 3,
+        "dense_top1_rescue": True,
+        "forward_sibling_chunks": 3,
+        "max_context_chunks": 16,
         "refusal_signal": "dense_top1_distance",
         "refusal_max_distance": 0.9,
     }

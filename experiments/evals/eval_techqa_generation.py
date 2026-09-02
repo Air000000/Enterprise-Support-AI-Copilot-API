@@ -25,6 +25,7 @@ from experiments.evals.adapters.techqa import (
     build_techqa_generation_cases,
 )
 from experiments.evals.build_techqa_index import (
+    DEFAULT_TECHQA_CHROMA_DIR,
     DEFAULT_TECHQA_COLLECTION_NAME,
     search_techqa_index,
 )
@@ -35,6 +36,7 @@ from experiments.evals.rerankers.qwen3_reranker import (
     rerank_candidates,
 )
 from experiments.evals.judges.deepeval_dashscope import DashScopeDeepEvalModel
+from rag_runtime.build_chroma_index import get_chroma_client
 from rag_runtime.query_rag_chroma import generate_answer
 
 DEFAULT_TECHQA_MANIFEST_PATH = Path(
@@ -213,6 +215,11 @@ def retrieve_g0_e1_context(
     *,
     dense_searcher: Searcher = search_techqa_index,
     reranker: Callable[..., Any] = rerank_candidates,
+    load_forward_siblings: Callable[
+        [G0RetrievedChunk, int],
+        Sequence[G0RetrievedChunk],
+    ]
+    | None = None,
 ) -> G0RetrievalOutcome:
     """Apply the frozen E1 retrieval path for G0 generation context."""
     dense_results = dense_searcher(
@@ -269,10 +276,112 @@ def retrieve_g0_e1_context(
             )
         )
 
+    anchors = list(selected)
+
+    if dense_results:
+        dense_top = dense_results[0]
+        anchors.append(
+            G0RetrievedChunk(
+                chunk_id=str(dense_top.chunk_id),
+                document_id=str(dense_top.document_id),
+                chunk_index=int(dense_top.chunk_index),
+                content=str(dense_top.content),
+                distance=float(dense_top.distance),
+            )
+        )
+
+    if not anchors:
+        return G0RetrievalOutcome(
+            results=(),
+            dense_top_distance=dense_top_distance,
+        )
+
+    sibling_loader = load_forward_siblings
+
+    if sibling_loader is None:
+        client = get_chroma_client(
+            DEFAULT_TECHQA_CHROMA_DIR
+        )
+        collection = client.get_collection(
+            name=DEFAULT_TECHQA_COLLECTION_NAME,
+            embedding_function=None,
+        )
+
+        def load_default_forward_siblings(
+            anchor: G0RetrievedChunk,
+            limit: int,
+        ) -> tuple[G0RetrievedChunk, ...]:
+            requested_ids = [
+                (
+                    f"{anchor.document_id}_chunk_"
+                    f"{anchor.chunk_index + offset}"
+                )
+                for offset in range(1, limit + 1)
+            ]
+
+            response = collection.get(
+                ids=requested_ids,
+                include=["documents", "metadatas"],
+            )
+
+            by_chunk_id = {
+                str(chunk_id): (content, metadata)
+                for chunk_id, content, metadata in zip(
+                    response["ids"],
+                    response["documents"],
+                    response["metadatas"],
+                )
+            }
+
+            siblings: list[G0RetrievedChunk] = []
+
+            for chunk_id in requested_ids:
+                stored = by_chunk_id.get(chunk_id)
+
+                if stored is None:
+                    continue
+
+                content, metadata = stored
+
+                if (
+                    str(metadata["document_id"])
+                    != anchor.document_id
+                ):
+                    continue
+
+                siblings.append(
+                    G0RetrievedChunk(
+                        chunk_id=chunk_id,
+                        document_id=str(
+                            metadata["document_id"]
+                        ),
+                        chunk_index=int(
+                            metadata["chunk_index"]
+                        ),
+                        content=str(content),
+                        # Sibling chunks are selected structurally
+                        # from the anchor document, not by an
+                        # independent Dense query.
+                        distance=anchor.distance,
+                    )
+                )
+
+            return tuple(siblings)
+
+        sibling_loader = load_default_forward_siblings
+
+    expanded = expand_g0_generation_context(
+        anchors,
+        load_forward_siblings=sibling_loader,
+        max_forward_chunks=3,
+        max_context_chunks=16,
+    )
+
     return G0RetrievalOutcome(
-        results=tuple(selected),
+        results=expanded,
         dense_top_distance=dense_top_distance,
     )
+
 
 
 def _g0_pilot_sample_key(
@@ -353,6 +462,49 @@ def build_techqa_retrieved_context(results: Iterable[Any]) -> str:
 
     return "\n\n---\n\n".join(context_parts)
 
+
+def expand_g0_generation_context(
+    anchors: Sequence[Any],
+    *,
+    load_forward_siblings: Callable[[Any, int], Sequence[Any]],
+    max_forward_chunks: int = 3,
+    max_context_chunks: int = 16,
+) -> tuple[Any, ...]:
+    """Expand each unique anchor document with bounded forward sibling chunks."""
+    expanded: list[Any] = []
+    seen_chunk_ids: set[str] = set()
+    expanded_document_ids: set[str] = set()
+
+    for anchor in anchors:
+        if len(expanded) >= max_context_chunks:
+            break
+
+        document_id = str(anchor.document_id)
+        if document_id in expanded_document_ids:
+            continue
+
+        expanded_document_ids.add(document_id)
+
+        candidates = (
+            anchor,
+            *load_forward_siblings(
+                anchor,
+                max_forward_chunks,
+            ),
+        )
+
+        for candidate in candidates:
+            if len(expanded) >= max_context_chunks:
+                break
+
+            chunk_id = str(candidate.chunk_id)
+            if chunk_id in seen_chunk_ids:
+                continue
+
+            seen_chunk_ids.add(chunk_id)
+            expanded.append(candidate)
+
+    return tuple(expanded)
 
 @lru_cache(maxsize=1)
 def _default_judge_model() -> DashScopeDeepEvalModel:
@@ -875,7 +1027,11 @@ def build_generation_run_manifest(
             "candidate_k": DEFAULT_GENERATION_CANDIDATE_K,
             "reranker_model": DEFAULT_RERANK_MODEL,
             "reranker_instruction": DEFAULT_RERANK_INSTRUCTION,
-            "context_top_k": DEFAULT_GENERATION_TOP_K,
+            "context_policy": "document_aware_forward_expansion_v1",
+            "rerank_anchor_top_k": DEFAULT_GENERATION_TOP_K,
+            "dense_top1_rescue": True,
+            "forward_sibling_chunks": 3,
+            "max_context_chunks": 16,
             "refusal_signal": "dense_top1_distance",
             "refusal_max_distance": DEFAULT_REFUSAL_MAX_DISTANCE,
         },

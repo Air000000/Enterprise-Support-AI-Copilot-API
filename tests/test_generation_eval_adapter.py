@@ -259,16 +259,18 @@ def test_impossible_cases_use_deterministic_abstention_without_llm_judge():
     assert summary.e2e_latency_p95_ms == pytest.approx(19.5)
 
 
-def test_g0_retrieval_uses_dense100_rerank_and_returns_top3_context():
+def test_g0_retrieval_uses_dense100_rerank_and_returns_bounded_document_context(
+    monkeypatch,
+):
     from experiments.evals import eval_techqa_generation as generation_eval
 
     question = "How do I fix the service?   "
 
     dense_results = [
         SimpleNamespace(
-            chunk_id=f"chunk_{index:03d}",
+            chunk_id=f"doc_{index:03d}_chunk_0",
             document_id=f"doc_{index:03d}",
-            chunk_index=index,
+            chunk_index=0,
             content=f"candidate evidence {index}",
             distance=0.01 + index * 0.001,
         )
@@ -277,6 +279,8 @@ def test_g0_retrieval_uses_dense100_rerank_and_returns_top3_context():
 
     dense_calls: list[tuple[str, int]] = []
     rerank_calls: list[tuple[str, list[object]]] = []
+    collection_get_calls: list[tuple[str, ...]] = []
+    collection_open_calls: list[str] = []
 
     def fake_dense_searcher(query: str, *, top_k: int):
         dense_calls.append((query, top_k))
@@ -291,14 +295,62 @@ def test_g0_retrieval_uses_dense100_rerank_and_returns_top3_context():
             total_tokens=123,
         )
 
+    class FakeCollection:
+        def get(self, *, ids, include):
+            collection_get_calls.append(
+                tuple(ids)
+            )
+
+            return {
+                "ids": list(ids),
+                "documents": [
+                    f"sibling evidence {chunk_id}"
+                    for chunk_id in ids
+                ],
+                "metadatas": [
+                    {
+                        "document_id": chunk_id.rsplit(
+                            "_chunk_",
+                            1,
+                        )[0],
+                        "chunk_index": int(
+                            chunk_id.rsplit(
+                                "_chunk_",
+                                1,
+                            )[1]
+                        ),
+                    }
+                    for chunk_id in ids
+                ],
+            }
+
+    collection = FakeCollection()
+
+    class FakeClient:
+        def get_collection(
+            self,
+            *,
+            name,
+            embedding_function,
+        ):
+            collection_open_calls.append(
+                name
+            )
+            assert embedding_function is None
+            return collection
+
+    monkeypatch.setattr(
+        generation_eval,
+        "get_chroma_client",
+        lambda path: FakeClient(),
+        raising=False,
+    )
+
     outcome = generation_eval.retrieve_g0_e1_context(
         question,
         dense_searcher=fake_dense_searcher,
         reranker=fake_reranker,
     )
-
-    assert generation_eval.DEFAULT_GENERATION_CANDIDATE_K == 100
-    assert generation_eval.DEFAULT_GENERATION_TOP_K == 3
 
     assert dense_calls == [
         (question, 100)
@@ -310,25 +362,64 @@ def test_g0_retrieval_uses_dense100_rerank_and_returns_top3_context():
     assert rerank_query == question.rstrip()
     assert len(rerank_candidates) == 100
 
-    assert outcome.dense_top_distance == pytest.approx(0.01)
+    # Refusal remains tied to original Dense rank-1.
+    assert outcome.dense_top_distance == pytest.approx(
+        0.01
+    )
 
-    assert [
+    # Production default must expand the three rerank
+    # anchors plus Dense rank-1 rescue anchor.
+    assert len(outcome.results) == 16
+
+    assert tuple(
         result.chunk_id
         for result in outcome.results
-    ] == [
-        "chunk_099",
-        "chunk_098",
-        "chunk_097",
+    ) == (
+        "doc_099_chunk_0",
+        "doc_099_chunk_1",
+        "doc_099_chunk_2",
+        "doc_099_chunk_3",
+        "doc_098_chunk_0",
+        "doc_098_chunk_1",
+        "doc_098_chunk_2",
+        "doc_098_chunk_3",
+        "doc_097_chunk_0",
+        "doc_097_chunk_1",
+        "doc_097_chunk_2",
+        "doc_097_chunk_3",
+        "doc_000_chunk_0",
+        "doc_000_chunk_1",
+        "doc_000_chunk_2",
+        "doc_000_chunk_3",
+    )
+
+    # Open the frozen collection once per retrieval,
+    # then fetch three forward siblings per anchor.
+    assert len(collection_open_calls) == 1
+
+    assert collection_get_calls == [
+        (
+            "doc_099_chunk_1",
+            "doc_099_chunk_2",
+            "doc_099_chunk_3",
+        ),
+        (
+            "doc_098_chunk_1",
+            "doc_098_chunk_2",
+            "doc_098_chunk_3",
+        ),
+        (
+            "doc_097_chunk_1",
+            "doc_097_chunk_2",
+            "doc_097_chunk_3",
+        ),
+        (
+            "doc_000_chunk_1",
+            "doc_000_chunk_2",
+            "doc_000_chunk_3",
+        ),
     ]
 
-    assert [
-        result.content
-        for result in outcome.results
-    ] == [
-        "candidate evidence 99",
-        "candidate evidence 98",
-        "candidate evidence 97",
-    ]
 
 
 def test_generation_evaluator_consumes_g0_retrieval_outcome():
