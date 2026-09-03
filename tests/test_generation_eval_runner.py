@@ -2,6 +2,7 @@ import json
 
 import pytest
 
+import experiments.evals.eval_techqa_generation as generation_eval
 from experiments.evals.adapters.techqa import TechQAGenerationCase
 from experiments.evals.eval_techqa_generation import (
     TechQAGenerationEvalResult,
@@ -9,6 +10,31 @@ from experiments.evals.eval_techqa_generation import (
     run_resumable_generation_eval,
     write_generation_reports,
 )
+
+
+def _candidate_document_selector():
+    selector = getattr(
+        generation_eval,
+        "select_candidate_document_ids",
+        None,
+    )
+    assert selector is not None, "select_candidate_document_ids is not implemented"
+    return selector
+
+
+def _retrieved_chunk(
+    chunk_id: str,
+    document_id: str,
+    chunk_index: int,
+    distance: float,
+) -> generation_eval.G0RetrievedChunk:
+    return generation_eval.G0RetrievedChunk(
+        chunk_id=chunk_id,
+        document_id=document_id,
+        chunk_index=chunk_index,
+        content=f"content {chunk_id}",
+        distance=distance,
+    )
 
 
 def _case(question_id: str, *, answerable: bool = True) -> TechQAGenerationCase:
@@ -158,6 +184,28 @@ def test_completed_checkpoint_rebuilds_summary_and_reports_without_evaluator(tmp
     assert metrics["correctness_mean"] == pytest.approx(0.8)
     assert metrics["faithfulness_mean"] == pytest.approx(0.9)
     assert len(result_lines) == 2
+
+
+def test_candidate_document_selection_deduplicates_repeated_document_slots():
+    selector = _candidate_document_selector()
+    ranked = (
+        _retrieved_chunk("A_chunk_3", "A", 3, 0.10),
+        _retrieved_chunk("A_chunk_5", "A", 5, 0.12),
+        _retrieved_chunk("B_chunk_2", "B", 2, 0.15),
+        _retrieved_chunk("A_chunk_1", "A", 1, 0.18),
+        _retrieved_chunk("C_chunk_4", "C", 4, 0.20),
+        _retrieved_chunk("D_chunk_2", "D", 2, 0.25),
+    )
+
+    assert selector(ranked, limit=3) == ("A", "B", "C")
+
+
+@pytest.mark.parametrize("limit", [0, -1])
+def test_candidate_document_selection_requires_positive_limit(limit):
+    selector = _candidate_document_selector()
+
+    with pytest.raises(ValueError):
+        selector((), limit=limit)
 
 
 def test_default_single_case_evaluator_uses_frozen_g0_retriever(monkeypatch):

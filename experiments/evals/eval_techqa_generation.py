@@ -111,6 +111,28 @@ class G0RetrievedChunk:
     distance: float
 
 
+def select_candidate_document_ids(
+    ranked_chunks: Sequence[G0RetrievedChunk],
+    *,
+    limit: int,
+) -> tuple[str, ...]:
+    if limit <= 0:
+        raise ValueError("limit must be positive")
+
+    seen: set[str] = set()
+    selected: list[str] = []
+    for chunk in ranked_chunks:
+        if chunk.document_id in seen:
+            continue
+
+        seen.add(chunk.document_id)
+        selected.append(chunk.document_id)
+        if len(selected) >= limit:
+            break
+
+    return tuple(selected)
+
+
 @dataclass(frozen=True)
 class G0RetrievalOutcome:
     results: tuple[G0RetrievedChunk, ...]
