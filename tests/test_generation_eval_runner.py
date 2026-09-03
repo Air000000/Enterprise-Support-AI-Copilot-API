@@ -22,6 +22,16 @@ def _candidate_document_selector():
     return selector
 
 
+def _document_local_pool_builder():
+    builder = getattr(
+        generation_eval,
+        "build_document_local_candidate_pool",
+        None,
+    )
+    assert builder is not None, "build_document_local_candidate_pool is not implemented"
+    return builder
+
+
 def _retrieved_chunk(
     chunk_id: str,
     document_id: str,
@@ -206,6 +216,119 @@ def test_candidate_document_selection_requires_positive_limit(limit):
 
     with pytest.raises(ValueError):
         selector((), limit=limit)
+
+
+def test_document_local_candidate_pool_preserves_document_and_loader_order():
+    builder = _document_local_pool_builder()
+    chunks_by_document = {
+        "B": (
+            _retrieved_chunk("B_chunk_4", "B", 4, 0.20),
+            _retrieved_chunk("B_chunk_1", "B", 1, 0.22),
+            _retrieved_chunk("B_chunk_3", "B", 3, 0.25),
+        ),
+        "A": (
+            _retrieved_chunk("A_chunk_5", "A", 5, 0.10),
+            _retrieved_chunk("A_chunk_2", "A", 2, 0.12),
+        ),
+    }
+
+    pool = builder(
+        ("B", "A"),
+        load_document_chunks=chunks_by_document.__getitem__,
+        max_chunks=5,
+    )
+
+    assert tuple(chunk.chunk_id for chunk in pool) == (
+        "B_chunk_4",
+        "B_chunk_1",
+        "B_chunk_3",
+        "A_chunk_5",
+        "A_chunk_2",
+    )
+
+
+def test_document_local_candidate_pool_deduplicates_chunk_ids_globally():
+    builder = _document_local_pool_builder()
+    chunks_by_document = {
+        "A": (
+            _retrieved_chunk("A_chunk_1", "A", 1, 0.10),
+            _retrieved_chunk("A_chunk_1", "A", 1, 0.10),
+            _retrieved_chunk("A_chunk_2", "A", 2, 0.12),
+        ),
+        "B": (_retrieved_chunk("B_chunk_1", "B", 1, 0.20),),
+    }
+
+    pool = builder(
+        ("A", "B"),
+        load_document_chunks=chunks_by_document.__getitem__,
+        max_chunks=4,
+    )
+
+    assert tuple(chunk.chunk_id for chunk in pool) == (
+        "A_chunk_1",
+        "A_chunk_2",
+        "B_chunk_1",
+    )
+
+
+def test_document_local_candidate_pool_stops_at_total_budget():
+    builder = _document_local_pool_builder()
+    calls: list[str] = []
+    chunks_by_document = {
+        "A": (
+            _retrieved_chunk("A_chunk_1", "A", 1, 0.10),
+            _retrieved_chunk("A_chunk_2", "A", 2, 0.12),
+        ),
+        "B": (
+            _retrieved_chunk("B_chunk_1", "B", 1, 0.20),
+            _retrieved_chunk("B_chunk_2", "B", 2, 0.25),
+        ),
+        "C": (_retrieved_chunk("C_chunk_1", "C", 1, 0.30),),
+    }
+
+    def load_document_chunks(document_id: str):
+        calls.append(document_id)
+        return chunks_by_document[document_id]
+
+    pool = builder(
+        ("A", "B", "C"),
+        load_document_chunks=load_document_chunks,
+        max_chunks=3,
+    )
+
+    assert tuple(chunk.chunk_id for chunk in pool) == (
+        "A_chunk_1",
+        "A_chunk_2",
+        "B_chunk_1",
+    )
+    assert calls == ["A", "B"]
+
+
+def test_document_local_candidate_pool_rejects_wrong_document_membership():
+    builder = _document_local_pool_builder()
+    chunks_by_document = {
+        "A": (_retrieved_chunk("shared_chunk", "A", 1, 0.10),),
+        "B": (_retrieved_chunk("shared_chunk", "A", 1, 0.10),),
+    }
+
+    with pytest.raises(RuntimeError, match="document_id"):
+        builder(
+            ("A", "B"),
+            load_document_chunks=chunks_by_document.__getitem__,
+            max_chunks=2,
+        )
+
+
+@pytest.mark.parametrize("max_chunks", [0, -1])
+def test_document_local_candidate_pool_requires_positive_budget(max_chunks):
+    builder = _document_local_pool_builder()
+
+    with pytest.raises(ValueError):
+        builder(
+            (),
+            load_document_chunks=lambda _: (),
+            max_chunks=max_chunks,
+        )
 
 
 def test_default_single_case_evaluator_uses_frozen_g0_retriever(monkeypatch):

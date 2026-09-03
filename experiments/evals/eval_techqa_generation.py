@@ -133,6 +133,38 @@ def select_candidate_document_ids(
     return tuple(selected)
 
 
+def build_document_local_candidate_pool(
+    candidate_document_ids: Sequence[str],
+    *,
+    load_document_chunks: Callable[[str], Sequence[G0RetrievedChunk]],
+    max_chunks: int,
+) -> tuple[G0RetrievedChunk, ...]:
+    if max_chunks <= 0:
+        raise ValueError("max_chunks must be positive")
+
+    selected: list[G0RetrievedChunk] = []
+    seen_chunk_ids: set[str] = set()
+    for document_id in candidate_document_ids:
+        if len(selected) >= max_chunks:
+            break
+
+        for chunk in load_document_chunks(document_id):
+            if chunk.document_id != document_id:
+                raise RuntimeError(
+                    f"loader returned document_id {chunk.document_id!r}, "
+                    f"expected {document_id!r}"
+                )
+            if chunk.chunk_id in seen_chunk_ids:
+                continue
+
+            seen_chunk_ids.add(chunk.chunk_id)
+            selected.append(chunk)
+            if len(selected) >= max_chunks:
+                break
+
+    return tuple(selected)
+
+
 @dataclass(frozen=True)
 class G0RetrievalOutcome:
     results: tuple[G0RetrievedChunk, ...]
