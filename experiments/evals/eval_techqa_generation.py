@@ -213,6 +213,28 @@ def select_document_local_evidence(
     return tuple(selected)
 
 
+def assemble_selected_evidence_context(
+    selected_evidence: Sequence[G0RetrievedChunk],
+    *,
+    max_context_chunks: int,
+) -> tuple[G0RetrievedChunk, ...]:
+    if max_context_chunks <= 0:
+        raise ValueError("max_context_chunks must be positive")
+
+    context: list[G0RetrievedChunk] = []
+    seen_chunk_ids: set[str] = set()
+    for chunk in selected_evidence:
+        if chunk.chunk_id in seen_chunk_ids:
+            continue
+
+        seen_chunk_ids.add(chunk.chunk_id)
+        context.append(chunk)
+        if len(context) >= max_context_chunks:
+            break
+
+    return tuple(context)
+
+
 @dataclass(frozen=True)
 class G0RetrievalOutcome:
     results: tuple[G0RetrievedChunk, ...]

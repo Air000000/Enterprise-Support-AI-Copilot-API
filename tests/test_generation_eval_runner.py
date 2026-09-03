@@ -47,6 +47,16 @@ def _document_local_evidence_selector():
     return selector
 
 
+def _selected_evidence_context_assembler():
+    assembler = getattr(
+        generation_eval,
+        "assemble_selected_evidence_context",
+        None,
+    )
+    assert assembler is not None, "assemble_selected_evidence_context is not implemented"
+    return assembler
+
+
 def _retrieved_chunk(
     chunk_id: str,
     document_id: str,
@@ -512,6 +522,60 @@ def test_evidence_selection_empty_pool_avoids_reranker():
         raise AssertionError("empty pool must not call reranker")
 
     assert selector("question", (), reranker=forbidden_reranker, limit=1) == ()
+
+
+def test_selected_evidence_context_preserves_relevance_order():
+    assembler = _selected_evidence_context_assembler()
+    selected_evidence = (
+        _retrieved_chunk("A_chunk_5", "A", 5, 0.20),
+        _retrieved_chunk("A_chunk_1", "A", 1, 0.40),
+        _retrieved_chunk("B_chunk_2", "B", 2, 0.25),
+    )
+
+    context = assembler(selected_evidence, max_context_chunks=3)
+
+    assert tuple(chunk.chunk_id for chunk in context) == (
+        "A_chunk_5",
+        "A_chunk_1",
+        "B_chunk_2",
+    )
+
+
+def test_selected_evidence_context_deduplicates_chunk_ids():
+    assembler = _selected_evidence_context_assembler()
+    a1 = _retrieved_chunk("A_chunk_1", "A", 1, 0.10)
+
+    context = assembler(
+        (a1, a1, _retrieved_chunk("B_chunk_2", "B", 2, 0.20)),
+        max_context_chunks=3,
+    )
+
+    assert tuple(chunk.chunk_id for chunk in context) == ("A_chunk_1", "B_chunk_2")
+
+
+def test_selected_evidence_context_budget_counts_unique_chunks():
+    assembler = _selected_evidence_context_assembler()
+    a1 = _retrieved_chunk("A_chunk_1", "A", 1, 0.10)
+
+    context = assembler(
+        (
+            a1,
+            a1,
+            _retrieved_chunk("B_chunk_2", "B", 2, 0.20),
+            _retrieved_chunk("C_chunk_3", "C", 3, 0.30),
+        ),
+        max_context_chunks=2,
+    )
+
+    assert tuple(chunk.chunk_id for chunk in context) == ("A_chunk_1", "B_chunk_2")
+
+
+@pytest.mark.parametrize("max_context_chunks", [0, -1])
+def test_selected_evidence_context_requires_positive_budget(max_context_chunks):
+    assembler = _selected_evidence_context_assembler()
+
+    with pytest.raises(ValueError):
+        assembler((), max_context_chunks=max_context_chunks)
 
 
 def test_default_single_case_evaluator_uses_frozen_g0_retriever(monkeypatch):
