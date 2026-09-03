@@ -111,6 +111,27 @@ class G0RetrievedChunk:
     distance: float
 
 
+@dataclass(frozen=True)
+class DiagnosticStageInvocations:
+    dense_search: int
+    document_chunk_loader: int
+    evidence_reranker: int
+    generation: int
+    judge: int
+
+
+@dataclass(frozen=True)
+class DocumentLocalEvidenceDiagnostic:
+    question_id: str
+    question: str
+    ranked_chunks: tuple[G0RetrievedChunk, ...]
+    candidate_document_ids: tuple[str, ...]
+    candidate_pool: tuple[G0RetrievedChunk, ...]
+    selected_evidence: tuple[G0RetrievedChunk, ...]
+    final_context: tuple[G0RetrievedChunk, ...]
+    stage_invocations: DiagnosticStageInvocations
+
+
 def select_candidate_document_ids(
     ranked_chunks: Sequence[G0RetrievedChunk],
     *,
@@ -233,6 +254,82 @@ def assemble_selected_evidence_context(
             break
 
     return tuple(context)
+
+
+def run_document_local_evidence_diagnostic(
+    question_id: str,
+    question: str,
+    ranked_chunks: Sequence[G0RetrievedChunk],
+    *,
+    candidate_document_limit: int,
+    load_document_chunks: Callable[[str], Sequence[G0RetrievedChunk]],
+    candidate_pool_max_chunks: int,
+    reranker: Callable[..., Any],
+    evidence_limit: int,
+    max_context_chunks: int,
+) -> DocumentLocalEvidenceDiagnostic:
+    if any(
+        limit <= 0
+        for limit in (
+            candidate_document_limit,
+            candidate_pool_max_chunks,
+            evidence_limit,
+            max_context_chunks,
+        )
+    ):
+        raise ValueError("all diagnostic limits must be positive")
+
+    ranked = tuple(ranked_chunks)
+    candidate_document_ids = select_candidate_document_ids(
+        ranked,
+        limit=candidate_document_limit,
+    )
+    document_chunk_loader_invocations = 0
+
+    def tracked_loader(document_id: str) -> Sequence[G0RetrievedChunk]:
+        nonlocal document_chunk_loader_invocations
+        document_chunk_loader_invocations += 1
+        return load_document_chunks(document_id)
+
+    candidate_pool = build_document_local_candidate_pool(
+        candidate_document_ids,
+        load_document_chunks=tracked_loader,
+        max_chunks=candidate_pool_max_chunks,
+    )
+    evidence_reranker_invocations = 0
+
+    def tracked_reranker(*args: Any) -> Any:
+        nonlocal evidence_reranker_invocations
+        evidence_reranker_invocations += 1
+        return reranker(*args)
+
+    selected_evidence = select_document_local_evidence(
+        question,
+        candidate_pool,
+        reranker=tracked_reranker,
+        limit=evidence_limit,
+    )
+    final_context = assemble_selected_evidence_context(
+        selected_evidence,
+        max_context_chunks=max_context_chunks,
+    )
+
+    return DocumentLocalEvidenceDiagnostic(
+        question_id=question_id,
+        question=question,
+        ranked_chunks=ranked,
+        candidate_document_ids=candidate_document_ids,
+        candidate_pool=candidate_pool,
+        selected_evidence=selected_evidence,
+        final_context=final_context,
+        stage_invocations=DiagnosticStageInvocations(
+            dense_search=0,
+            document_chunk_loader=document_chunk_loader_invocations,
+            evidence_reranker=evidence_reranker_invocations,
+            generation=0,
+            judge=0,
+        ),
+    )
 
 
 @dataclass(frozen=True)
