@@ -10,6 +10,11 @@ from experiments.evals.eval_techqa_generation import (
     run_resumable_generation_eval,
     write_generation_reports,
 )
+from experiments.evals.rerankers.qwen3_reranker import (
+    RerankCandidate,
+    RerankResult,
+    RerankedCandidate,
+)
 
 
 def _candidate_document_selector():
@@ -30,6 +35,16 @@ def _document_local_pool_builder():
     )
     assert builder is not None, "build_document_local_candidate_pool is not implemented"
     return builder
+
+
+def _document_local_evidence_selector():
+    selector = getattr(
+        generation_eval,
+        "select_document_local_evidence",
+        None,
+    )
+    assert selector is not None, "select_document_local_evidence is not implemented"
+    return selector
 
 
 def _retrieved_chunk(
@@ -329,6 +344,174 @@ def test_document_local_candidate_pool_requires_positive_budget(max_chunks):
             load_document_chunks=lambda _: (),
             max_chunks=max_chunks,
         )
+
+
+def test_evidence_selection_uses_relevance_order_over_pool_position():
+    selector = _document_local_evidence_selector()
+    pool = (
+        _retrieved_chunk("A_chunk_1", "A", 1, 0.40),
+        _retrieved_chunk("A_chunk_5", "A", 5, 0.20),
+        _retrieved_chunk("A_chunk_9", "A", 9, 0.30),
+        _retrieved_chunk("B_chunk_2", "B", 2, 0.25),
+    )
+    calls = []
+
+    def reranker(question, candidates):
+        calls.append((question, candidates))
+        return RerankResult(
+            results=(
+                RerankedCandidate("A_chunk_1", "A", "", 0, 0.99),
+                RerankedCandidate("B_chunk_2", "B", "", 3, 0.98),
+                RerankedCandidate("A_chunk_5", "A", "", 1, 0.97),
+                RerankedCandidate("A_chunk_9", "A", "", 2, 0.96),
+            ),
+            request_id=None,
+            total_tokens=None,
+        )
+
+    selected = selector("Which evidence matters?   ", pool, reranker=reranker, limit=2)
+
+    assert tuple(chunk.chunk_id for chunk in selected) == ("A_chunk_1", "B_chunk_2")
+    assert len(calls) == 1
+    assert calls[0][0] == "Which evidence matters?"
+    assert calls[0][1] == (
+        RerankCandidate("A_chunk_1", "A", "content A_chunk_1"),
+        RerankCandidate("A_chunk_5", "A", "content A_chunk_5"),
+        RerankCandidate("A_chunk_9", "A", "content A_chunk_9"),
+        RerankCandidate("B_chunk_2", "B", "content B_chunk_2"),
+    )
+
+
+def test_evidence_selection_reranks_one_merged_document_pool():
+    selector = _document_local_evidence_selector()
+    pool = (
+        _retrieved_chunk("A_chunk_1", "A", 1, 0.10),
+        _retrieved_chunk("B_chunk_1", "B", 1, 0.20),
+    )
+    calls = []
+
+    def reranker(question, candidates):
+        calls.append((question, candidates))
+        return RerankResult(
+            results=tuple(
+                RerankedCandidate(
+                    candidate.chunk_id,
+                    candidate.document_id,
+                    candidate.content,
+                    index,
+                    1.0 - index,
+                )
+                for index, candidate in enumerate(candidates)
+            ),
+            request_id=None,
+            total_tokens=None,
+        )
+
+    selector("question", pool, reranker=reranker, limit=2)
+
+    assert len(calls) == 1
+    assert tuple(candidate.chunk_id for candidate in calls[0][1]) == (
+        "A_chunk_1",
+        "B_chunk_1",
+    )
+
+
+def test_evidence_selection_returns_original_chunk_provenance():
+    selector = _document_local_evidence_selector()
+    source = generation_eval.G0RetrievedChunk(
+        chunk_id="A_chunk_1",
+        document_id="A",
+        chunk_index=1,
+        content="decisive evidence",
+        distance=0.417,
+    )
+
+    def reranker(question, candidates):
+        return RerankResult(
+            results=(
+                RerankedCandidate("A_chunk_1", "other", "rewritten", 99, 0.981),
+            ),
+            request_id=None,
+            total_tokens=None,
+        )
+
+    selected = selector("question", (source,), reranker=reranker, limit=1)
+
+    assert selected == (source,)
+    assert selected[0].distance == pytest.approx(0.417)
+    assert selected[0].distance != pytest.approx(0.981)
+
+
+def test_evidence_selection_rejects_duplicate_candidate_chunk_id():
+    selector = _document_local_evidence_selector()
+    pool = (
+        _retrieved_chunk("shared_chunk", "A", 1, 0.10),
+        _retrieved_chunk("shared_chunk", "B", 2, 0.20),
+    )
+
+    def forbidden_reranker(*args):
+        raise AssertionError("duplicate candidate identity must fail before reranking")
+
+    with pytest.raises(RuntimeError, match="duplicate candidate"):
+        selector("question", pool, reranker=forbidden_reranker, limit=1)
+
+
+def test_evidence_selection_rejects_unknown_reranked_chunk_id():
+    selector = _document_local_evidence_selector()
+
+    def reranker(question, candidates):
+        return RerankResult(
+            results=(RerankedCandidate("unknown", "A", "", 0, 1.0),),
+            request_id=None,
+            total_tokens=None,
+        )
+
+    with pytest.raises(RuntimeError, match="candidate pool"):
+        selector(
+            "question",
+            (_retrieved_chunk("A_chunk_1", "A", 1, 0.10),),
+            reranker=reranker,
+            limit=1,
+        )
+
+
+def test_evidence_selection_rejects_duplicate_reranked_chunk_id():
+    selector = _document_local_evidence_selector()
+
+    def reranker(question, candidates):
+        return RerankResult(
+            results=(
+                RerankedCandidate("A_chunk_1", "A", "", 0, 1.0),
+                RerankedCandidate("A_chunk_1", "A", "", 0, 0.9),
+            ),
+            request_id=None,
+            total_tokens=None,
+        )
+
+    with pytest.raises(RuntimeError, match="duplicate"):
+        selector(
+            "question",
+            (_retrieved_chunk("A_chunk_1", "A", 1, 0.10),),
+            reranker=reranker,
+            limit=2,
+        )
+
+
+@pytest.mark.parametrize("limit", [0, -1])
+def test_evidence_selection_requires_positive_limit(limit):
+    selector = _document_local_evidence_selector()
+
+    with pytest.raises(ValueError):
+        selector("question", (), reranker=lambda *_: None, limit=limit)
+
+
+def test_evidence_selection_empty_pool_avoids_reranker():
+    selector = _document_local_evidence_selector()
+
+    def forbidden_reranker(question, candidates):
+        raise AssertionError("empty pool must not call reranker")
+
+    assert selector("question", (), reranker=forbidden_reranker, limit=1) == ()
 
 
 def test_default_single_case_evaluator_uses_frozen_g0_retriever(monkeypatch):

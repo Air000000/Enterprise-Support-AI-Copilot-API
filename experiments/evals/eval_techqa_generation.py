@@ -165,6 +165,54 @@ def build_document_local_candidate_pool(
     return tuple(selected)
 
 
+def select_document_local_evidence(
+    question: str,
+    candidate_pool: Sequence[G0RetrievedChunk],
+    *,
+    reranker: Callable[..., Any],
+    limit: int,
+) -> tuple[G0RetrievedChunk, ...]:
+    if limit <= 0:
+        raise ValueError("limit must be positive")
+    if not candidate_pool:
+        return ()
+
+    candidates_by_chunk_id: dict[str, G0RetrievedChunk] = {}
+    for chunk in candidate_pool:
+        if chunk.chunk_id in candidates_by_chunk_id:
+            raise RuntimeError(f"duplicate candidate chunk_id {chunk.chunk_id!r}")
+        candidates_by_chunk_id[chunk.chunk_id] = chunk
+
+    candidates = tuple(
+        RerankCandidate(
+            chunk_id=chunk.chunk_id,
+            document_id=chunk.document_id,
+            content=chunk.content,
+        )
+        for chunk in candidate_pool
+    )
+    rerank_result = reranker(question.rstrip(), candidates)
+
+    selected: list[G0RetrievedChunk] = []
+    seen_reranked_chunk_ids: set[str] = set()
+    for reranked in rerank_result.results:
+        chunk_id = reranked.chunk_id
+        if chunk_id in seen_reranked_chunk_ids:
+            raise RuntimeError(f"duplicate reranked chunk_id {chunk_id!r}")
+        seen_reranked_chunk_ids.add(chunk_id)
+
+        source = candidates_by_chunk_id.get(chunk_id)
+        if source is None:
+            raise RuntimeError(
+                f"reranker returned chunk_id {chunk_id!r} outside candidate pool"
+            )
+        selected.append(source)
+        if len(selected) >= limit:
+            break
+
+    return tuple(selected)
+
+
 @dataclass(frozen=True)
 class G0RetrievalOutcome:
     results: tuple[G0RetrievedChunk, ...]
