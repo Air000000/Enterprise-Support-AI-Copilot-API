@@ -1,0 +1,174 @@
+{
+  "experiment_id": "techqa_g1_blinded_evidence_sufficiency_30case_v1",
+  "preregistration_revision": "1.1",
+  "artifact_state": "PREREGISTRATION_HARDENING_BEFORE_EXECUTION",
+  "supersedes": "experiments/evals/reports/g1_document_local/evidence_sufficiency_30case_preregistration_v1.json",
+  "supersedes_commit": "272a1f8e6167524199dc883765ef67073679d93b",
+  "revision_reason": "pre-result contract hardening before any 30-case provider execution",
+  "paid_30case_provider_calls_before_revision": 0,
+  "dataset": {
+    "generation_loader": "load_frozen_techqa_generation_cases",
+    "generation_repository": "nvidia/TechQA-RAG-Eval",
+    "generation_revision": "0b5bbc84b7f07d6d09d063130e90b716d8d4a32a",
+    "generation_record_count": 910,
+    "retrieval_trace": "experiments/evals/reports/e0_dense/train_results.jsonl",
+    "corpus_repository": "bowang0911/TechQA-RAG-Eval",
+    "corpus_revision": "68323f8f191fd5df93e2b2673d79a5da3a805638"
+  },
+  "sample_seed": "techqa-g1-evidence-sufficiency-v1",
+  "sample_size": 30,
+  "selected_case_ids": [
+    "TRAIN_Q458", "TRAIN_Q400", "TRAIN_Q118", "TRAIN_Q346", "TRAIN_Q471",
+    "TRAIN_Q198", "TRAIN_Q227", "TRAIN_Q129", "TRAIN_Q001", "TRAIN_Q018",
+    "TRAIN_Q072", "TRAIN_Q415", "TRAIN_Q492", "TRAIN_Q519", "TRAIN_Q345",
+    "TRAIN_Q589", "TRAIN_Q490", "TRAIN_Q547", "TRAIN_Q161", "TRAIN_Q233",
+    "TRAIN_Q583", "TRAIN_Q145", "TRAIN_Q297", "TRAIN_Q231", "TRAIN_Q390",
+    "TRAIN_Q182", "TRAIN_Q243", "TRAIN_Q224", "TRAIN_Q541", "TRAIN_Q091"
+  ],
+  "selection_algorithm": "For every eligible question_id, compute sha256(sample_seed + ':' + question_id).hexdigest(); sort ascending by (hash, question_id); select the first 30. No shuffle, manual selection, outcome-based selection, or replacement is permitted.",
+  "eligibility_rule": {
+    "split": "train",
+    "answerable": true,
+    "e0_trace_required": true,
+    "formal_relevant_document_count": 1,
+    "stage2_responsibility_boundary": "After first-occurrence collapse of E0 raw_document_ids, the sole formal relevant document must be among the first five unique documents."
+  },
+  "historical_exclusion_set_size": 12,
+  "formal_relevant_top5_before_exclusion": 276,
+  "historical_cases_removed_from_eligible_universe": 3,
+  "eligible_after_exclusion": 273,
+  "count_identity": "276 - 3 = 273. The exclusion list has 12 cases, but only three intersect the current Stage2 eligible universe.",
+  "capacity_preflight": {
+    "inherited_from_v1": true,
+    "candidate_document_limit": 5,
+    "candidate_pool_max_chunks": 500,
+    "evidence_limit": 16,
+    "max_context_chunks": 16,
+    "frozen_sample_pool_max_chunks": 72,
+    "capacity_blocker": "none",
+    "no_resampling_after_capacity_check": true
+  },
+  "method_contracts": {
+    "G0": {
+      "path": "historical E0 Dense Top100 -> one shared real qwen3-rerank -> first 3 results -> Top3 context",
+      "forward_siblings": "forbidden",
+      "rescue": "forbidden"
+    },
+    "E1": {
+      "source_function": "retrieve_g0_e1_context",
+      "source_file": "experiments/evals/eval_techqa_generation.py",
+      "source_commit": "dc5fb07b584b993516e77455b0b4efb22736b48a",
+      "semantics": "shared rerank Top3 anchors plus historical E0 Dense rank1 rescue; expand each unique anchor document as anchor plus up to three forward siblings; dedupe chunk IDs; max context chunks=16.",
+      "required_dependency_injection": {
+        "historical_e0_dense_searcher": "Replay exact frozen E0 Top100 ordering; live Dense is forbidden.",
+        "replay_reranker": "Return the already obtained shared G0/E1 rerank result; a second provider call is forbidden.",
+        "offline_forward_sibling_loader": "Read +1, +2, +3 siblings from frozen TechQA corpus through deterministic chunk building; default Chroma sibling loading is forbidden."
+      },
+      "preflight_required_before_paid_execution": [
+        "e1_default_dense_searcher_used=no",
+        "e1_default_chroma_sibling_loader_used=no",
+        "e1_second_provider_rerank_call=no"
+      ]
+    },
+    "G1": {
+      "path": "historical E0 ranking -> first 5 unique candidate documents -> frozen full document-local chunks -> one merged qwen3-rerank -> Top16 -> max16 context",
+      "candidate_document_limit": 5,
+      "candidate_pool_max_chunks": 500,
+      "evidence_limit": 16,
+      "max_context_chunks": 16
+    }
+  },
+  "rerank_contract": {
+    "model": "qwen3-rerank",
+    "instruction": "Rank the candidate passages by relevance to resolving the technical support query.",
+    "same_instruction_all_methods": true,
+    "forbidden": ["prompt tuning", "method-specific instruction", "query rewrite", "alternate reranker", "per-document reranking", "second-pass rerank"]
+  },
+  "provider_call_budget": {
+    "max_cases": 30,
+    "g0_e1_shared_top100_rerank_calls_per_case": 1,
+    "g1_merged_rerank_calls_per_case": 1,
+    "planned_max_real_rerank_calls": 60,
+    "max_embedding_calls": 0,
+    "max_generation_calls": 0,
+    "max_judge_calls": 0,
+    "provider_failure_policy": "Any real provider failure stops the run. Do not retry, change model, reduce candidates, remove or replace a case, or continue remaining cases. Preserve partial provenance for separate review."
+  },
+  "gold_claim_rubric": {
+    "authoritative_source": "frozen TechQA generation gold_answer",
+    "claim_decomposition_order": [
+      "Read only question and gold_answer.",
+      "Freeze material claims from gold_answer before opening any A/B/C context.",
+      "Review blinded contexts without revising the decomposition."
+    ],
+    "question_role": "Question may clarify entity and context only; facts absent from gold_answer are not scored claims.",
+    "identifier_preservation": ["CVE", "version", "score", "command", "negation", "condition"],
+    "claim_decomposition_completed_before_context_review": "required=yes",
+    "claim_support_labels": ["EXPLICIT_SUPPORT", "COMPOSABLE_SUPPORT", "INFERENCE_ONLY", "ABSENT"],
+    "covered_labels": ["EXPLICIT_SUPPORT", "COMPOSABLE_SUPPORT"],
+    "all_material_claims_equal_weight": true,
+    "posthoc_claim_importance_weighting": "forbidden",
+    "sufficiency_labels": {
+      "COMPLETE": "covered_claim_count == material_claim_count and material_claim_count > 0",
+      "PARTIAL": "0 < covered_claim_count < material_claim_count",
+      "INSUFFICIENT": "covered_claim_count == 0 and material_claim_count > 0",
+      "UNRESOLVED": "claim decomposition or evidence support cannot be reliably judged"
+    },
+    "case_claim_coverage": "covered_claim_count / material_claim_count",
+    "aggregate_claim_coverage": "method_macro_claim_coverage = mean(case_claim_coverage for all 30 cases)",
+    "descriptive_only_totals": ["total_covered_claims", "total_material_claims"],
+    "forbidden_metrics": ["gold chunk recall", "gold chunk MRR"]
+  },
+  "blinding_protocol": {
+    "blinding_type": "METHOD_LABEL_BLINDED",
+    "BLIND_SEED": "techqa-g1-blind-v1",
+    "permutation_table": {
+      "0": ["G0", "E1", "G1"],
+      "1": ["G0", "G1", "E1"],
+      "2": ["E1", "G0", "G1"],
+      "3": ["E1", "G1", "G0"],
+      "4": ["G1", "G0", "E1"],
+      "5": ["G1", "E1", "G0"]
+    },
+    "permutation_algorithm": "digest = sha256('techqa-g1-blind-v1:' + question_id).hexdigest(); permutation_index = int(digest, 16) % 6; [A, B, C] = PERMUTATION_TABLE[permutation_index].",
+    "packet_fields": ["question_id", "question", "gold_answer", "material_claims", "Context A", "Context B", "Context C"],
+    "context_item_labels": "A1, A2, ...; B1, B2, ...; C1, C2, ...",
+    "packet_forbidden_fields": ["G0", "E1", "G1", "rerank scores", "rerank ranks", "method name", "source implementation", "forward sibling", "document-local", "provider request id", "raw chunk_id", "raw document_id"],
+    "mapping_separate": true,
+    "unblind_rule": "Reveal method and provenance mapping only after all claim-support and sufficiency judgments are complete.",
+    "structural_leakage_limitation": "Context length and structure can still suggest a method type; this is not fully or double blinded."
+  },
+  "review_isolation": {
+    "step_1": "Packet builder creates blinded packets and separate sealed method/provenance mapping.",
+    "step_2": "Evidence reviewer reads only blinded packet and completes all judgments before unblinding.",
+    "reviewer_had_method_mapping": "required=no",
+    "codex_reviewer_requirement": "Use a fresh reviewer context, session, or subagent that receives only the blinded packet and no method mapping or historical outcomes."
+  },
+  "primary_metrics_and_go_no_go": {
+    "primary_comparison": "G1_vs_E1",
+    "ordinal_scores": {"COMPLETE": 2, "PARTIAL": 1, "INSUFFICIENT": 0},
+    "unresolved_policy": "UNRESOLVED is unscored; any unresolved_count > 0 means GO_TO_GENERATION_DESIGN=no.",
+    "pairwise_rule": "G1>E1 is WIN; equal is TIE; G1<E1 is LOSS.",
+    "catastrophic_regression_definition": "E1=COMPLETE and G1=INSUFFICIENT.",
+    "go_requirements": ["all 30 cases complete", "unresolved_count=0", "provider/capacity contract unchanged", "G1_complete_count>=E1_complete_count", "G1_insufficient_count<=E1_insufficient_count", "G1_vs_E1_wins>=G1_vs_E1_losses", "catastrophic_regression_count=0"]
+  },
+  "interpretation_boundary": {
+    "experiment_scope": "CONDITIONAL_STAGE2_EVIDENCE_EXPERIMENT: formal relevant document already appears in E0 Top5.",
+    "permitted_conclusion": "Given Stage1 has placed the formal relevant document in Top5, G1 context sufficiency is at least not worse than E1.",
+    "full_rag_retrieval_improvement_claim": "forbidden",
+    "all_techqa_improvement_claim": "forbidden",
+    "production_accuracy_improvement_claim": "forbidden"
+  },
+  "historical_forensic_cases_in_gate": false,
+  "forbidden_adaptations": [
+    "no case replacement", "no resampling", "no D change", "no Top3 change", "no Top16 change",
+    "no adjacency addition", "no reranker-model change", "no prompt/instruction tuning", "no query rewrite",
+    "no per-document reranking", "no generation", "no judge", "no outcome-based exclusions"
+  ],
+  "permitted_v1_to_v1_1_changes": [
+    "count semantics clarification", "rubric disambiguation", "metric formula clarification",
+    "E1 dependency injection contract", "exact rerank instruction freeze", "exact blinding algorithm",
+    "reviewer isolation", "interpretation and failure-policy hardening"
+  ],
+  "experiment_results": "intentionally absent"
+}
