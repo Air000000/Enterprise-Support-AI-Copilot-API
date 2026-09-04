@@ -1,0 +1,161 @@
+{
+  "experiment_id": "techqa_g1_blinded_evidence_sufficiency_30case_v1",
+  "created_at": "2026-09-04",
+  "artifact_state": "PREREGISTRATION_BEFORE_EXECUTION",
+  "dataset": {
+    "generation_loader": "load_frozen_techqa_generation_cases",
+    "generation_repository": "nvidia/TechQA-RAG-Eval",
+    "generation_revision": "0b5bbc84b7f07d6d09d063130e90b716d8d4a32a",
+    "generation_record_count": 910,
+    "retrieval_trace": "experiments/evals/reports/e0_dense/train_results.jsonl",
+    "corpus_repository": "bowang0911/TechQA-RAG-Eval",
+    "corpus_revision": "68323f8f191fd5df93e2b2673d79a5da3a805638",
+    "offline_environment": {
+      "HF_HUB_OFFLINE": "1",
+      "HF_DATASETS_OFFLINE": "1"
+    }
+  },
+  "sample_seed": "techqa-g1-evidence-sufficiency-v1",
+  "sample_size": 30,
+  "excluded_case_ids": [
+    "TRAIN_Q055", "TRAIN_Q102", "TRAIN_Q130", "TRAIN_Q294",
+    "TRAIN_Q299", "TRAIN_Q335", "TRAIN_Q418", "TRAIN_Q427",
+    "TRAIN_Q447", "TRAIN_Q485", "TRAIN_Q542", "TRAIN_Q572"
+  ],
+  "eligibility_rule": {
+    "split": "train",
+    "answerable": true,
+    "e0_trace_required": true,
+    "formal_relevant_document_count": 1,
+    "stage2_responsibility_boundary": "After first-occurrence collapse of E0 raw_document_ids, the sole formal relevant document must be among the first five unique documents."
+  },
+  "eligible_universe_count": 273,
+  "selection_algorithm": "For every eligible question_id, compute sha256(sample_seed + ':' + question_id).hexdigest(); sort ascending by (hash, question_id); select the first 30. No shuffle, manual selection, outcome-based selection, or replacement is permitted.",
+  "selected_case_ids": [
+    "TRAIN_Q458", "TRAIN_Q400", "TRAIN_Q118", "TRAIN_Q346", "TRAIN_Q471",
+    "TRAIN_Q198", "TRAIN_Q227", "TRAIN_Q129", "TRAIN_Q001", "TRAIN_Q018",
+    "TRAIN_Q072", "TRAIN_Q415", "TRAIN_Q492", "TRAIN_Q519", "TRAIN_Q345",
+    "TRAIN_Q589", "TRAIN_Q490", "TRAIN_Q547", "TRAIN_Q161", "TRAIN_Q233",
+    "TRAIN_Q583", "TRAIN_Q145", "TRAIN_Q297", "TRAIN_Q231", "TRAIN_Q390",
+    "TRAIN_Q182", "TRAIN_Q243", "TRAIN_Q224", "TRAIN_Q541", "TRAIN_Q091"
+  ],
+  "capacity_preflight": {
+    "performed_after_sample_freeze": true,
+    "source_path": "historical E0 raw_document_ids -> first five unique candidate documents -> frozen corpus -> build_techqa_chunks",
+    "candidate_document_limit": 5,
+    "candidate_pool_max_chunks": 500,
+    "percentile_method": "linear interpolation over sorted n=30 values, position=(n-1)*p",
+    "chunk_count_summary": {
+      "min": 7,
+      "p50": 31.0,
+      "p90": 56.2,
+      "p95": 61.3,
+      "max": 72
+    },
+    "pool_overflow_case_ids": [],
+    "capacity_blocker": "none",
+    "paid_experiment_authorized": "no_pending_preregistration_review",
+    "per_case": [
+      {"question_id":"TRAIN_Q458","candidate_pool_chunk_count":49,"candidate_pool_content_chars":32014},
+      {"question_id":"TRAIN_Q400","candidate_pool_chunk_count":28,"candidate_pool_content_chars":16817},
+      {"question_id":"TRAIN_Q118","candidate_pool_chunk_count":72,"candidate_pool_content_chars":46319},
+      {"question_id":"TRAIN_Q346","candidate_pool_chunk_count":27,"candidate_pool_content_chars":17351},
+      {"question_id":"TRAIN_Q471","candidate_pool_chunk_count":32,"candidate_pool_content_chars":20370},
+      {"question_id":"TRAIN_Q198","candidate_pool_chunk_count":37,"candidate_pool_content_chars":21952},
+      {"question_id":"TRAIN_Q227","candidate_pool_chunk_count":33,"candidate_pool_content_chars":20495},
+      {"question_id":"TRAIN_Q129","candidate_pool_chunk_count":7,"candidate_pool_content_chars":3899},
+      {"question_id":"TRAIN_Q001","candidate_pool_chunk_count":26,"candidate_pool_content_chars":15315},
+      {"question_id":"TRAIN_Q018","candidate_pool_chunk_count":32,"candidate_pool_content_chars":20006},
+      {"question_id":"TRAIN_Q072","candidate_pool_chunk_count":32,"candidate_pool_content_chars":18028},
+      {"question_id":"TRAIN_Q415","candidate_pool_chunk_count":21,"candidate_pool_content_chars":12633},
+      {"question_id":"TRAIN_Q492","candidate_pool_chunk_count":34,"candidate_pool_content_chars":21505},
+      {"question_id":"TRAIN_Q519","candidate_pool_chunk_count":50,"candidate_pool_content_chars":29111},
+      {"question_id":"TRAIN_Q345","candidate_pool_chunk_count":64,"candidate_pool_content_chars":38434},
+      {"question_id":"TRAIN_Q589","candidate_pool_chunk_count":58,"candidate_pool_content_chars":40438},
+      {"question_id":"TRAIN_Q490","candidate_pool_chunk_count":20,"candidate_pool_content_chars":11812},
+      {"question_id":"TRAIN_Q547","candidate_pool_chunk_count":17,"candidate_pool_content_chars":10118},
+      {"question_id":"TRAIN_Q161","candidate_pool_chunk_count":34,"candidate_pool_content_chars":22139},
+      {"question_id":"TRAIN_Q233","candidate_pool_chunk_count":30,"candidate_pool_content_chars":18273},
+      {"question_id":"TRAIN_Q583","candidate_pool_chunk_count":56,"candidate_pool_content_chars":35020},
+      {"question_id":"TRAIN_Q145","candidate_pool_chunk_count":39,"candidate_pool_content_chars":24143},
+      {"question_id":"TRAIN_Q297","candidate_pool_chunk_count":15,"candidate_pool_content_chars":8265},
+      {"question_id":"TRAIN_Q231","candidate_pool_chunk_count":27,"candidate_pool_content_chars":18264},
+      {"question_id":"TRAIN_Q390","candidate_pool_chunk_count":20,"candidate_pool_content_chars":12125},
+      {"question_id":"TRAIN_Q182","candidate_pool_chunk_count":26,"candidate_pool_content_chars":15220},
+      {"question_id":"TRAIN_Q243","candidate_pool_chunk_count":26,"candidate_pool_content_chars":15871},
+      {"question_id":"TRAIN_Q224","candidate_pool_chunk_count":35,"candidate_pool_content_chars":20448},
+      {"question_id":"TRAIN_Q541","candidate_pool_chunk_count":11,"candidate_pool_content_chars":7400},
+      {"question_id":"TRAIN_Q091","candidate_pool_chunk_count":17,"candidate_pool_content_chars":9790}
+    ]
+  },
+  "method_contracts": {
+    "G0": {
+      "path": "historical E0 Dense Top100 -> one qwen3-rerank -> rerank Top3 -> context Top3",
+      "shared_rerank_with_E1": true,
+      "forward_siblings": "forbidden",
+      "rescue": "forbidden"
+    },
+    "E1": {
+      "source_function": "retrieve_g0_e1_context",
+      "source_file": "experiments/evals/eval_techqa_generation.py",
+      "source_commit": "dc5fb07b584b993516e77455b0b4efb22736b48a",
+      "path": "historical E1 implementation: Dense Top100 -> same shared qwen3-rerank result as G0 -> reranked Top3 anchors plus Dense Top1 rescue -> up to three forward siblings per anchor -> dedupe -> max16 context"
+    },
+    "G1": {
+      "path": "historical E0 ranking -> first five unique candidate documents -> frozen corpus full document-local chunks -> one merged qwen3-rerank -> Top16 selected evidence -> max16 context",
+      "candidate_document_limit": 5,
+      "candidate_pool_max_chunks": 500,
+      "evidence_limit": 16,
+      "max_context_chunks": 16
+    }
+  },
+  "provider_call_budget": {
+    "max_cases": 30,
+    "g0_e1_shared_top100_rerank_calls_per_case": 1,
+    "g1_merged_rerank_calls_per_case": 1,
+    "max_rerank_calls": 60,
+    "max_embedding_calls": 0,
+    "max_generation_calls": 0,
+    "max_judge_calls": 0,
+    "forbidden": ["per-document rerank", "second-pass rerank", "provider retry", "query rewrite", "alternate reranker"]
+  },
+  "gold_claim_rubric": {
+    "authoritative_source": "frozen TechQA generation gold_answer",
+    "procedure": "Freeze material claims from question and gold_answer before viewing any method context.",
+    "claim_support_labels": ["EXPLICIT_SUPPORT", "COMPOSABLE_SUPPORT", "INFERENCE_ONLY", "ABSENT"],
+    "covered_labels": ["EXPLICIT_SUPPORT", "COMPOSABLE_SUPPORT"],
+    "sufficiency_labels": {
+      "COMPLETE": "all material claims covered",
+      "PARTIAL": "at least one, but not all, material claims covered",
+      "INSUFFICIENT": "central answer fact not supported",
+      "UNRESOLVED": "cannot be reliably judged"
+    },
+    "claim_coverage": "covered_claim_count / material_claim_count",
+    "forbidden_metrics": ["gold chunk recall", "gold chunk MRR"]
+  },
+  "blinding_protocol": {
+    "packet_fields": ["question_id", "question", "gold_answer", "material_claims", "Context A", "Context B", "Context C"],
+    "packet_forbidden_fields": ["G0", "E1", "G1", "rerank scores", "method provenance", "historical outcomes"],
+    "mapping_rule": "Compute sha256('techqa-g1-blind-v1:' + question_id).digest(); apply Fisher-Yates to [G0,E1,G1] for i=2 then i=1 using digest[2-i] modulo (i+1); map resulting order to A,B,C. Store mapping separately and reveal only after all A/B/C judgments are complete."
+  },
+  "primary_metrics": {
+    "primary_comparison": "G1_vs_E1",
+    "ordinal_scores": {"COMPLETE": 2, "PARTIAL": 1, "INSUFFICIENT": 0},
+    "unresolved_policy": "UNRESOLVED is unscored and requires manual review.",
+    "per_method": ["complete_count", "insufficient_count", "claim_coverage"],
+    "pairwise": ["G1_vs_E1_wins", "G1_vs_E1_ties", "G1_vs_E1_losses"]
+  },
+  "catastrophic_regression_definition": "E1=COMPLETE and G1=INSUFFICIENT; record count and case IDs.",
+  "go_no_go_rule": {
+    "GO_TO_GENERATION_DESIGN": "yes only when all 30 cases complete, unresolved_count=0, provider/capacity contract remains unchanged, G1_complete_count>=E1_complete_count, G1_insufficient_count<=E1_insufficient_count, G1_vs_E1_wins>=G1_vs_E1_losses, and catastrophic_regression_count=0; otherwise no.",
+    "interpretation_limit": "A yes only means G1 evidence context was not worse than E1 on these blinded Stage2 cases; it does not establish RAG-accuracy improvement, production readiness, or statistical significance."
+  },
+  "historical_forensic_cases_in_gate": false,
+  "forbidden_adaptations": [
+    "no case replacement", "no resampling", "no D change", "no Top16 change",
+    "no adjacency addition", "no reranker-model change", "no prompt/instruction tuning",
+    "no query rewrite", "no per-document reranking", "no generation", "no judge",
+    "no outcome-based exclusions"
+  ],
+  "experiment_results": "intentionally absent"
+}
