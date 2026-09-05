@@ -78,7 +78,7 @@ create_ticket ──► Real Business Side Effect
 
 # 1. Primary Technical Support Data：TechQA
 
-TechQA 不是单独外挂的“简历 Benchmark”，而是当前项目的数据与评测主线。
+TechQA 不是单独外挂的评测数据集，而是当前项目的数据与评测主线。
 
 ## Retrieval corpus
 
