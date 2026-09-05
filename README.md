@@ -2,26 +2,42 @@
 
 [![Tests](https://github.com/Air000000/enterprise-support-ai-copilot-api/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/Air000000/enterprise-support-ai-copilot-api/actions/workflows/tests.yml)
 
-面向企业 IT 支持场景的 **RAG + Controlled Ticket Agent** 后端，重点解决四类问题：
+面向**企业技术支持（Technical Support）**场景的 **evaluation-driven RAG + Controlled Ticket Agent** 后端。
 
-- 企业知识如何完成入库、检索、来源追踪与删除下架；
-- Agent 如何在真实业务写操作前保持可控，并通过 Human-in-the-loop 审批约束 side effect；
-- RAG 效果如何通过冻结 Benchmark、held-out comparison 和 failure analysis 进行可信评测；
-- Agent 运行、工具调用、审批与检索过程如何进入可查询、可审计的 AgentOps 轨迹。
+项目的数据与评测主线长期以 **TechQA** 为核心：使用完整 Technote 技术支持语料建立检索、生成、拒答与失败归因闭环；应用侧保留通用 Document Backend、Dense Chroma RAG、受控建单与 AgentOps，使系统既能回答“效果是否真的变好”，也能回答“真实业务写操作是否可控、可追踪”。
 
-当前项目已从早期 FastAPI Todo / RAG 学习代码演进为 Enterprise Support AI Copilot。公开主线聚焦 **Controlled Agent、RAG Evaluation、Failure Diagnosis、AgentOps / Engineering**，Legacy Todo 能力仅作为历史兼容保留。
+> **当前定位：** TechQA 是主技术支持语料与长期主评测基准，不再把它视为迁移到另一套主数据集之前的临时 Phase。未来若增加 multi-source / conflict / agentic stress 测试，只作为补充评测，不替换现有 TechQA 主线。
 
 ---
 
 ## 30 秒看项目
 
 ```text
-Enterprise Support AI Copilot
+                         TechQA
+        28,481 Technotes / 610 retrieval queries
+         910 generation & abstention QA records
+                           │
+                ┌──────────┴──────────┐
+                │                     │
+                ▼                     ▼
+       Primary Data Backbone     Offline Evaluation
+                                 Dense / Rerank / Hybrid
+                                 Evidence-level Audit
+                                 Generation / Abstention
+                │                     │
+                └──────────┬──────────┘
+                           ▼
+                    Failure Diagnosis
+                           │
+                           ▼
+                     System Iteration
 
-Knowledge / Document Lifecycle
+Application Runtime
+────────────────────────────────────────────────────────────
+Document Lifecycle
         │
         ▼
-Dense Chroma Retrieval ──► Answer + Sources / Low-relevance Refusal
+Dense Chroma Retrieval ──► Answer + Sources / Refusal
         │
         ▼
 Ticket Agent Preview
@@ -43,31 +59,65 @@ create_ticket ──► Real Business Side Effect
                    ├─ Tool Call
                    ├─ Approval
                    └─ Retrieval Log / Metrics
-
-Offline Evaluation
-TechQA ──► Dense Baseline ──► Rerank / Hybrid Experiments
-                         └──► Evidence-level Audit
-                         └──► Generation Evaluation Harness
 ```
 
 ### 当前核心能力
 
 | 能力 | 当前实现 |
 | --- | --- |
+| Primary Technical Support Data | TechQA 28,481 Technotes、610 条 answerable retrieval queries、910 条 generation/abstention QA |
 | Controlled Ticket Agent | `search_kb` / `classify_ticket` / `create_ticket`，preview-confirm + Human-in-the-loop |
 | RAG Runtime | Chroma Dense Retrieval、tenant/category filter、sources、低相关拒答 |
-| RAG Evaluation | TechQA 28,481 文档、610 条可回答检索问题、冻结 TRAIN / DEV、Recall@K / MRR |
-| Rerank / Hybrid Research | Dense Top-100 + `qwen3-rerank` 正式对照；BM25 / RRF / Hybrid 作为离线受控实验 |
+| RAG Evaluation | Frozen TRAIN / DEV、Document Recall@K / MRR、generation / abstention harness |
+| Rerank / Hybrid Research | Dense Top-100 + `qwen3-rerank` 正式 held-out 对照；BM25 / RRF / Hybrid 为离线受控实验 |
 | Failure Diagnosis | candidate coverage、chunk crowding、evidence-level audit、route-selection gate |
 | AgentOps | Agent Run / Tool Call / Approval / Retrieval Trace 与聚合指标 |
-| Access Control | Demo JWT、role check、tenant-scoped access |
 | Engineering | Alembic、Pytest、Ruff、GitHub Actions、Docker Compose、Smoke |
 
 ---
 
-# 1. Controlled Ticket Agent
+# 1. Primary Technical Support Data：TechQA
 
-Ticket Agent 的目标不是让模型直接修改业务状态，而是把“建议”和“真实写操作”拆开。
+TechQA 不是单独外挂的“简历 Benchmark”，而是当前项目的数据与评测主线。
+
+## Retrieval corpus
+
+- **28,481** 篇 Technote 技术支持文档；
+- **610** 条 answerable retrieval queries；
+- 每条 query 恰好 1 个 relevant document；
+- qrels 为 document-level；
+- 实际 retriever 返回 chunk，因此正式 IR 评测会先保留原始 chunk ranking，再按 `document_id` 首次出现位置 collapse 成 document ranking。
+
+## Generation / abstention set
+
+- **610** 条 answerable；
+- **300** 条 impossible；
+- 共 **910** 条 QA records。
+
+这使同一 technical-support domain 可以连续支撑：
+
+```text
+Retrieval
+  ↓
+Rerank / Hybrid comparison
+  ↓
+Evidence quality diagnosis
+  ↓
+Generation correctness / faithfulness
+  ↓
+Abstention / hallucination evaluation
+```
+
+完整数据版本、SHA256、split 和评测契约见：
+
+- [experiments/evals/README.md](experiments/evals/README.md)
+- [experiments/evals/datasets/techqa/manifest.json](experiments/evals/datasets/techqa/manifest.json)
+
+---
+
+# 2. Controlled Ticket Agent
+
+Ticket Agent 的核心目标不是让模型直接修改业务状态，而是将预览 / 审批阶段与真实写操作分离。
 
 ```text
 User Request
@@ -95,7 +145,7 @@ approval_request.pending
      create_ticket
 ```
 
-当前 Ticket Agent 使用三个业务工具语义：
+当前使用三个业务工具语义：
 
 ```text
 search_kb
@@ -124,7 +174,7 @@ Preview 阶段会：
 
 `POST /agent/ticket/confirm`
 
-Confirm 只有在以下条件全部成立时才允许创建真实工单：
+只有以下条件全部成立时才创建真实工单：
 
 ```text
 approval_request.agent_run_id == request.agent_run_id
@@ -140,13 +190,13 @@ request.draft == server-side approval_request.draft_json
 - rejected / cancelled / already-approved 等非 `pending` 审批再次确认；
 - Preview 后由客户端篡改 draft payload。
 
-> 边界说明：当前流程能拒绝非 `pending` 的再次确认，但不将其表述为并发场景下的 exactly-once side-effect guarantee。
+> 当前流程不被描述为并发场景下的 exactly-once side-effect guarantee。
 
 更多实现细节见 [docs/agent_workflow.md](docs/agent_workflow.md)。
 
 ---
 
-# 2. Enterprise RAG Runtime
+# 3. Enterprise RAG Runtime
 
 当前在线 / API serving 路径保持为 **Dense Chroma Retrieval**。
 
@@ -160,15 +210,141 @@ request.draft == server-side approval_request.draft_json
 - 无上下文与低相关拒答
 - retrieval logging
 
-问答路径只允许基于检索 Context 生成答案，并返回对应 sources。
+问答路径仅根据检索 Context 生成答案，并返回对应 sources。当前低相关拒答使用 Dense Top-1 distance 作为工程信号。
 
-当前低相关拒答使用 Dense Top-1 distance 作为信号；该阈值是工程策略，不被描述为通用最优阈值。
-
-> **重要边界：** BM25 / RRF / Hybrid / `qwen3-rerank` 当前主要用于 `experiments/evals/` 的离线评测与对照实验，不把它们描述成线上 serving 已切换到 Hybrid Retrieval。
+> **在线 / 离线边界：** BM25 / RRF / Hybrid / `qwen3-rerank` 当前用于 `experiments/evals/` 的离线评测与受控对照，不把它们描述成线上 serving 已切换到 Hybrid Retrieval。
 
 ---
 
-# 3. Document Lifecycle
+# 4. RAG Evaluation：Frozen TechQA Benchmark
+
+`experiments/evals/` 是正式离线评测入口。
+
+## Split contract
+
+| Split | Answerable | Impossible | 用途 |
+| --- | ---: | ---: | --- |
+| TRAIN | 450 | 150 | development / failure analysis / parameter selection |
+| DEV | 160 | 150 | frozen held-out comparison |
+
+正式 E0 / E1 对照冻结后，不使用 individual DEV failure 反向调参。
+
+## Dense → Rerank held-out result
+
+正式 DEV retrieval 结果：
+
+| Method | Document Recall@5 | Document Recall@20 | MRR@10 |
+| --- | ---: | ---: | ---: |
+| Dense baseline | 0.643750 | 0.818750 | 0.518931 |
+| Dense Top-100 + `qwen3-rerank` | **0.725000** | **0.843750** | **0.560841** |
+
+即：
+
+- Recall@5：**64.4% → 72.5%（+8.1pp）**；
+- Recall@20：81.9% → 84.4%；
+- MRR@10：**0.519 → 0.561**。
+
+结果文件：
+
+- [experiments/evals/reports/e1_rerank/comparison.md](experiments/evals/reports/e1_rerank/comparison.md)
+
+这里强调的是**同一冻结 Benchmark 上的 held-out improvement**，不跨不同数据集比较孤立绝对分数。
+
+---
+
+# 5. Failure Diagnosis：从指标到 Evidence
+
+项目没有把“增加更多检索组件”直接等同于“系统一定更好”，而是通过受控实验与 gate 决定路线去留。
+
+## BM25 / RRF / Hybrid
+
+离线实验覆盖：
+
+- Dense Retrieval
+- BM25
+- Dense + BM25 / RRF Hybrid
+- Dense / Hybrid candidate pool + `qwen3-rerank`
+
+C1 Hybrid + Rerank 的 TRAIN aggregate metrics 有改善，但**没有达到预注册 early-rank MRR gate**：
+
+```text
+Recall@20 gate: PASS
+MRR@10 gate: FAIL
+Overall C1 decision: FAIL
+```
+
+因此停止继续付费优化，而不是把小幅上涨包装成成功路线。
+
+相关报告：
+
+- [experiments/evals/reports/r4_c1_hybrid_rerank/comparison.md](experiments/evals/reports/r4_c1_hybrid_rerank/comparison.md)
+- [experiments/evals/reports/r4_c1_hybrid_rerank/postmortem_decision.md](experiments/evals/reports/r4_c1_hybrid_rerank/postmortem_decision.md)
+
+## Evidence-level audit
+
+Document Recall 可能掩盖一个更细的失败模式：
+
+> **命中了正确文档，不等于真正包含答案的 evidence chunk 已经进入高位 context。**
+
+因此建立人工 evidence audit：
+
+- 60 条已标注 TRAIN queries；
+- 54 条进入正式 evidence evaluation；
+- 187 个 candidate chunk labels；
+- evidence 区分为 weak / useful / answer-bearing；
+- 计算 AnswerEvidenceHit、Evidence MRR 与 GoldDocHitButEvidenceMiss 等指标。
+
+相关 artifacts：
+
+- [experiments/evals/reports/r1_evidence_audit/evidence_metrics.json](experiments/evals/reports/r1_evidence_audit/evidence_metrics.json)
+- [experiments/evals/reports/r1_evidence_audit/evidence_labels.jsonl](experiments/evals/reports/r1_evidence_audit/evidence_labels.jsonl)
+
+---
+
+# 6. Generation / Abstention Harness
+
+基于 retrieval 与 evidence failure analysis，Generation Eval Harness 当前使用：
+
+```text
+Dense Top-100
+   ↓
+qwen3-rerank
+   ↓
+Top-3 rerank anchors
+   + Dense Top-1 rescue anchor
+   ↓
+per unique anchor document:
+forward sibling expansion (max 3)
+   ↓
+deduplicate
+   ↓
+max 16 context chunks
+```
+
+当前 context policy：
+
+```text
+document_aware_forward_expansion_v1
+```
+
+实现：
+
+- [experiments/evals/eval_techqa_generation.py](experiments/evals/eval_techqa_generation.py)
+
+Harness 已包含：
+
+- correctness；
+- faithfulness；
+- abstention accuracy；
+- hallucination rate；
+- end-to-end latency；
+- frozen run identity / manifest / checkpoint。
+
+> **结果边界：** 当前不声称该 context policy 已带来新的正式 generation uplift；在冻结评测完成前，只将其作为基于 failure diagnosis 实现的工程 intervention。
+
+---
+
+# 7. Document Lifecycle
 
 Document Backend 提供从知识入库到下架的显式生命周期：
 
@@ -202,151 +378,7 @@ DELETE /documents/{document_id}
 
 ---
 
-# 4. RAG Evaluation：TechQA
-
-`experiments/evals/` 是当前正式离线评测入口。
-
-## Frozen Data Contract
-
-TechQA retrieval benchmark：
-
-- **28,481** 篇 Technote 文档；
-- **610** 条 answerable retrieval queries；
-- 每条 query 恰好 1 个 relevant document；
-- qrels 是 document-level，而运行时 retrieval unit 是 chunk；
-- 正式评测先保留原始 chunk ranking，再按 `document_id` 首次出现位置 collapse 成 document ranking。
-
-Split contract：
-
-| Split | Answerable | Impossible | 用途 |
-| --- | ---: | ---: | --- |
-| TRAIN | 450 | 150 | development / failure analysis / parameter selection |
-| DEV | 160 | 150 | frozen held-out comparison |
-
-正式 E0 / E1 对照冻结后，不使用 individual DEV failure 反向调参。
-
-完整数据版本、SHA256、split 与评测契约见：
-
-- [experiments/evals/README.md](experiments/evals/README.md)
-- [experiments/evals/datasets/techqa/manifest.json](experiments/evals/datasets/techqa/manifest.json)
-
-## Dense → Rerank Held-out Result
-
-正式 DEV retrieval 结果：
-
-| Method | Document Recall@5 | Document Recall@20 | MRR@10 |
-| --- | ---: | ---: | ---: |
-| Dense baseline | 0.643750 | 0.818750 | 0.518931 |
-| Dense Top-100 + `qwen3-rerank` | **0.725000** | **0.843750** | **0.560841** |
-
-即：
-
-- Recall@5：**64.4% → 72.5%（+8.1pp）**；
-- Recall@20：81.9% → 84.4%；
-- MRR@10：**0.519 → 0.561**。
-
-结果文件：
-
-- [experiments/evals/reports/e1_rerank/comparison.md](experiments/evals/reports/e1_rerank/comparison.md)
-
-这里强调的是同一冻结 Benchmark 上的 held-out improvement，而不是跨不同数据集比较绝对 Recall 数值。
-
----
-
-# 5. Failure Diagnosis：不是继续堆组件
-
-项目后续没有把“增加 Hybrid”直接等同于“系统一定更好”，而是采用受控实验和 route-selection gate 决定方案是否值得继续。
-
-## BM25 / RRF / Hybrid
-
-离线实验比较过：
-
-- Dense Retrieval
-- BM25
-- Dense + BM25 / RRF Hybrid
-- Dense / Hybrid candidate pool + `qwen3-rerank`
-
-C1 Hybrid + Rerank 在 TRAIN aggregate metrics 上有改善，但 **没有达到预注册的 early-rank MRR gate**：
-
-```text
-Recall@20 gate: PASS
-MRR@10 gate: FAIL
-Overall C1 decision: FAIL
-```
-
-因此没有把“指标有一点上涨”包装成成功路线，也没有继续投入后续付费优化。
-
-相关报告：
-
-- [experiments/evals/reports/r4_c1_hybrid_rerank/comparison.md](experiments/evals/reports/r4_c1_hybrid_rerank/comparison.md)
-- [experiments/evals/reports/r4_c1_hybrid_rerank/postmortem_decision.md](experiments/evals/reports/r4_c1_hybrid_rerank/postmortem_decision.md)
-
-## Evidence-level Audit
-
-Document Recall 仍可能掩盖一个重要问题：
-
-> **命中了正确文档，不等于真正包含答案的 evidence chunk 已经进入高位 context。**
-
-因此又建立了一层人工 evidence audit：
-
-- 60 条已标注 TRAIN queries；
-- 54 条进入正式 evidence evaluation；
-- 187 个 candidate chunk labels；
-- 将 evidence 区分为 weak / useful / answer-bearing；
-- 单独计算 AnswerEvidenceHit、Evidence MRR 与 GoldDocHitButEvidenceMiss 等指标。
-
-这层 audit 用于定位 candidate coverage、fusion compression 与 answer-bearing evidence ranking 的问题，不替代官方 TechQA document-level benchmark。
-
-相关 artifacts：
-
-- [experiments/evals/reports/r1_evidence_audit/evidence_metrics.json](experiments/evals/reports/r1_evidence_audit/evidence_metrics.json)
-- [experiments/evals/reports/r1_evidence_audit/evidence_labels.jsonl](experiments/evals/reports/r1_evidence_audit/evidence_labels.jsonl)
-
----
-
-# 6. Document-aware Context Expansion
-
-基于前述 failure analysis，Generation Eval Harness 中实现了：
-
-```text
-Dense Top-100
-   ↓
-qwen3-rerank
-   ↓
-Top-3 rerank anchors
-   + Dense Top-1 rescue anchor
-   ↓
-per unique anchor document:
-forward sibling expansion (max 3)
-   ↓
-deduplicate
-   ↓
-max 16 context chunks
-```
-
-当前策略标识：
-
-```text
-document_aware_forward_expansion_v1
-```
-
-对应实现：
-
-- [experiments/evals/eval_techqa_generation.py](experiments/evals/eval_techqa_generation.py)
-
-Generation dataset 当前包含：
-
-- 610 answerable；
-- 300 impossible；
-- 共 910 条 QA records。
-
-评测 Harness 已包含 correctness、faithfulness、abstention / hallucination 等生成侧指标与 frozen run identity。
-
-> **重要边界：** 当前 README 不声称该 context policy 已带来新的正式 generation uplift；在冻结评测完成前，只把它作为基于 failure diagnosis 实现的工程 intervention。
-
----
-
-# 7. AgentOps / Observability
+# 8. AgentOps / Observability
 
 AgentOps 将关键执行信息持久化，而不是只写控制台日志。
 
@@ -376,7 +408,7 @@ GET /agent-ops/metrics/retrieval/no-context-queries
 GET /agent-ops/metrics/retrieval/failures
 ```
 
-可以按 tenant 查询：
+支持按 tenant 查看：
 
 - Agent Run 状态；
 - Tool Call 成功 / 失败与 error type；
@@ -387,24 +419,24 @@ GET /agent-ops/metrics/retrieval/failures
 
 ---
 
-# 8. Authentication / Tenant Scope
+# 9. Authentication / Tenant Scope
 
-项目包含一个用于当前工程验证的 Demo JWT Auth：
+项目包含用于工程验证的 Demo JWT Auth：
 
 - Bearer token；
 - `user_id`；
 - `tenant_id`；
 - `role`；
-- `support` / `admin` 等角色检查；
+- `support` / `admin` 角色检查；
 - tenant-scoped Document / AgentOps / RAG 访问。
 
-> **边界说明：** 这里的目标是验证认证上下文和 tenant scope 在应用链路中的传递，不把它描述为完整生产级 IAM / RBAC 或数据库级多租户隔离方案。
+> 这里验证的是认证上下文和 tenant scope 在应用链路中的传递，不把它描述为完整生产级 IAM / RBAC 或数据库级多租户隔离方案。
 
 安全边界见 [docs/security.md](docs/security.md)。
 
 ---
 
-# 9. Project Structure
+# 10. Project Structure
 
 ```text
 enterprise-support-ai-copilot-api/
@@ -429,17 +461,16 @@ enterprise-support-ai-copilot-api/
 └── README.md
 ```
 
-说明：
+其中：
 
-- `rag_runtime/` 是正式 RAG runtime 路径；
-- `experiments/evals/` 保存 TechQA Benchmark、受控实验和评测 artifacts；
-- `experiments/rag_local/` 作为早期兼容入口保留；
-- `data/todos.db` 是历史文件名，未为展示目的强行迁移；
-- Todo / AI Todo 能力仍保留，但不再作为项目核心展示。
+- `rag_runtime/`：正式在线 RAG runtime；
+- `experiments/evals/`：TechQA 主评测、受控实验与 artifacts；
+- `experiments/rag_local/`：早期兼容入口；
+- Todo / AI Todo 路径保留为历史兼容，不作为当前项目定位。
 
 ---
 
-# 10. Quick Start
+# 11. Quick Start
 
 ## Environment
 
@@ -454,19 +485,12 @@ SQL_ECHO=true
 DOCUMENT_STORAGE_ROOT=storage/documents
 ```
 
-## Install
+## Install & migrate
 
 ```bash
 pip install -r requirements.txt
-```
-
-## Database Migration
-
-```bash
 alembic upgrade head
 ```
-
-如果旧本地 SQLite 数据库没有 Alembic 版本标记，可以在确认不需要保留开发数据后重建数据库；如需保留已有数据，请先备份并根据当前 schema 状态处理 migration / stamp。
 
 ## Run API
 
@@ -480,29 +504,13 @@ Swagger：
 http://127.0.0.1:8000/docs
 ```
 
----
-
-# 11. Docker
-
-Build：
-
-```bash
-docker build -t enterprise-support-ai-copilot-api .
-```
-
-Run：
-
-```bash
-docker run -p 8000:8000 enterprise-support-ai-copilot-api
-```
-
-Compose：
+## Docker Compose
 
 ```bash
 docker compose up --build
 ```
 
-Docker Compose 在本项目中用于本地可复现运行与核心链路验证，不作为生产部署能力声明。
+Docker Compose 用于本地可复现运行与核心链路验证，不作为生产部署能力声明。
 
 ---
 
@@ -521,24 +529,18 @@ ruff check .
 python -m compileall -q .
 ```
 
-GitHub Actions `test` job 当前执行：
-
-1. Python 3.11 setup；
-2. dependency install；
-3. `compileall`；
-4. `ruff check .`；
-5. RAG / Document / Ticket / AgentOps / Smoke focused tests。
-
-Workflow：
-
-- [.github/workflows/tests.yml](.github/workflows/tests.yml)
-
-## Smoke
+Smoke：
 
 ```bash
 python scripts/smoke_agentops_flow.py
 python scripts/smoke_document_backend_flow.py
 ```
+
+GitHub Actions `test` job 执行 Python 3.11 setup、dependency install、`compileall`、Ruff 和核心 focused tests。
+
+Workflow：
+
+- [.github/workflows/tests.yml](.github/workflows/tests.yml)
 
 ---
 
@@ -546,51 +548,38 @@ python scripts/smoke_document_backend_flow.py
 
 推荐阅读顺序：
 
-1. [README.md](README.md) — 项目入口与当前能力；
-2. [docs/architecture.md](docs/architecture.md) — 系统结构与边界；
-3. [docs/agent_workflow.md](docs/agent_workflow.md) — Ticket Agent preview / confirm；
-4. [experiments/evals/README.md](experiments/evals/README.md) — TechQA Eval Contract；
+1. [README.md](README.md) — 项目定位与能力总览；
+2. [experiments/evals/README.md](experiments/evals/README.md) — TechQA 长期主评测与实验契约；
+3. [docs/architecture.md](docs/architecture.md) — 系统结构与边界；
+4. [docs/agent_workflow.md](docs/agent_workflow.md) — Ticket Agent preview / confirm；
 5. [docs/security.md](docs/security.md) — 当前认证与权限边界；
-6. `experiments/evals/reports/` — retrieval / hybrid / evidence / generation 实验 artifacts。
+6. `experiments/evals/reports/` — retrieval / hybrid / evidence / generation artifacts。
 
-`docs/*_report.md` 与 `docs/superpowers/` 中保留历史阶段报告、设计与实验计划，用于追溯项目演进过程。
-
----
-
-# 14. Legacy Compatibility
-
-本项目最初由 FastAPI Todo / AI Todo API 演进而来，以下能力继续保留用于兼容已有测试和展示代码演进，但不再作为当前核心能力：
-
-- `/todos`
-- `/chat`
-- `/ai/chat`
-- `/ai/extract-tasks`
-- `/ai/create-todos`
-- `tests/test_todos.py`
-
-保留这些代码的原因不是把 Todo 功能继续包装成项目亮点，而是避免为了展示而无必要地破坏稳定历史路径。
+`docs/*_report.md` 与 `docs/superpowers/` 中保留历史阶段报告、设计与实验计划，用于追溯项目演进；历史 roadmap 不自动代表当前产品方向。
 
 ---
 
-# 15. Current Scope / Non-Claims
+# 14. Current Scope / Non-Claims
 
-为了让 README、代码和简历保持一致，当前项目明确不做以下过度 Claim：
+当前 README、代码和简历保持以下边界：
 
+- TechQA 是长期主技术支持语料与主评测基准，不再计划迁移到另一套 primary corpus；
 - 不把离线 BM25 / RRF / Hybrid 实验写成线上 Hybrid Serving；
 - 不把规则化 Ticket 分类写成自主 ReAct / autonomous planning；
 - 不把 Demo JWT + tenant scope 写成完整生产级 IAM / multi-tenant isolation；
 - 不把 Docker Compose 写成生产部署；
 - 不把 approval `pending` 校验写成并发 exactly-once guarantee；
-- 不在正式 frozen generation evaluation 完成前声称 document-aware context expansion 带来生成质量提升。
+- 不在正式 frozen generation evaluation 完成前声称 document-aware context expansion 带来生成质量提升；
+- 不声称当前系统已具备完整 multi-source / conflict-resolution / autonomous Agentic RAG 能力。
 
-项目当前更关注：
+项目当前关注的是：
 
-> **把一个 RAG + Agent Demo 做成可控、可审计、可评测，并能通过失败归因决定下一步工程迭代的应用系统。**
+> **在同一 Technical Support domain 上建立“可信 Benchmark → 失败归因 → 工程 intervention → 再评测”的连续主线，同时把 RAG 与真实业务 side effect 放进可控、可审计的 Agent 工作流。**
 
 ---
 
 ## Project Name
 
 - 对外展示名：**Enterprise Support AI Copilot**
-- 中文定位：企业 IT 支持 RAG 工单 Agent
+- 中文定位：**企业技术支持 RAG + Controlled Ticket Agent**
 - Repository：`Enterprise-Support-AI-Copilot-API`
