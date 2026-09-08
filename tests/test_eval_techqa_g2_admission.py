@@ -3,6 +3,9 @@ from __future__ import annotations
 import importlib
 import importlib.util
 import hashlib
+import json
+import socket
+from dataclasses import replace
 
 import pytest
 
@@ -16,6 +19,181 @@ from experiments.evals.rerankers.qwen3_reranker import (
 
 
 MODULE_NAME = "experiments.evals.eval_techqa_g2_admission"
+
+
+def _preflight_runner():
+    runner = getattr(_g2_module(), "run_offline_admission_preflight", None)
+    assert runner is not None, "offline admission preflight is not implemented"
+    return runner
+
+
+def _replay(chunks):
+    return RerankResult(
+        results=tuple(
+            RerankedCandidate(
+                chunk_id=chunk.chunk_id,
+                document_id=chunk.document_id,
+                content=chunk.content,
+                original_index=index,
+                relevance_score=1.0 - index / 1000,
+            )
+            for index, chunk in enumerate(chunks)
+        ),
+        request_id="offline-fake",
+        total_tokens=0,
+    )
+
+
+def _preflight_inputs():
+    dense = tuple(_chunk(f"dense-{i}", f"D{i // 10}") for i in range(100))
+    corpus = {
+        f"D{i}": tuple(_chunk(f"D{i}-{j}", f"D{i}") for j in range(101))
+        for i in range(10)
+    }
+    # 5 * 101 crosses the frozen cap, independently expected: 4 * 101 + 96.
+    g1_pool = tuple(c for i in range(5) for c in corpus[f"D{i}"])[:500]
+    g2_pool = tuple(c for i in range(9, 4, -1) for c in corpus[f"D{i}"])[:500]
+    return {
+        "e0_trace_by_question_id": {"TRAIN_PREFLIGHT": dense},
+        "load_document_chunks": corpus.__getitem__,
+        "shared_rerank_by_question_id": {"TRAIN_PREFLIGHT": _replay(reversed(dense))},
+        "merged_reranks_by_question_id": {
+            "TRAIN_PREFLIGHT": {"g1": _replay(g1_pool), "g2": _replay(g2_pool)},
+        },
+    }
+
+
+@pytest.fixture
+def offline_tripwires(monkeypatch):
+    def forbidden(*args, **kwargs):
+        pytest.fail("offline preflight attempted live retrieval/provider/generation/judge/embedding/network")
+
+    targets = {
+        "experiments.evals.eval_techqa_generation": (
+            "search_techqa_index", "rerank_candidates", "generate_answer",
+            "judge_techqa_generation", "get_chroma_client", "_default_judge_model",
+        ),
+        "experiments.evals.build_techqa_index": ("search_techqa_index", "embed_texts", "get_chroma_client"),
+        "experiments.evals.rerankers.qwen3_reranker": ("rerank_candidates", "get_rerank_client"),
+        "rag_runtime.query_rag_chroma": ("generate_answer", "get_llm_client", "search_chroma"),
+        "rag_runtime.query_chroma": ("search_chroma", "get_collection"),
+        "rag_runtime.build_rag_index": ("embed_texts",),
+        "experiments.evals.judges.deepeval_dashscope": ("get_llm_client",),
+    }
+    for module_name, names in targets.items():
+        module = importlib.import_module(module_name)
+        for name in names:
+            monkeypatch.setattr(module, name, forbidden)
+    monkeypatch.setattr(socket.socket, "connect", forbidden)
+    monkeypatch.setattr(socket, "create_connection", forbidden)
+    for name in ("DASHSCOPE_API_KEY", "OPENAI_API_KEY", "RERANK_API_KEY", "LLM_API_KEY"):
+        monkeypatch.delenv(name, raising=False)
+
+
+def test_offline_preflight_preserves_invariants_and_persists_repeatable_fingerprint(
+    offline_tripwires, tmp_path,
+):
+    runner = _preflight_runner()
+    inputs = _preflight_inputs()
+    first_path, second_path = tmp_path / "first.json", tmp_path / "second.json"
+    first = runner(**inputs, output_path=first_path)
+    second = runner(**inputs, output_path=second_path)
+    assert first == second == json.loads(first_path.read_text(encoding="utf-8"))
+    assert first_path.read_bytes() == second_path.read_bytes()
+    case = first["cases"][0]
+    assert case["question_id"] == "TRAIN_PREFLIGHT"
+    assert case["dense_chunk_ids"] == [f"dense-{i}" for i in range(100)]
+    assert case["g1_admitted_doc_ids"] == ["D0", "D1", "D2", "D3", "D4"]
+    assert case["g2_admitted_doc_ids"] == ["D9", "D8", "D7", "D6", "D5"]
+    for arm, first_doc, last_doc in (("g1", "D0", "D4"), ("g2", "D9", "D5")):
+        ids = case[f"{arm}_candidate_chunk_ids"]
+        assert len(ids) == len(set(ids)) == 500
+        assert ids[0] == f"{first_doc}-0"
+        assert ids[-1] == f"{last_doc}-95"
+        assert all(cid.split("-")[0] in case[f"{arm}_admitted_doc_ids"] for cid in ids)
+        capacity = first["capacity_by_question_id"]["TRAIN_PREFLIGHT"][arm]
+        assert capacity == {"candidate_chunks": 500, "context_chunks": 16}
+    canonical = json.dumps(first["cases"], sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    assert first["fingerprint_sha256"] == hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+@pytest.mark.parametrize("fault", ["short_dense", "duplicate_dense", "missing_shared", "foreign_shared", "wrong_shared_doc", "duplicate_shared"])
+def test_offline_preflight_rejects_invalid_frozen_dense_or_shared_replay_before_loading(fault):
+    runner = _preflight_runner()
+    inputs = _preflight_inputs()
+    qid = "TRAIN_PREFLIGHT"
+    dense = inputs["e0_trace_by_question_id"][qid]
+    shared = inputs["shared_rerank_by_question_id"][qid]
+    if fault == "short_dense":
+        inputs["e0_trace_by_question_id"][qid] = dense[:-1]
+    elif fault == "duplicate_dense":
+        inputs["e0_trace_by_question_id"][qid] = (*dense[:-1], dense[0])
+    elif fault == "missing_shared":
+        inputs["shared_rerank_by_question_id"][qid] = replace(shared, results=shared.results[:-1])
+    else:
+        replacement = {
+            "foreign_shared": replace(shared.results[0], chunk_id="foreign"),
+            "wrong_shared_doc": replace(shared.results[0], document_id="foreign"),
+            "duplicate_shared": shared.results[1],
+        }[fault]
+        inputs["shared_rerank_by_question_id"][qid] = replace(shared, results=(replacement, *shared.results[1:]))
+
+    def forbidden_loader(_):
+        pytest.fail("invalid frozen inputs reached corpus loading")
+
+    inputs["load_document_chunks"] = forbidden_loader
+    with pytest.raises(ValueError, match="Dense Top100|shared replay"):
+        runner(**inputs)
+
+
+def test_offline_preflight_rejects_foreign_loaded_chunks_even_beyond_capacity():
+    runner = _preflight_runner()
+    inputs = _preflight_inputs()
+    inputs["load_document_chunks"] = lambda doc: (
+        *(_chunk(f"{doc}-{i}", doc) for i in range(500)),
+        _chunk("foreign", "OUTSIDE"),
+    )
+    with pytest.raises(ValueError, match="loaded chunk"):
+        runner(**inputs)
+
+
+@pytest.mark.parametrize("fault", ["foreign", "duplicate", "wrong_document"])
+def test_offline_preflight_rejects_invalid_merged_replay(fault):
+    runner = _preflight_runner()
+    inputs = _preflight_inputs()
+    merged = inputs["merged_reranks_by_question_id"]["TRAIN_PREFLIGHT"]
+    replay = merged["g1"]
+    replacement = {
+        "foreign": replace(replay.results[-1], chunk_id="foreign"),
+        "duplicate": replay.results[0],
+        "wrong_document": replace(replay.results[-1], document_id="foreign"),
+    }[fault]
+    # Validate the entire replay, including invalid rows beyond Top16.
+    merged["g1"] = replace(replay, results=(*replay.results[:-1], replacement))
+    with pytest.raises(ValueError, match="merged replay"):
+        runner(**inputs)
+
+
+def test_offline_preflight_rejects_empty_case_set():
+    inputs = _preflight_inputs()
+    inputs["e0_trace_by_question_id"] = {}
+    with pytest.raises(ValueError, match="at least one frozen case"):
+        _preflight_runner()(**inputs)
+
+
+def test_offline_preflight_deduplicates_loaded_chunks_and_fingerprint_tracks_admission():
+    runner = _preflight_runner()
+    inputs = _preflight_inputs()
+    first = runner(**inputs)
+    loader = inputs["load_document_chunks"]
+    inputs["load_document_chunks"] = lambda doc: tuple(c for c in loader(doc) for _ in range(2))
+    assert runner(**inputs) == first
+    qid = "TRAIN_PREFLIGHT"
+    inputs["shared_rerank_by_question_id"][qid] = _replay(inputs["e0_trace_by_question_id"][qid])
+    inputs["merged_reranks_by_question_id"][qid]["g2"] = inputs["merged_reranks_by_question_id"][qid]["g1"]
+    changed = runner(**inputs)
+    assert changed["fingerprint_sha256"] != first["fingerprint_sha256"]
+    assert changed["cases"][0]["g2_admitted_doc_ids"] == ["D0", "D1", "D2", "D3", "D4"]
 
 
 def _g2_module():
