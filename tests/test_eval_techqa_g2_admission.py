@@ -5,7 +5,9 @@ import importlib.util
 
 import pytest
 
+from experiments.evals.eval_techqa_generation import G0RetrievedChunk
 from experiments.evals.rerankers.qwen3_reranker import (
+    RerankCandidate,
     RerankResult,
     RerankedCandidate,
 )
@@ -18,6 +20,12 @@ def _g2_module():
     spec = importlib.util.find_spec(MODULE_NAME)
     assert spec is not None, "eval_techqa_g2_admission is not implemented"
     return importlib.import_module(MODULE_NAME)
+
+
+def _g2_runner():
+    runner = getattr(_g2_module(), "run_g2_admission_diagnostic", None)
+    assert runner is not None, "run_g2_admission_diagnostic is not implemented"
+    return runner
 
 
 def _shared_rerank(*document_ids: str) -> RerankResult:
@@ -34,6 +42,22 @@ def _shared_rerank(*document_ids: str) -> RerankResult:
         ),
         request_id="shared-global-rerank",
         total_tokens=123,
+    )
+
+
+def _chunk(
+    chunk_id: str,
+    document_id: str,
+    *,
+    chunk_index: int = 0,
+    distance: float = 0.1,
+) -> G0RetrievedChunk:
+    return G0RetrievedChunk(
+        chunk_id=chunk_id,
+        document_id=document_id,
+        chunk_index=chunk_index,
+        content=f"content {chunk_id}",
+        distance=distance,
     )
 
 
@@ -65,3 +89,155 @@ def test_rerank_informed_admission_requires_positive_limit(limit: int):
 
     with pytest.raises(ValueError, match="limit must be positive"):
         selector(_shared_rerank("D1"), limit=limit)
+
+
+def test_g2_diagnostic_admits_global_rerank_docs_and_calls_merged_reranker_once():
+    runner = _g2_runner()
+    dense_ranked = tuple(
+        _chunk(f"dense-{index}", document_id, distance=index / 100.0)
+        for index, document_id in enumerate(("D1", "D2", "D3", "D4", "D5", "D9"))
+    )
+    shared_global_rerank = _shared_rerank("D9", "D8", "D7", "D6", "D5", "D4")
+    loader_calls: list[str] = []
+    chunks_by_document = {
+        document_id: (_chunk(f"{document_id}-chunk-0", document_id),)
+        for document_id in ("D9", "D8", "D7", "D6", "D5")
+    }
+    merged_calls: list[tuple[str, tuple[RerankCandidate, ...]]] = []
+
+    def load_document_chunks(document_id: str):
+        loader_calls.append(document_id)
+        return chunks_by_document[document_id]
+
+    def merged_reranker(question: str, candidates):
+        candidate_tuple = tuple(candidates)
+        merged_calls.append((question, candidate_tuple))
+        return RerankResult(
+            results=tuple(
+                RerankedCandidate(
+                    chunk_id=candidate.chunk_id,
+                    document_id=candidate.document_id,
+                    content=candidate.content,
+                    original_index=index,
+                    relevance_score=1.0 - index / 100.0,
+                )
+                for index, candidate in reversed(tuple(enumerate(candidate_tuple)))
+            ),
+            request_id="merged-rerank",
+            total_tokens=456,
+        )
+
+    diagnostic = runner(
+        "TRAIN_SYNTHETIC",
+        "Which evidence resolves the issue?",
+        dense_ranked,
+        shared_global_rerank=shared_global_rerank,
+        candidate_document_limit=5,
+        load_document_chunks=load_document_chunks,
+        candidate_pool_max_chunks=500,
+        merged_reranker=merged_reranker,
+        evidence_limit=16,
+        max_context_chunks=16,
+    )
+
+    assert diagnostic.candidate_document_ids == ("D9", "D8", "D7", "D6", "D5")
+    assert diagnostic.candidate_document_ids != ("D1", "D2", "D3", "D4", "D5")
+    assert loader_calls == ["D9", "D8", "D7", "D6", "D5"]
+    assert len(merged_calls) == 1
+    assert diagnostic.merged_rerank_invocations == 1
+    assert tuple(chunk.document_id for chunk in diagnostic.final_context) == (
+        "D5",
+        "D6",
+        "D7",
+        "D8",
+        "D9",
+    )
+
+
+def test_g2_diagnostic_reuses_existing_g1_downstream_helpers(monkeypatch):
+    module = _g2_module()
+    runner = _g2_runner()
+    calls: list[tuple[str, object]] = []
+    pool = (_chunk("pool-1", "D9"),)
+    selected = (_chunk("selected-1", "D9"),)
+    final = (_chunk("final-1", "D9"),)
+
+    def fake_pool_builder(candidate_document_ids, *, load_document_chunks, max_chunks):
+        calls.append(("pool", (tuple(candidate_document_ids), max_chunks)))
+        return pool
+
+    def fake_evidence_selector(question, candidate_pool, *, reranker, limit):
+        calls.append(("evidence", (question, tuple(candidate_pool), limit)))
+        return selected
+
+    def fake_assembler(selected_evidence, *, max_context_chunks):
+        calls.append(("assembly", (tuple(selected_evidence), max_context_chunks)))
+        return final
+
+    monkeypatch.setattr(module, "build_document_local_candidate_pool", fake_pool_builder, raising=False)
+    monkeypatch.setattr(module, "select_document_local_evidence", fake_evidence_selector, raising=False)
+    monkeypatch.setattr(module, "assemble_selected_evidence_context", fake_assembler, raising=False)
+
+    diagnostic = runner(
+        "TRAIN_HELPERS",
+        "question",
+        (_chunk("dense-1", "D1"),),
+        shared_global_rerank=_shared_rerank("D9"),
+        candidate_document_limit=5,
+        load_document_chunks=lambda _: (),
+        candidate_pool_max_chunks=500,
+        merged_reranker=lambda *_: None,
+        evidence_limit=16,
+        max_context_chunks=16,
+    )
+
+    assert calls == [
+        ("pool", (("D9",), 500)),
+        ("evidence", ("question", pool, 16)),
+        ("assembly", (selected, 16)),
+    ]
+    assert diagnostic.candidate_pool == pool
+    assert diagnostic.selected_evidence == selected
+    assert diagnostic.final_context == final
+
+
+@pytest.mark.parametrize(
+    "invalid_budget",
+    (
+        "candidate_document_limit",
+        "candidate_pool_max_chunks",
+        "evidence_limit",
+        "max_context_chunks",
+    ),
+)
+def test_g2_diagnostic_validates_all_budgets_before_side_effects(invalid_budget: str):
+    runner = _g2_runner()
+    side_effects: list[str] = []
+    budgets = {
+        "candidate_document_limit": 5,
+        "candidate_pool_max_chunks": 500,
+        "evidence_limit": 16,
+        "max_context_chunks": 16,
+    }
+    budgets[invalid_budget] = 0
+
+    def forbidden_loader(_: str):
+        side_effects.append("loader")
+        raise AssertionError("invalid budgets must fail before document loading")
+
+    def forbidden_reranker(*_):
+        side_effects.append("reranker")
+        raise AssertionError("invalid budgets must fail before reranking")
+
+    with pytest.raises(ValueError, match="positive"):
+        runner(
+            "TRAIN_INVALID",
+            "question",
+            (_chunk("dense-1", "D1"),),
+            shared_global_rerank=_shared_rerank("D9"),
+            load_document_chunks=forbidden_loader,
+            merged_reranker=forbidden_reranker,
+            **budgets,
+        )
+
+    assert side_effects == []
