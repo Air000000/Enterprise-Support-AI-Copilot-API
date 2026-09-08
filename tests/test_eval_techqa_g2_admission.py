@@ -286,12 +286,8 @@ def test_g1_g2_comparison_changes_only_document_admission_order():
         "question",
         dense_ranked,
         shared_global_rerank=shared_global_rerank,
-        candidate_document_limit=5,
         load_document_chunks=load_document_chunks,
-        candidate_pool_max_chunks=500,
         merged_reranker=merged_reranker,
-        evidence_limit=16,
-        max_context_chunks=16,
     )
 
     assert comparison.question_id == "TRAIN_CAUSAL"
@@ -362,12 +358,8 @@ def test_g1_g2_comparison_reuses_identical_downstream_contract(monkeypatch):
         "question",
         dense_ranked,
         shared_global_rerank=shared_global_rerank,
-        candidate_document_limit=5,
         load_document_chunks=load_document_chunks,
-        candidate_pool_max_chunks=500,
         merged_reranker=merged_reranker,
-        evidence_limit=16,
-        max_context_chunks=16,
     )
 
     assert comparison.g1_candidate_document_ids == ("D1", "D2")

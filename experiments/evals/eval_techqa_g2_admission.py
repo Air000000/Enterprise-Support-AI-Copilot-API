@@ -67,54 +67,50 @@ def run_g1_g2_admission_comparison(
     dense_ranked_chunks: Sequence[G0RetrievedChunk],
     *,
     shared_global_rerank: RerankResult,
-    candidate_document_limit: int,
     load_document_chunks: Callable[[str], Sequence[G0RetrievedChunk]],
-    candidate_pool_max_chunks: int,
     merged_reranker: Callable[..., Any],
-    evidence_limit: int,
-    max_context_chunks: int,
 ) -> G1G2AdmissionComparison:
     """Compare G1 and G2 document admission with identical downstream steps."""
     dense_ranked = tuple(dense_ranked_chunks)
     g1_candidate_document_ids = select_candidate_document_ids(
         dense_ranked,
-        limit=candidate_document_limit,
+        limit=5,
     )
     g2_candidate_document_ids = select_rerank_informed_document_ids(
         shared_global_rerank,
-        limit=candidate_document_limit,
+        limit=5,
     )
 
     g1_candidate_pool = build_document_local_candidate_pool(
         g1_candidate_document_ids,
         load_document_chunks=load_document_chunks,
-        max_chunks=candidate_pool_max_chunks,
+        max_chunks=500,
     )
     g1_selected_evidence = select_document_local_evidence(
         question,
         g1_candidate_pool,
         reranker=merged_reranker,
-        limit=evidence_limit,
+        limit=16,
     )
     g1_context = assemble_selected_evidence_context(
         g1_selected_evidence,
-        max_context_chunks=max_context_chunks,
+        max_context_chunks=16,
     )
 
     g2_candidate_pool = build_document_local_candidate_pool(
         g2_candidate_document_ids,
         load_document_chunks=load_document_chunks,
-        max_chunks=candidate_pool_max_chunks,
+        max_chunks=500,
     )
     g2_selected_evidence = select_document_local_evidence(
         question,
         g2_candidate_pool,
         reranker=merged_reranker,
-        limit=evidence_limit,
+        limit=16,
     )
     g2_context = assemble_selected_evidence_context(
         g2_selected_evidence,
-        max_context_chunks=max_context_chunks,
+        max_context_chunks=16,
     )
 
     return G1G2AdmissionComparison(
