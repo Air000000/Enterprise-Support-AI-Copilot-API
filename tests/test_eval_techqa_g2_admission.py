@@ -95,21 +95,31 @@ def test_g2_preregistered_selection_uses_only_eligible_train_cases_before_hashin
     cases = (
         _generation_case("TRAIN_ELIGIBLE_DEEP"),
         _generation_case("TRAIN_IMPOSSIBLE", answerable=False),
-        _generation_case("DEV_NON_TRAIN", split="dev"),
+        _generation_case("TRAIN_NON_TRAIN_SPLIT", split="dev"),
         _generation_case("TRAIN_MISSING_TRACE"),
         _generation_case("TRAIN_GOLD_ABSENT"),
         _generation_case("TRAIN_EXCLUDED"),
     )
     traces = {
         "TRAIN_ELIGIBLE_DEEP": (
-            _chunk("first", "other-document"),
+            _chunk("first", "other-document-1"),
+            _chunk("second", "other-document-2"),
+            _chunk("third", "other-document-3"),
+            _chunk("fourth", "other-document-4"),
+            _chunk("fifth", "other-document-5"),
             _chunk("sixth", "gold-document"),
+        ),
+        "TRAIN_IMPOSSIBLE": (_chunk("impossible", "gold-document"),),
+        "TRAIN_NON_TRAIN_SPLIT": (
+            _chunk("non-train", "gold-document"),
         ),
         "TRAIN_GOLD_ABSENT": (_chunk("only", "other-document"),),
         "TRAIN_EXCLUDED": (_chunk("excluded", "gold-document"),),
     }
     relevant_documents = {
         "TRAIN_ELIGIBLE_DEEP": "gold-document",
+        "TRAIN_IMPOSSIBLE": "gold-document",
+        "TRAIN_NON_TRAIN_SPLIT": "gold-document",
         "TRAIN_GOLD_ABSENT": "gold-document",
         "TRAIN_EXCLUDED": "gold-document",
     }

@@ -63,8 +63,8 @@
     "g1_selected_case_count": 30,
     "manual_evidence_label_question_id_count": 60,
     "exclusion_count_after_union": 94,
-    "sorted_exclusion_list_sha256": "0ca47005b546a2c89ff711eceaf365425aa6535a16d0d9f108196c8c1c505904",
-    "hash_serialization": "UTF-8 encoding of '\\n'.join(sorted(unique_question_ids))",
+    "sorted_exclusion_list_sha256": "58f9b7d85d92d6fa20602d6fc9bddeee2f542e6bfb4e75dbc722e448c38f1cab",
+    "hash_serialization": "UTF-8 bytes of the sorted unique question IDs joined by one actual LF separator byte (0x0A), with no leading or trailing separator",
     "policy": "Apply the union before eligibility hashing and sampling."
   },
   "g1_contract": {
