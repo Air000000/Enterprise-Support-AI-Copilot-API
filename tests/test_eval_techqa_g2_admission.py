@@ -28,6 +28,12 @@ def _g2_runner():
     return runner
 
 
+def _comparison_runner():
+    runner = getattr(_g2_module(), "run_g1_g2_admission_comparison", None)
+    assert runner is not None, "run_g1_g2_admission_comparison is not implemented"
+    return runner
+
+
 def _shared_rerank(*document_ids: str) -> RerankResult:
     return RerankResult(
         results=tuple(
@@ -241,3 +247,144 @@ def test_g2_diagnostic_validates_all_budgets_before_side_effects(invalid_budget:
         )
 
     assert side_effects == []
+
+
+def test_g1_g2_comparison_changes_only_document_admission_order():
+    runner = _comparison_runner()
+    dense_ranked = tuple(
+        _chunk(f"dense-{index}", document_id, distance=index / 100.0)
+        for index, document_id in enumerate(("D1", "D2", "D3", "D4", "D5", "D9"))
+    )
+    shared_global_rerank = _shared_rerank("D9", "D8", "D7", "D6", "D5", "D4")
+    chunks_by_document = {
+        document_id: (_chunk(f"{document_id}-chunk-0", document_id),)
+        for document_id in ("D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9")
+    }
+
+    def load_document_chunks(document_id: str):
+        return chunks_by_document[document_id]
+
+    def merged_reranker(question: str, candidates):
+        candidate_tuple = tuple(candidates)
+        return RerankResult(
+            results=tuple(
+                RerankedCandidate(
+                    chunk_id=candidate.chunk_id,
+                    document_id=candidate.document_id,
+                    content=candidate.content,
+                    original_index=index,
+                    relevance_score=1.0 - index / 100.0,
+                )
+                for index, candidate in enumerate(candidate_tuple)
+            ),
+            request_id="merged-rerank",
+            total_tokens=456,
+        )
+
+    comparison = runner(
+        "TRAIN_CAUSAL",
+        "question",
+        dense_ranked,
+        shared_global_rerank=shared_global_rerank,
+        candidate_document_limit=5,
+        load_document_chunks=load_document_chunks,
+        candidate_pool_max_chunks=500,
+        merged_reranker=merged_reranker,
+        evidence_limit=16,
+        max_context_chunks=16,
+    )
+
+    assert comparison.question_id == "TRAIN_CAUSAL"
+    assert comparison.dense_candidate_chunk_ids == tuple(
+        chunk.chunk_id for chunk in dense_ranked
+    )
+    assert comparison.g1_candidate_document_ids == ("D1", "D2", "D3", "D4", "D5")
+    assert comparison.g2_candidate_document_ids == ("D9", "D8", "D7", "D6", "D5")
+    assert tuple(chunk.document_id for chunk in comparison.g1_context) == (
+        "D1", "D2", "D3", "D4", "D5"
+    )
+    assert tuple(chunk.document_id for chunk in comparison.g2_context) == (
+        "D9", "D8", "D7", "D6", "D5"
+    )
+
+
+def test_g1_g2_comparison_reuses_identical_downstream_contract(monkeypatch):
+    module = _g2_module()
+    runner = _comparison_runner()
+    dense_ranked = (
+        _chunk("dense-1", "D1"),
+        _chunk("dense-2", "D2"),
+    )
+    shared_global_rerank = _shared_rerank("D9", "D8")
+    calls: list[tuple[str, object]] = []
+
+    def load_document_chunks(document_id: str):
+        return (_chunk(f"{document_id}-loaded", document_id),)
+
+    def merged_reranker(question: str, candidates):
+        candidate_tuple = tuple(candidates)
+        return RerankResult(
+            results=tuple(
+                RerankedCandidate(
+                    chunk_id=candidate.chunk_id,
+                    document_id=candidate.document_id,
+                    content=candidate.content,
+                    original_index=index,
+                    relevance_score=1.0 - index / 100.0,
+                )
+                for index, candidate in enumerate(candidate_tuple)
+            ),
+            request_id="merged-rerank",
+            total_tokens=456,
+        )
+
+    def fake_pool_builder(candidate_document_ids, *, load_document_chunks, max_chunks):
+        document_ids = tuple(candidate_document_ids)
+        calls.append(("pool", (document_ids, load_document_chunks, max_chunks)))
+        return tuple(_chunk(f"{document_id}-pool", document_id) for document_id in document_ids)
+
+    def fake_evidence_selector(question, candidate_pool, *, reranker, limit):
+        pool = tuple(candidate_pool)
+        calls.append(("evidence", (question, pool, reranker, limit)))
+        return pool
+
+    def fake_assembler(selected_evidence, *, max_context_chunks):
+        selected = tuple(selected_evidence)
+        calls.append(("assembly", (selected, max_context_chunks)))
+        return selected
+
+    monkeypatch.setattr(module, "build_document_local_candidate_pool", fake_pool_builder, raising=False)
+    monkeypatch.setattr(module, "select_document_local_evidence", fake_evidence_selector, raising=False)
+    monkeypatch.setattr(module, "assemble_selected_evidence_context", fake_assembler, raising=False)
+
+    comparison = runner(
+        "TRAIN_CONTRACT",
+        "question",
+        dense_ranked,
+        shared_global_rerank=shared_global_rerank,
+        candidate_document_limit=5,
+        load_document_chunks=load_document_chunks,
+        candidate_pool_max_chunks=500,
+        merged_reranker=merged_reranker,
+        evidence_limit=16,
+        max_context_chunks=16,
+    )
+
+    assert comparison.g1_candidate_document_ids == ("D1", "D2")
+    assert comparison.g2_candidate_document_ids == ("D9", "D8")
+    assert len(calls) == 6
+
+    g1_pool_call, g1_evidence_call, g1_assembly_call = calls[:3]
+    g2_pool_call, g2_evidence_call, g2_assembly_call = calls[3:]
+
+    assert g1_pool_call[0] == g2_pool_call[0] == "pool"
+    assert g1_pool_call[1][1] is g2_pool_call[1][1] is load_document_chunks
+    assert g1_pool_call[1][2] == g2_pool_call[1][2] == 500
+
+    assert g1_evidence_call[0] == g2_evidence_call[0] == "evidence"
+    assert g1_evidence_call[1][0] == g2_evidence_call[1][0] == "question"
+    assert g1_evidence_call[1][2] is g2_evidence_call[1][2] is merged_reranker
+    assert g1_evidence_call[1][3] == g2_evidence_call[1][3] == 16
+
+    assert g1_assembly_call[0] == g2_assembly_call[0] == "assembly"
+    assert g1_assembly_call[1][1] == g2_assembly_call[1][1] == 16
