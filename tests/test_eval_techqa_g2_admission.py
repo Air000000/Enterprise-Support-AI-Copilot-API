@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+import hashlib
 
 import pytest
 
+from experiments.evals.adapters.techqa import TechQAGenerationCase
 from experiments.evals.eval_techqa_generation import G0RetrievedChunk
 from experiments.evals.rerankers.qwen3_reranker import (
     RerankCandidate,
@@ -65,6 +67,116 @@ def _chunk(
         content=f"content {chunk_id}",
         distance=distance,
     )
+
+
+def _generation_case(
+    question_id: str,
+    *,
+    answerable: bool = True,
+    split: str = "train",
+) -> TechQAGenerationCase:
+    return TechQAGenerationCase(
+        question_id=question_id,
+        question=f"question {question_id}",
+        gold_answer="gold answer",
+        answerable=answerable,
+        split=split,  # type: ignore[arg-type]
+    )
+
+
+def _g2_preregistered_case_selector():
+    selector = getattr(_g2_module(), "select_g2_preregistered_cases", None)
+    assert selector is not None, "select_g2_preregistered_cases is not implemented"
+    return selector
+
+
+def test_g2_preregistered_selection_uses_only_eligible_train_cases_before_hashing():
+    selector = _g2_preregistered_case_selector()
+    cases = (
+        _generation_case("TRAIN_ELIGIBLE_DEEP"),
+        _generation_case("TRAIN_IMPOSSIBLE", answerable=False),
+        _generation_case("DEV_NON_TRAIN", split="dev"),
+        _generation_case("TRAIN_MISSING_TRACE"),
+        _generation_case("TRAIN_GOLD_ABSENT"),
+        _generation_case("TRAIN_EXCLUDED"),
+    )
+    traces = {
+        "TRAIN_ELIGIBLE_DEEP": (
+            _chunk("first", "other-document"),
+            _chunk("sixth", "gold-document"),
+        ),
+        "TRAIN_GOLD_ABSENT": (_chunk("only", "other-document"),),
+        "TRAIN_EXCLUDED": (_chunk("excluded", "gold-document"),),
+    }
+    relevant_documents = {
+        "TRAIN_ELIGIBLE_DEEP": "gold-document",
+        "TRAIN_GOLD_ABSENT": "gold-document",
+        "TRAIN_EXCLUDED": "gold-document",
+    }
+
+    assert selector(
+        cases,
+        e0_trace_by_question_id=traces,
+        relevant_document_by_question_id=relevant_documents,
+        excluded_question_ids={"TRAIN_EXCLUDED"},
+        sample_size=1,
+    ) == ("TRAIN_ELIGIBLE_DEEP",)
+
+
+def test_g2_preregistered_selection_hashes_eligible_ids_and_is_repeatable():
+    selector = _g2_preregistered_case_selector()
+    eligible_ids = tuple(f"TRAIN_Q{index:03d}" for index in range(31))
+    cases = tuple(_generation_case(question_id) for question_id in eligible_ids)
+    traces = {
+        question_id: (_chunk(f"{question_id}-chunk", "gold-document"),)
+        for question_id in eligible_ids
+    }
+    relevant_documents = {question_id: "gold-document" for question_id in eligible_ids}
+    excluded_question_ids = {"TRAIN_Q000"}
+    seed = "selection-seed"
+    expected = tuple(
+        sorted(
+            (question_id for question_id in eligible_ids if question_id not in excluded_question_ids),
+            key=lambda question_id: (
+                hashlib.sha256(f"{seed}:{question_id}".encode("utf-8")).hexdigest(),
+                question_id,
+            ),
+        )[:30]
+    )
+
+    first = selector(
+        cases,
+        e0_trace_by_question_id=traces,
+        relevant_document_by_question_id=relevant_documents,
+        excluded_question_ids=excluded_question_ids,
+        seed=seed,
+    )
+    second = selector(
+        cases,
+        e0_trace_by_question_id=traces,
+        relevant_document_by_question_id=relevant_documents,
+        excluded_question_ids=excluded_question_ids,
+        seed=seed,
+    )
+
+    assert first == second == expected
+    assert "TRAIN_Q000" not in first
+
+
+def test_g2_preregistered_selection_rejects_insufficient_eligible_population():
+    selector = _g2_preregistered_case_selector()
+    case = _generation_case("TRAIN_ONLY_CASE")
+
+    with pytest.raises(ValueError, match="Insufficient eligible"):
+        selector(
+            (case,),
+            e0_trace_by_question_id={
+                case.question_id: (_chunk("gold", "gold-document"),),
+            },
+            relevant_document_by_question_id={case.question_id: "gold-document"},
+            excluded_question_ids=(),
+            sample_size=2,
+        )
 
 
 def test_rerank_informed_admission_uses_first_unique_docs_in_rerank_order():

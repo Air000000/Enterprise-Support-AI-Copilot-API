@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+import hashlib
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -11,7 +12,12 @@ from experiments.evals.eval_techqa_generation import (
     select_candidate_document_ids,
     select_document_local_evidence,
 )
+from experiments.evals.adapters.techqa import TechQAGenerationCase
 from experiments.evals.rerankers.qwen3_reranker import RerankResult
+
+
+G2_SAMPLE_SEED = "techqa-g2-rerank-informed-admission-v1"
+G2_SAMPLE_SIZE = 30
 
 
 @dataclass(frozen=True)
@@ -34,6 +40,56 @@ class G1G2AdmissionComparison:
     g2_candidate_document_ids: tuple[str, ...]
     g1_context: tuple[G0RetrievedChunk, ...]
     g2_context: tuple[G0RetrievedChunk, ...]
+
+
+def select_g2_preregistered_cases(
+    cases: Sequence[TechQAGenerationCase],
+    *,
+    e0_trace_by_question_id: Mapping[str, Sequence[G0RetrievedChunk]],
+    relevant_document_by_question_id: Mapping[str, str],
+    excluded_question_ids: Collection[str],
+    seed: str = G2_SAMPLE_SEED,
+    sample_size: int = G2_SAMPLE_SIZE,
+) -> tuple[str, ...]:
+    """Select fresh, eligible G2 cases with the frozen deterministic order."""
+    if sample_size <= 0:
+        raise ValueError("sample_size must be positive")
+
+    excluded = set(excluded_question_ids)
+    eligible_question_ids: list[str] = []
+    for case in cases:
+        question_id = case.question_id
+        trace = e0_trace_by_question_id.get(question_id)
+        relevant_document_id = relevant_document_by_question_id.get(question_id)
+        if (
+            question_id in excluded
+            or case.split != "train"
+            or not question_id.startswith("TRAIN_")
+            or not case.answerable
+            or not trace
+            or relevant_document_id is None
+            or not any(
+                chunk.document_id == relevant_document_id for chunk in trace
+            )
+        ):
+            continue
+        eligible_question_ids.append(question_id)
+
+    ordered_question_ids = sorted(
+        eligible_question_ids,
+        key=lambda question_id: (
+            hashlib.sha256(
+                f"{seed}:{question_id}".encode("utf-8")
+            ).hexdigest(),
+            question_id,
+        ),
+    )
+    if len(ordered_question_ids) < sample_size:
+        raise ValueError(
+            "Insufficient eligible G2 preregistration cases: "
+            f"required={sample_size}, actual={len(ordered_question_ids)}"
+        )
+    return tuple(ordered_question_ids[:sample_size])
 
 
 def select_rerank_informed_document_ids(
