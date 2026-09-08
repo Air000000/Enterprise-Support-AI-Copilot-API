@@ -1,0 +1,154 @@
+{
+  "experiment_id": "g1_document_local_rerank_only_pilot_v1",
+  "created_at": "2026-09-03",
+  "artifact_state": "PREREGISTRATION_BEFORE_EXECUTION",
+  "experiment_question": "Given frozen Stage 1 candidate documents, can one query-relevance rerank over their complete merged chunks find document-local evidence more reliably than the prior chunk Top3 path?",
+  "scope_exclusions": [
+    "dense retrieval improvement",
+    "full RAG improvement",
+    "generation improvement",
+    "hallucination improvement",
+    "production-readiness"
+  ],
+  "source_stage1_artifact": {
+    "path": "experiments/evals/reports/e0_dense/train_results.jsonl",
+    "frozen_fields": [
+      "raw_chunk_ids",
+      "raw_document_ids"
+    ],
+    "candidate_document_construction": "first-occurrence collapse of raw_document_ids in historical order",
+    "live_retrieval_forbidden": true
+  },
+  "case_ids": [
+    "TRAIN_Q055",
+    "TRAIN_Q130",
+    "TRAIN_Q294",
+    "TRAIN_Q299",
+    "TRAIN_Q427",
+    "TRAIN_Q572"
+  ],
+  "dataset": {
+    "source": "frozen TechQA corpus",
+    "revision": "68323f8f191fd5df93e2b2673d79a5da3a805638",
+    "offline_environment": {
+      "HF_HUB_OFFLINE": "1",
+      "HF_DATASETS_OFFLINE": "1"
+    },
+    "document_loader": "load_frozen_techqa_documents",
+    "chunk_builder": "build_techqa_chunks",
+    "chroma_document_source_forbidden": true
+  },
+  "capacity_contract": {
+    "candidate_document_limit": 5,
+    "candidate_document_limit_interpretation": "A Stage 1 responsibility boundary, not a TRAIN-derived optimum: Stage 1 must place a relevant document in the top five candidates; misses outside that scope remain retrieval-layer failures.",
+    "candidate_pool_max_chunks": 500,
+    "candidate_pool_max_chunks_interpretation": "A provider and document-count safety ceiling, not a target pool size. Normal cases contain the complete chunks of the top five documents.",
+    "pool_overflow_policy": "POOL_OVERFLOW: do not call the reranker; do not truncate to the first 500 chunks; mark the case pilot STOP/NO-GO.",
+    "evidence_limit": 16,
+    "max_context_chunks": 16,
+    "evidence_boundary_interpretation": "The reranked Top16 is the evidence boundary. Matching the context cap avoids an additional free parameter."
+  },
+  "reranker_contract": {
+    "model": "qwen3-rerank",
+    "implementation": "experiments/evals/rerankers/qwen3_reranker.py",
+    "calls_per_case": 1,
+    "input": "complete rebuilt chunks from the top five Stage 1 candidate documents, merged into one pool",
+    "forbidden_patterns": [
+      "one rerank call per document",
+      "per-document rerank followed by merge",
+      "second rerank",
+      "live dense retrieval",
+      "BM25 or hybrid retrieval",
+      "embedding calls"
+    ]
+  },
+  "provider_capacity_contract": {
+    "max_documents_per_request": 500,
+    "max_tokens_per_document": 4000,
+    "max_tokens_per_request": 120000,
+    "execution_logging": [
+      "pool document count",
+      "pool content chars",
+      "provider usage.total_tokens when returned"
+    ],
+    "provider_size_error_policy": "PROVIDER_CAPACITY_FAILURE: stop; do not truncate chunks and retry; do not reduce candidate_document_limit and retry."
+  },
+  "provider_call_bounds": {
+    "max_rerank_calls": 6,
+    "max_embedding_calls": 0,
+    "max_generation_calls": 0,
+    "max_judge_calls": 0,
+    "provider_pricing_reference": "0.5 CNY / 1M input tokens (Beijing list price at preregistration time)",
+    "actual_cost_policy": "Calculate only after execution from returned provider usage."
+  },
+  "formal_metrics": {
+    "gold_level": "document identity only",
+    "per_case": [
+      "stage1_relevant_doc_in_top5",
+      "reranked_first_relevant_document_chunk_rank when Stage 1 contains the relevant document",
+      "relevant_document_present_in_top16 when Stage 1 contains the relevant document"
+    ],
+    "upstream_miss_policy": "NOT_EVALUATED_UPSTREAM_MISS when the Stage 1 relevant document is not in the top five.",
+    "forbidden_metrics": [
+      "gold chunk recall",
+      "gold chunk MRR"
+    ]
+  },
+  "forensic_targets": {
+    "TRAIN_Q055": {
+      "chunk_id": "swg21502037.txt_chunk_3",
+      "record": [
+        "target_candidate_pool_present",
+        "target_reranked_rank",
+        "target_top16"
+      ]
+    },
+    "TRAIN_Q572": {
+      "chunk_id": "swg21976896.txt_chunk_1",
+      "record": [
+        "target_candidate_pool_present",
+        "target_reranked_rank",
+        "target_top16"
+      ]
+    },
+    "TRAIN_Q299": {
+      "chunk_id": "swg21427178.txt_chunk_1",
+      "scope_policy": "FORENSIC_TARGET_OUTSIDE_PREREGISTERED_STAGE1_SCOPE when absent from the top-five pool; do not change candidate_document_limit and do not classify this as reranker failure."
+    },
+    "TRAIN_Q130": {
+      "scope_policy": "Formal relevant-document upstream absence is NOT_EVALUATED_UPSTREAM_MISS; do not require the merged reranker to recover an absent document."
+    }
+  },
+  "success_gate": {
+    "primary": "For every case with stage1_relevant_doc_in_top5=yes, report the paired first relevant-document chunk rank and relevant_document_present_in_top16. A relevant_document_present_in_top16=no is DOCUMENT_LEVEL_COLLAPSE.",
+    "mechanism_sentinels": {
+      "required": [
+        "TRAIN_Q055 target_top16=yes",
+        "TRAIN_Q572 target_top16=yes"
+      ],
+      "pass_condition": "Both required forensic targets are in Top16."
+    }
+  },
+  "go_no_go_rule": {
+    "GO_TO_GENERATION_DESIGN": "yes only if all provider calls complete, no pool overflow or provider-capacity failure occurs, the mechanism sentinel gate passes, and DOCUMENT_LEVEL_COLLAPSE=no.",
+    "DOCUMENT_LEVEL_COLLAPSE": "yes if any Stage 1-eligible case has relevant_document_present_in_top16=no.",
+    "otherwise": "GO_TO_GENERATION_DESIGN=no; analyze rerank/evidence selection before generation design."
+  },
+  "non_gates": [
+    "generation correctness",
+    "faithfulness",
+    "abstention",
+    "hallucination",
+    "TRAIN_Q299 forensic target Top16",
+    "TRAIN_Q130 recovery",
+    "latency improvement"
+  ],
+  "forbidden_adaptations": [
+    "truncate chunks after pool overflow",
+    "reduce candidate_document_limit after a size failure",
+    "retry with a smaller pool",
+    "alter the six case IDs after observing results",
+    "alter frozen budgets after observing results",
+    "run generation or judging during this pilot"
+  ]
+}

@@ -2,6 +2,7 @@ import json
 
 import pytest
 
+import experiments.evals.eval_techqa_generation as generation_eval
 from experiments.evals.adapters.techqa import TechQAGenerationCase
 from experiments.evals.eval_techqa_generation import (
     TechQAGenerationEvalResult,
@@ -9,6 +10,76 @@ from experiments.evals.eval_techqa_generation import (
     run_resumable_generation_eval,
     write_generation_reports,
 )
+from experiments.evals.rerankers.qwen3_reranker import (
+    RerankCandidate,
+    RerankResult,
+    RerankedCandidate,
+)
+
+
+def _candidate_document_selector():
+    selector = getattr(
+        generation_eval,
+        "select_candidate_document_ids",
+        None,
+    )
+    assert selector is not None, "select_candidate_document_ids is not implemented"
+    return selector
+
+
+def _document_local_pool_builder():
+    builder = getattr(
+        generation_eval,
+        "build_document_local_candidate_pool",
+        None,
+    )
+    assert builder is not None, "build_document_local_candidate_pool is not implemented"
+    return builder
+
+
+def _document_local_evidence_selector():
+    selector = getattr(
+        generation_eval,
+        "select_document_local_evidence",
+        None,
+    )
+    assert selector is not None, "select_document_local_evidence is not implemented"
+    return selector
+
+
+def _selected_evidence_context_assembler():
+    assembler = getattr(
+        generation_eval,
+        "assemble_selected_evidence_context",
+        None,
+    )
+    assert assembler is not None, "assemble_selected_evidence_context is not implemented"
+    return assembler
+
+
+def _document_local_diagnostic_runner():
+    runner = getattr(
+        generation_eval,
+        "run_document_local_evidence_diagnostic",
+        None,
+    )
+    assert runner is not None, "run_document_local_evidence_diagnostic is not implemented"
+    return runner
+
+
+def _retrieved_chunk(
+    chunk_id: str,
+    document_id: str,
+    chunk_index: int,
+    distance: float,
+) -> generation_eval.G0RetrievedChunk:
+    return generation_eval.G0RetrievedChunk(
+        chunk_id=chunk_id,
+        document_id=document_id,
+        chunk_index=chunk_index,
+        content=f"content {chunk_id}",
+        distance=distance,
+    )
 
 
 def _case(question_id: str, *, answerable: bool = True) -> TechQAGenerationCase:
@@ -158,6 +229,571 @@ def test_completed_checkpoint_rebuilds_summary_and_reports_without_evaluator(tmp
     assert metrics["correctness_mean"] == pytest.approx(0.8)
     assert metrics["faithfulness_mean"] == pytest.approx(0.9)
     assert len(result_lines) == 2
+
+
+def test_candidate_document_selection_deduplicates_repeated_document_slots():
+    selector = _candidate_document_selector()
+    ranked = (
+        _retrieved_chunk("A_chunk_3", "A", 3, 0.10),
+        _retrieved_chunk("A_chunk_5", "A", 5, 0.12),
+        _retrieved_chunk("B_chunk_2", "B", 2, 0.15),
+        _retrieved_chunk("A_chunk_1", "A", 1, 0.18),
+        _retrieved_chunk("C_chunk_4", "C", 4, 0.20),
+        _retrieved_chunk("D_chunk_2", "D", 2, 0.25),
+    )
+
+    assert selector(ranked, limit=3) == ("A", "B", "C")
+
+
+@pytest.mark.parametrize("limit", [0, -1])
+def test_candidate_document_selection_requires_positive_limit(limit):
+    selector = _candidate_document_selector()
+
+    with pytest.raises(ValueError):
+        selector((), limit=limit)
+
+
+def test_document_local_candidate_pool_preserves_document_and_loader_order():
+    builder = _document_local_pool_builder()
+    chunks_by_document = {
+        "B": (
+            _retrieved_chunk("B_chunk_4", "B", 4, 0.20),
+            _retrieved_chunk("B_chunk_1", "B", 1, 0.22),
+            _retrieved_chunk("B_chunk_3", "B", 3, 0.25),
+        ),
+        "A": (
+            _retrieved_chunk("A_chunk_5", "A", 5, 0.10),
+            _retrieved_chunk("A_chunk_2", "A", 2, 0.12),
+        ),
+    }
+
+    pool = builder(
+        ("B", "A"),
+        load_document_chunks=chunks_by_document.__getitem__,
+        max_chunks=5,
+    )
+
+    assert tuple(chunk.chunk_id for chunk in pool) == (
+        "B_chunk_4",
+        "B_chunk_1",
+        "B_chunk_3",
+        "A_chunk_5",
+        "A_chunk_2",
+    )
+
+
+def test_document_local_candidate_pool_deduplicates_chunk_ids_globally():
+    builder = _document_local_pool_builder()
+    chunks_by_document = {
+        "A": (
+            _retrieved_chunk("A_chunk_1", "A", 1, 0.10),
+            _retrieved_chunk("A_chunk_1", "A", 1, 0.10),
+            _retrieved_chunk("A_chunk_2", "A", 2, 0.12),
+        ),
+        "B": (_retrieved_chunk("B_chunk_1", "B", 1, 0.20),),
+    }
+
+    pool = builder(
+        ("A", "B"),
+        load_document_chunks=chunks_by_document.__getitem__,
+        max_chunks=4,
+    )
+
+    assert tuple(chunk.chunk_id for chunk in pool) == (
+        "A_chunk_1",
+        "A_chunk_2",
+        "B_chunk_1",
+    )
+
+
+def test_document_local_candidate_pool_stops_at_total_budget():
+    builder = _document_local_pool_builder()
+    calls: list[str] = []
+    chunks_by_document = {
+        "A": (
+            _retrieved_chunk("A_chunk_1", "A", 1, 0.10),
+            _retrieved_chunk("A_chunk_2", "A", 2, 0.12),
+        ),
+        "B": (
+            _retrieved_chunk("B_chunk_1", "B", 1, 0.20),
+            _retrieved_chunk("B_chunk_2", "B", 2, 0.25),
+        ),
+        "C": (_retrieved_chunk("C_chunk_1", "C", 1, 0.30),),
+    }
+
+    def load_document_chunks(document_id: str):
+        calls.append(document_id)
+        return chunks_by_document[document_id]
+
+    pool = builder(
+        ("A", "B", "C"),
+        load_document_chunks=load_document_chunks,
+        max_chunks=3,
+    )
+
+    assert tuple(chunk.chunk_id for chunk in pool) == (
+        "A_chunk_1",
+        "A_chunk_2",
+        "B_chunk_1",
+    )
+    assert calls == ["A", "B"]
+
+
+def test_document_local_candidate_pool_rejects_wrong_document_membership():
+    builder = _document_local_pool_builder()
+    chunks_by_document = {
+        "A": (_retrieved_chunk("shared_chunk", "A", 1, 0.10),),
+        "B": (_retrieved_chunk("shared_chunk", "A", 1, 0.10),),
+    }
+
+    with pytest.raises(RuntimeError, match="document_id"):
+        builder(
+            ("A", "B"),
+            load_document_chunks=chunks_by_document.__getitem__,
+            max_chunks=2,
+        )
+
+
+@pytest.mark.parametrize("max_chunks", [0, -1])
+def test_document_local_candidate_pool_requires_positive_budget(max_chunks):
+    builder = _document_local_pool_builder()
+
+    with pytest.raises(ValueError):
+        builder(
+            (),
+            load_document_chunks=lambda _: (),
+            max_chunks=max_chunks,
+        )
+
+
+def test_evidence_selection_uses_relevance_order_over_pool_position():
+    selector = _document_local_evidence_selector()
+    pool = (
+        _retrieved_chunk("A_chunk_1", "A", 1, 0.40),
+        _retrieved_chunk("A_chunk_5", "A", 5, 0.20),
+        _retrieved_chunk("A_chunk_9", "A", 9, 0.30),
+        _retrieved_chunk("B_chunk_2", "B", 2, 0.25),
+    )
+    calls = []
+
+    def reranker(question, candidates):
+        calls.append((question, candidates))
+        return RerankResult(
+            results=(
+                RerankedCandidate("A_chunk_1", "A", "", 0, 0.99),
+                RerankedCandidate("B_chunk_2", "B", "", 3, 0.98),
+                RerankedCandidate("A_chunk_5", "A", "", 1, 0.97),
+                RerankedCandidate("A_chunk_9", "A", "", 2, 0.96),
+            ),
+            request_id=None,
+            total_tokens=None,
+        )
+
+    selected = selector("Which evidence matters?   ", pool, reranker=reranker, limit=2)
+
+    assert tuple(chunk.chunk_id for chunk in selected) == ("A_chunk_1", "B_chunk_2")
+    assert len(calls) == 1
+    assert calls[0][0] == "Which evidence matters?"
+    assert calls[0][1] == (
+        RerankCandidate("A_chunk_1", "A", "content A_chunk_1"),
+        RerankCandidate("A_chunk_5", "A", "content A_chunk_5"),
+        RerankCandidate("A_chunk_9", "A", "content A_chunk_9"),
+        RerankCandidate("B_chunk_2", "B", "content B_chunk_2"),
+    )
+
+
+def test_evidence_selection_reranks_one_merged_document_pool():
+    selector = _document_local_evidence_selector()
+    pool = (
+        _retrieved_chunk("A_chunk_1", "A", 1, 0.10),
+        _retrieved_chunk("B_chunk_1", "B", 1, 0.20),
+    )
+    calls = []
+
+    def reranker(question, candidates):
+        calls.append((question, candidates))
+        return RerankResult(
+            results=tuple(
+                RerankedCandidate(
+                    candidate.chunk_id,
+                    candidate.document_id,
+                    candidate.content,
+                    index,
+                    1.0 - index,
+                )
+                for index, candidate in enumerate(candidates)
+            ),
+            request_id=None,
+            total_tokens=None,
+        )
+
+    selector("question", pool, reranker=reranker, limit=2)
+
+    assert len(calls) == 1
+    assert tuple(candidate.chunk_id for candidate in calls[0][1]) == (
+        "A_chunk_1",
+        "B_chunk_1",
+    )
+
+
+def test_evidence_selection_returns_original_chunk_provenance():
+    selector = _document_local_evidence_selector()
+    source = generation_eval.G0RetrievedChunk(
+        chunk_id="A_chunk_1",
+        document_id="A",
+        chunk_index=1,
+        content="decisive evidence",
+        distance=0.417,
+    )
+
+    def reranker(question, candidates):
+        return RerankResult(
+            results=(
+                RerankedCandidate("A_chunk_1", "other", "rewritten", 99, 0.981),
+            ),
+            request_id=None,
+            total_tokens=None,
+        )
+
+    selected = selector("question", (source,), reranker=reranker, limit=1)
+
+    assert selected == (source,)
+    assert selected[0].distance == pytest.approx(0.417)
+    assert selected[0].distance != pytest.approx(0.981)
+
+
+def test_evidence_selection_rejects_duplicate_candidate_chunk_id():
+    selector = _document_local_evidence_selector()
+    pool = (
+        _retrieved_chunk("shared_chunk", "A", 1, 0.10),
+        _retrieved_chunk("shared_chunk", "B", 2, 0.20),
+    )
+
+    def forbidden_reranker(*args):
+        raise AssertionError("duplicate candidate identity must fail before reranking")
+
+    with pytest.raises(RuntimeError, match="duplicate candidate"):
+        selector("question", pool, reranker=forbidden_reranker, limit=1)
+
+
+def test_evidence_selection_rejects_unknown_reranked_chunk_id():
+    selector = _document_local_evidence_selector()
+
+    def reranker(question, candidates):
+        return RerankResult(
+            results=(RerankedCandidate("unknown", "A", "", 0, 1.0),),
+            request_id=None,
+            total_tokens=None,
+        )
+
+    with pytest.raises(RuntimeError, match="candidate pool"):
+        selector(
+            "question",
+            (_retrieved_chunk("A_chunk_1", "A", 1, 0.10),),
+            reranker=reranker,
+            limit=1,
+        )
+
+
+def test_evidence_selection_rejects_duplicate_reranked_chunk_id():
+    selector = _document_local_evidence_selector()
+
+    def reranker(question, candidates):
+        return RerankResult(
+            results=(
+                RerankedCandidate("A_chunk_1", "A", "", 0, 1.0),
+                RerankedCandidate("A_chunk_1", "A", "", 0, 0.9),
+            ),
+            request_id=None,
+            total_tokens=None,
+        )
+
+    with pytest.raises(RuntimeError, match="duplicate"):
+        selector(
+            "question",
+            (_retrieved_chunk("A_chunk_1", "A", 1, 0.10),),
+            reranker=reranker,
+            limit=2,
+        )
+
+
+@pytest.mark.parametrize("limit", [0, -1])
+def test_evidence_selection_requires_positive_limit(limit):
+    selector = _document_local_evidence_selector()
+
+    with pytest.raises(ValueError):
+        selector("question", (), reranker=lambda *_: None, limit=limit)
+
+
+def test_evidence_selection_empty_pool_avoids_reranker():
+    selector = _document_local_evidence_selector()
+
+    def forbidden_reranker(question, candidates):
+        raise AssertionError("empty pool must not call reranker")
+
+    assert selector("question", (), reranker=forbidden_reranker, limit=1) == ()
+
+
+def test_selected_evidence_context_preserves_relevance_order():
+    assembler = _selected_evidence_context_assembler()
+    selected_evidence = (
+        _retrieved_chunk("A_chunk_5", "A", 5, 0.20),
+        _retrieved_chunk("A_chunk_1", "A", 1, 0.40),
+        _retrieved_chunk("B_chunk_2", "B", 2, 0.25),
+    )
+
+    context = assembler(selected_evidence, max_context_chunks=3)
+
+    assert tuple(chunk.chunk_id for chunk in context) == (
+        "A_chunk_5",
+        "A_chunk_1",
+        "B_chunk_2",
+    )
+
+
+def test_selected_evidence_context_deduplicates_chunk_ids():
+    assembler = _selected_evidence_context_assembler()
+    a1 = _retrieved_chunk("A_chunk_1", "A", 1, 0.10)
+
+    context = assembler(
+        (a1, a1, _retrieved_chunk("B_chunk_2", "B", 2, 0.20)),
+        max_context_chunks=3,
+    )
+
+    assert tuple(chunk.chunk_id for chunk in context) == ("A_chunk_1", "B_chunk_2")
+
+
+def test_selected_evidence_context_budget_counts_unique_chunks():
+    assembler = _selected_evidence_context_assembler()
+    a1 = _retrieved_chunk("A_chunk_1", "A", 1, 0.10)
+
+    context = assembler(
+        (
+            a1,
+            a1,
+            _retrieved_chunk("B_chunk_2", "B", 2, 0.20),
+            _retrieved_chunk("C_chunk_3", "C", 3, 0.30),
+        ),
+        max_context_chunks=2,
+    )
+
+    assert tuple(chunk.chunk_id for chunk in context) == ("A_chunk_1", "B_chunk_2")
+
+
+@pytest.mark.parametrize("max_context_chunks", [0, -1])
+def test_selected_evidence_context_requires_positive_budget(max_context_chunks):
+    assembler = _selected_evidence_context_assembler()
+
+    with pytest.raises(ValueError):
+        assembler((), max_context_chunks=max_context_chunks)
+
+
+def test_document_local_diagnostic_records_full_four_stage_provenance():
+    runner = _document_local_diagnostic_runner()
+    ranked_chunks = (
+        _retrieved_chunk("A_chunk_5", "A", 5, 0.10),
+        _retrieved_chunk("A_chunk_3", "A", 3, 0.12),
+        _retrieved_chunk("B_chunk_2", "B", 2, 0.20),
+        _retrieved_chunk("C_chunk_1", "C", 1, 0.30),
+    )
+    chunks_by_document = {
+        "A": (
+            _retrieved_chunk("A_chunk_1", "A", 1, 0.11),
+            _retrieved_chunk("A_chunk_5", "A", 5, 0.10),
+            _retrieved_chunk("A_chunk_9", "A", 9, 0.13),
+        ),
+        "B": (
+            _retrieved_chunk("B_chunk_2", "B", 2, 0.20),
+            _retrieved_chunk("B_chunk_4", "B", 4, 0.21),
+        ),
+    }
+
+    def reranker(question, candidates):
+        return RerankResult(
+            results=(
+                RerankedCandidate("B_chunk_4", "B", "", 4, 0.99),
+                RerankedCandidate("A_chunk_1", "A", "", 0, 0.98),
+                RerankedCandidate("A_chunk_5", "A", "", 1, 0.97),
+                RerankedCandidate("B_chunk_2", "B", "", 3, 0.96),
+                RerankedCandidate("A_chunk_9", "A", "", 2, 0.95),
+            ),
+            request_id=None,
+            total_tokens=None,
+        )
+
+    diagnostic = runner(
+        "Q001",
+        "diagnostic question",
+        ranked_chunks,
+        candidate_document_limit=2,
+        load_document_chunks=chunks_by_document.__getitem__,
+        candidate_pool_max_chunks=5,
+        reranker=reranker,
+        evidence_limit=3,
+        max_context_chunks=2,
+    )
+
+    assert diagnostic.question_id == "Q001"
+    assert diagnostic.question == "diagnostic question"
+    assert tuple(chunk.chunk_id for chunk in diagnostic.ranked_chunks) == (
+        "A_chunk_5",
+        "A_chunk_3",
+        "B_chunk_2",
+        "C_chunk_1",
+    )
+    assert diagnostic.candidate_document_ids == ("A", "B")
+    assert tuple(chunk.chunk_id for chunk in diagnostic.candidate_pool) == (
+        "A_chunk_1",
+        "A_chunk_5",
+        "A_chunk_9",
+        "B_chunk_2",
+        "B_chunk_4",
+    )
+    assert tuple(chunk.chunk_id for chunk in diagnostic.selected_evidence) == (
+        "B_chunk_4",
+        "A_chunk_1",
+        "A_chunk_5",
+    )
+    assert tuple(chunk.chunk_id for chunk in diagnostic.final_context) == (
+        "B_chunk_4",
+        "A_chunk_1",
+    )
+    assert diagnostic.final_context[0].document_id == "B"
+    assert diagnostic.final_context[0].chunk_index == 4
+    assert diagnostic.final_context[0].distance == pytest.approx(0.21)
+
+
+def test_document_local_diagnostic_records_stage_invocations():
+    runner = _document_local_diagnostic_runner()
+    loader_calls = []
+    reranker_calls = []
+    chunks_by_document = {
+        "A": (_retrieved_chunk("A_chunk_1", "A", 1, 0.10),),
+        "B": (_retrieved_chunk("B_chunk_1", "B", 1, 0.20),),
+    }
+
+    def load_document_chunks(document_id):
+        loader_calls.append(document_id)
+        return chunks_by_document[document_id]
+
+    def reranker(question, candidates):
+        reranker_calls.append(candidates)
+        return RerankResult(
+            results=tuple(
+                RerankedCandidate(
+                    candidate.chunk_id,
+                    candidate.document_id,
+                    candidate.content,
+                    index,
+                    1.0 - index,
+                )
+                for index, candidate in enumerate(candidates)
+            ),
+            request_id=None,
+            total_tokens=None,
+        )
+
+    diagnostic = runner(
+        "Q002",
+        "stage count question",
+        (
+            _retrieved_chunk("A_ranked", "A", 1, 0.10),
+            _retrieved_chunk("B_ranked", "B", 1, 0.20),
+        ),
+        candidate_document_limit=2,
+        load_document_chunks=load_document_chunks,
+        candidate_pool_max_chunks=2,
+        reranker=reranker,
+        evidence_limit=2,
+        max_context_chunks=2,
+    )
+
+    assert loader_calls == ["A", "B"]
+    assert len(reranker_calls) == 1
+    assert tuple(candidate.chunk_id for candidate in reranker_calls[0]) == (
+        "A_chunk_1",
+        "B_chunk_1",
+    )
+    assert diagnostic.stage_invocations.dense_search == 0
+    assert diagnostic.stage_invocations.document_chunk_loader == len(loader_calls)
+    assert diagnostic.stage_invocations.evidence_reranker == 1
+    assert diagnostic.stage_invocations.generation == 0
+    assert diagnostic.stage_invocations.judge == 0
+
+
+def test_document_local_diagnostic_empty_ranked_input_has_zero_downstream_calls():
+    runner = _document_local_diagnostic_runner()
+
+    def forbidden_loader(*args):
+        raise AssertionError("empty ranked input must not load document chunks")
+
+    def forbidden_reranker(*args):
+        raise AssertionError("empty ranked input must not rerank evidence")
+
+    diagnostic = runner(
+        "Q003",
+        "empty question",
+        (),
+        candidate_document_limit=1,
+        load_document_chunks=forbidden_loader,
+        candidate_pool_max_chunks=1,
+        reranker=forbidden_reranker,
+        evidence_limit=1,
+        max_context_chunks=1,
+    )
+
+    assert diagnostic.candidate_document_ids == ()
+    assert diagnostic.candidate_pool == ()
+    assert diagnostic.selected_evidence == ()
+    assert diagnostic.final_context == ()
+    assert diagnostic.stage_invocations.dense_search == 0
+    assert diagnostic.stage_invocations.document_chunk_loader == 0
+    assert diagnostic.stage_invocations.evidence_reranker == 0
+    assert diagnostic.stage_invocations.generation == 0
+    assert diagnostic.stage_invocations.judge == 0
+
+
+@pytest.mark.parametrize(
+    "invalid_budget",
+    (
+        "candidate_document_limit",
+        "candidate_pool_max_chunks",
+        "evidence_limit",
+        "max_context_chunks",
+    ),
+)
+def test_document_local_diagnostic_validates_all_budgets_before_side_effects(
+    invalid_budget,
+):
+    runner = _document_local_diagnostic_runner()
+    calls = []
+    budgets = {
+        "candidate_document_limit": 1,
+        "candidate_pool_max_chunks": 1,
+        "evidence_limit": 1,
+        "max_context_chunks": 1,
+    }
+    budgets[invalid_budget] = 0
+
+    def forbidden_loader(*args):
+        calls.append("loader")
+        raise AssertionError("invalid budgets must fail before loading")
+
+    def forbidden_reranker(*args):
+        calls.append("reranker")
+        raise AssertionError("invalid budgets must fail before reranking")
+
+    with pytest.raises(ValueError):
+        runner(
+            "Q004",
+            "invalid budget question",
+            (_retrieved_chunk("A_chunk_1", "A", 1, 0.10),),
+            load_document_chunks=forbidden_loader,
+            reranker=forbidden_reranker,
+            **budgets,
+        )
+
+    assert calls == []
 
 
 def test_default_single_case_evaluator_uses_frozen_g0_retriever(monkeypatch):

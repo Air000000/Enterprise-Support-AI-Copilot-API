@@ -340,7 +340,35 @@ Harness 已包含：
 - end-to-end latency；
 - frozen run identity / manifest / checkpoint。
 
-> **结果边界：** 当前不声称该 context policy 已带来新的正式 generation uplift；在冻结评测完成前，只将其作为基于 failure diagnosis 实现的工程 intervention。
+## G1：Document-local evidence candidate
+
+在 E1 的 document-aware forward expansion 之后，项目进一步测试 G1：先从历史 E0 排名中取前 5 个 unique documents，展开这些文档的 frozen full chunks，再用同一 `qwen3-rerank` instruction 做一次 merged rerank，最终保留 Top16 evidence chunks。
+
+30-case method-label-blinded evidence-sufficiency 结果：
+
+| Metric | E1 | G1 |
+| --- | ---: | ---: |
+| COMPLETE | 24 / 30 | **28 / 30** |
+| PARTIAL | 1 / 30 | 1 / 30 |
+| INSUFFICIENT | 5 / 30 | **1 / 30** |
+| Macro claim coverage | 0.825000 | **0.955556** |
+
+G1 相对 E1 为 **6 wins / 22 ties / 2 losses**。但其中 `TRAIN_Q346` 触发了预注册 catastrophic regression：`E1=COMPLETE`、`G1=INSUFFICIENT`。因此正式结论是：
+
+```text
+aggregate evidence sufficiency: improved
+catastrophic-regression gate: FAIL
+G1 decision: NO_GO
+current reference: E1
+```
+
+后续对全部 65 个 frozen claims 的 transition forensic 显示：G1 新增覆盖 6 个 claims、丢失 2 个 claims；两条 regression 分别是一个 candidate-document admission miss（Q346）和一个 continuity miss（Q492），且都没有在其他 case 重复形成系统性模式。因此不针对已经看过的 TRAIN case 继续 patch G1。
+
+完整报告：
+
+- [experiments/evals/reports/g1_document_local/final_decision.md](experiments/evals/reports/g1_document_local/final_decision.md)
+
+> **结果边界：** G1 的 95.6% 是冻结 conditional Stage2 evidence-sufficiency experiment 的 macro claim coverage，不是 production generation accuracy，也不表示 G1 已替代 E1。当前仍以 E1 为 reference，G1 保留为 evaluated experimental candidate。
 
 ---
 
@@ -569,7 +597,8 @@ Workflow：
 - 不把 Demo JWT + tenant scope 写成完整生产级 IAM / multi-tenant isolation；
 - 不把 Docker Compose 写成生产部署；
 - 不把 approval `pending` 校验写成并发 exactly-once guarantee；
-- 不在正式 frozen generation evaluation 完成前声称 document-aware context expansion 带来生成质量提升；
+- 不把 G1 conditional evidence-sufficiency 改善写成 production generation uplift，也不声称 G1 已替代 E1；
+- 不针对 Q346 / Q492 已知 TRAIN regression 做 case-specific patch 后再把原 30-case 样本当作 fresh validation；
 - 不声称当前系统已具备完整 multi-source / conflict-resolution / autonomous Agentic RAG 能力。
 
 项目当前关注的是：

@@ -240,9 +240,52 @@ Implementation:
 
 - `eval_techqa_generation.py`
 
+### G1 document-local evidence experiment
+
+G1 tested a different Stage2 evidence-construction hypothesis without promoting it into the serving path:
+
+```text
+historical E0 ranking
+   ↓
+first 5 unique candidate documents
+   ↓
+full frozen document-local chunks
+   ↓
+merged qwen3-rerank
+   ↓
+Top16 evidence chunks
+```
+
+The formal 30-case method-label-blinded comparison against E1 produced:
+
+| Metric | E1 | G1 |
+| --- | ---: | ---: |
+| COMPLETE | 24 / 30 | **28 / 30** |
+| PARTIAL | 1 / 30 | 1 / 30 |
+| INSUFFICIENT | 5 / 30 | **1 / 30** |
+| Macro claim coverage | 0.825000 | **0.955556** |
+
+Pairwise movement was **6 wins / 22 ties / 2 losses** for G1. However, one loss (`TRAIN_Q346`) met the preregistered catastrophic-regression definition `E1=COMPLETE && G1=INSUFFICIENT`.
+
+Therefore:
+
+```text
+aggregate evidence sufficiency: improved
+preregistered catastrophic-regression gate: failed
+formal G1 decision: NO_GO
+reference policy: keep E1
+```
+
+A 65-claim transition forensic found 6 newly covered claims and 2 lost claims. The two regressions had different, non-repeating boundaries: one candidate-document admission miss (`TRAIN_Q346`) and one continuity miss (`TRAIN_Q492`). Because neither mechanism repeated elsewhere in the frozen sample, the project does not patch G1 against those already-inspected TRAIN cases.
+
+Full closeout:
+
+- `reports/g1_document_local/final_decision.md`
+- `reports/g1_document_local/evidence_sufficiency_30case_preregistration_v1_1.json`
+
 Important boundary:
 
-> The policy is implemented and test-covered, but this README does **not** claim a new formal generation uplift until the frozen generation evaluation supports that claim.
+> The G1 result is a conditional evidence-sufficiency experiment on TRAIN cases under a frozen Stage2 contract. It is **not** a production generation uplift, a full-TechQA retrieval improvement, or evidence that G1 replaced E1.
 
 ---
 
@@ -256,7 +299,8 @@ Do not:
 - hard-code question IDs to document IDs;
 - tune a frozen comparison from individual DEV failures;
 - remove difficult cases to improve reported metrics;
-- report TRAIN tuning results as held-out DEV gains.
+- report TRAIN tuning results as held-out DEV gains;
+- patch Q346/Q492-specific rules and present the same 30-case sample as fresh validation.
 
 The goal is to preserve a benchmark that can still falsify an optimization hypothesis.
 
@@ -300,9 +344,13 @@ Evidence-level audit
         ↓
 Candidate coverage vs evidence-ranking diagnosis
         ↓
-Document-aware context intervention
+E1 document-aware context policy
         ↓
-Generation / abstention evaluation harness
+G1 document-local evidence experiment
+        ↓
+aggregate gain + catastrophic gate failure → NO_GO
+        ↓
+keep E1 reference; preserve G1 as experimental candidate
 ```
 
 The value of this lineage is not that every experiment wins. The value is that each result determines the next engineering question without resetting the corpus, benchmark, or evaluation contract.
@@ -323,7 +371,10 @@ experiments/evals/
 │   ├── e1_rerank/
 │   ├── r4_c1_hybrid_rerank/
 │   ├── r1_evidence_audit/
-│   └── g0_generation/
+│   ├── g0_generation/
+│   └── g1_document_local/
+│       ├── evidence_sufficiency_30case_preregistration_v1_1.json
+│       └── final_decision.md
 ├── eval_techqa_generation.py
 ├── eval_techqa_hybrid_rerank.py
 └── rerankers/
@@ -343,7 +394,8 @@ Current claims are intentionally bounded:
 - online RAG remains Dense Chroma unless runtime code says otherwise;
 - Hybrid / RRF / reranking experiments remain offline evaluation evidence unless explicitly promoted into serving;
 - evidence-level audit is diagnostic and does not replace official document metrics;
-- generation uplift is not claimed before frozen evaluation is complete;
+- G1 improved evidence sufficiency in its frozen conditional 30-case experiment but failed its preregistered catastrophic-regression gate and therefore does not replace E1;
+- generation uplift is not claimed before frozen generation evaluation is complete;
 - multi-source / conflict-resolution / autonomous Agentic RAG capability is not claimed by this benchmark.
 
 If new stress sets are added later, they should extend this evaluation system rather than replace the existing TechQA lineage and force a new primary-corpus embedding / benchmark reset.
