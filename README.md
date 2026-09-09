@@ -2,9 +2,11 @@
 
 [![Tests](https://github.com/Air000000/enterprise-support-ai-copilot-api/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/Air000000/enterprise-support-ai-copilot-api/actions/workflows/tests.yml)
 
-面向**企业技术支持（Technical Support）**场景的 **evaluation-driven RAG + Controlled Ticket Agent** 后端。
+面向**企业技术支持（Technical Support）**场景，构建知识检索、回答 / 拒答与工单升级一体化的 **RAG + 受控工单 Agent 后端**。
 
-项目的数据与评测主线长期以 **TechQA** 为核心：使用完整 Technote 技术支持语料建立检索、生成、拒答与失败归因闭环；应用侧保留通用 Document Backend、Dense Chroma RAG、受控建单与 AgentOps，使系统既能回答“效果是否真的变好”，也能回答“真实业务写操作是否可控、可追踪”。
+系统首先从技术支持知识库检索相关证据，返回带来源的回答或在上下文不足时拒答；对于需要进一步处理的问题，通过工单分类、预览和人工确认后再执行真实建单，并以 AgentOps 记录关键运行与审批链路。这里的目标不是让模型直接接管业务状态，而是把知识问答与后续问题升级连接成一条可控、可追踪的技术支持流程。
+
+在这条应用链路之上，项目长期以 **TechQA** 作为核心技术支持语料与统一评测基准，持续建立检索、生成、拒答与失败归因闭环，用受控评测回答“系统是否真的变好、失败在哪里、某次工程改动是否值得保留”。
 
 > **当前定位：** TechQA 是主技术支持语料与长期主评测基准，不再把它视为迁移到另一套主数据集之前的临时 Phase。未来若增加 multi-source / conflict / agentic stress 测试，只作为补充评测，不替换现有 TechQA 主线。
 
@@ -13,61 +15,64 @@
 ## 30 秒看项目
 
 ```text
+Technical Support Request
+          │
+          ▼
+   Dense Chroma Retrieval
+          │
+          ├──────────────► Answer + Sources
+          │
+          └──────────────► Refusal when context is insufficient
+          │
+          ▼
+   Ticket Agent Preview
+     ├─ search_kb
+     ├─ classify_ticket
+     └─ approval_request.pending
+          │
+          ▼
+      Human Confirm
+     ├─ run ownership check
+     ├─ pending-status check
+     └─ server-side draft integrity check
+          │
+          ▼
+      create_ticket
+          │
+          └──────────────► AgentOps Trace
+                           ├─ Agent Run
+                           ├─ Tool Call
+                           ├─ Approval
+                           └─ Retrieval Log / Metrics
+
+Evaluation & Iteration
+────────────────────────────────────────────────────────────
                          TechQA
         28,481 Technotes / 610 retrieval queries
          910 generation & abstention QA records
                            │
-                ┌──────────┴──────────┐
-                │                     │
-                ▼                     ▼
-       Primary Data Backbone     Offline Evaluation
-                                 Dense / Rerank / Hybrid
-                                 Evidence-level Audit
-                                 Generation / Abstention
-                │                     │
-                └──────────┬──────────┘
+                           ▼
+                   Offline Evaluation
+                  Dense / Rerank / Hybrid
+                  Evidence-level Audit
+                  Generation / Abstention
+                           │
                            ▼
                     Failure Diagnosis
                            │
                            ▼
                      System Iteration
-
-Application Runtime
-────────────────────────────────────────────────────────────
-Document Lifecycle
-        │
-        ▼
-Dense Chroma Retrieval ──► Answer + Sources / Refusal
-        │
-        ▼
-Ticket Agent Preview
-  ├─ search_kb
-  ├─ classify_ticket
-  └─ approval_request.pending
-        │
-        ▼
-Human Confirm
-  ├─ run ownership check
-  ├─ pending-status check
-  └─ server-side draft integrity check
-        │
-        ▼
-create_ticket ──► Real Business Side Effect
-        │
-        └────────► AgentOps Trace
-                   ├─ Agent Run
-                   ├─ Tool Call
-                   ├─ Approval
-                   └─ Retrieval Log / Metrics
+                           │
+                           └────► RAG / context policy / evaluation loop
 ```
 
 ### 当前核心能力
 
 | 能力 | 当前实现 |
 | --- | --- |
-| Primary Technical Support Data | TechQA 28,481 Technotes、610 条 answerable retrieval queries、910 条 generation/abstention QA |
-| Controlled Ticket Agent | `search_kb` / `classify_ticket` / `create_ticket`，preview-confirm + Human-in-the-loop |
 | RAG Runtime | Chroma Dense Retrieval、tenant/category filter、sources、低相关拒答 |
+| Controlled Ticket Agent | `search_kb` / `classify_ticket` / `create_ticket`，preview-confirm + Human-in-the-loop |
+| Primary Technical Support Data | TechQA 28,481 Technotes、610 条 answerable retrieval queries、910 条 generation/abstention QA |
 | RAG Evaluation | Frozen TRAIN / DEV、Document Recall@K / MRR、generation / abstention harness |
 | Rerank / Hybrid Research | Dense Top-100 + `qwen3-rerank` 正式 held-out 对照；BM25 / RRF / Hybrid 为离线受控实验 |
 | Failure Diagnosis | candidate coverage、chunk crowding、evidence-level audit、route-selection gate |
@@ -76,7 +81,7 @@ create_ticket ──► Real Business Side Effect
 
 ---
 
-# 1. Primary Technical Support Data：TechQA
+# 1. TechQA：核心技术支持语料与统一评测基准
 
 TechQA 不是单独外挂的评测数据集，而是当前项目的数据与评测主线。
 
@@ -603,12 +608,12 @@ Workflow：
 
 项目当前关注的是：
 
-> **在同一 Technical Support domain 上建立“可信 Benchmark → 失败归因 → 工程 intervention → 再评测”的连续主线，同时把 RAG 与真实业务 side effect 放进可控、可审计的 Agent 工作流。**
+> **围绕企业技术支持中的“知识检索 → 回答 / 拒答 → 工单升级”建立可控业务闭环，并用同一 TechQA 主线持续回答“系统是否真的变好、失败在哪里、某次工程改动是否值得保留”。**
 
 ---
 
 ## Project Name
 
 - 对外展示名：**Enterprise Support AI Copilot**
-- 中文定位：**企业技术支持 RAG + Controlled Ticket Agent**
+- 中文定位：**企业技术支持 RAG + 受控工单 Agent**
 - Repository：`Enterprise-Support-AI-Copilot-API`
