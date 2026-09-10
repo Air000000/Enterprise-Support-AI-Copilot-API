@@ -1,0 +1,5609 @@
+{
+  "design_set": "frozen G2 30-case DESIGN / DIAGNOSTIC SET",
+  "provider_calls": {
+    "reranker": 0,
+    "embedding": 0,
+    "generation": 0,
+    "judge": 0
+  },
+  "preflight": {
+    "formal_cases": 30,
+    "dense_records": 450,
+    "paid_shared_global_records": 30,
+    "corpus_documents": 28481,
+    "pool_reproduction": [
+      {
+        "question_id": "TRAIN_Q489",
+        "g1_expected": 26,
+        "g1_reconstructed": 26,
+        "g2_expected": 33,
+        "g2_reconstructed": 33
+      },
+      {
+        "question_id": "TRAIN_Q277",
+        "g1_expected": 25,
+        "g1_reconstructed": 25,
+        "g2_expected": 26,
+        "g2_reconstructed": 26
+      },
+      {
+        "question_id": "TRAIN_Q090",
+        "g1_expected": 102,
+        "g1_reconstructed": 102,
+        "g2_expected": 16,
+        "g2_reconstructed": 16
+      },
+      {
+        "question_id": "TRAIN_Q393",
+        "g1_expected": 26,
+        "g1_reconstructed": 26,
+        "g2_expected": 25,
+        "g2_reconstructed": 25
+      },
+      {
+        "question_id": "TRAIN_Q500",
+        "g1_expected": 16,
+        "g1_reconstructed": 16,
+        "g2_expected": 22,
+        "g2_reconstructed": 22
+      },
+      {
+        "question_id": "TRAIN_Q570",
+        "g1_expected": 16,
+        "g1_reconstructed": 16,
+        "g2_expected": 22,
+        "g2_reconstructed": 22
+      },
+      {
+        "question_id": "TRAIN_Q291",
+        "g1_expected": 10,
+        "g1_reconstructed": 10,
+        "g2_expected": 10,
+        "g2_reconstructed": 10
+      },
+      {
+        "question_id": "TRAIN_Q042",
+        "g1_expected": 38,
+        "g1_reconstructed": 38,
+        "g2_expected": 26,
+        "g2_reconstructed": 26
+      },
+      {
+        "question_id": "TRAIN_Q302",
+        "g1_expected": 34,
+        "g1_reconstructed": 34,
+        "g2_expected": 40,
+        "g2_reconstructed": 40
+      },
+      {
+        "question_id": "TRAIN_Q270",
+        "g1_expected": 22,
+        "g1_reconstructed": 22,
+        "g2_expected": 16,
+        "g2_reconstructed": 16
+      },
+      {
+        "question_id": "TRAIN_Q028",
+        "g1_expected": 28,
+        "g1_reconstructed": 28,
+        "g2_expected": 25,
+        "g2_reconstructed": 25
+      },
+      {
+        "question_id": "TRAIN_Q287",
+        "g1_expected": 21,
+        "g1_reconstructed": 21,
+        "g2_expected": 35,
+        "g2_reconstructed": 35
+      },
+      {
+        "question_id": "TRAIN_Q172",
+        "g1_expected": 26,
+        "g1_reconstructed": 26,
+        "g2_expected": 31,
+        "g2_reconstructed": 31
+      },
+      {
+        "question_id": "TRAIN_Q158",
+        "g1_expected": 27,
+        "g1_reconstructed": 27,
+        "g2_expected": 24,
+        "g2_reconstructed": 24
+      },
+      {
+        "question_id": "TRAIN_Q193",
+        "g1_expected": 49,
+        "g1_reconstructed": 49,
+        "g2_expected": 43,
+        "g2_reconstructed": 43
+      },
+      {
+        "question_id": "TRAIN_Q543",
+        "g1_expected": 37,
+        "g1_reconstructed": 37,
+        "g2_expected": 38,
+        "g2_reconstructed": 38
+      },
+      {
+        "question_id": "TRAIN_Q232",
+        "g1_expected": 34,
+        "g1_reconstructed": 34,
+        "g2_expected": 41,
+        "g2_reconstructed": 41
+      },
+      {
+        "question_id": "TRAIN_Q321",
+        "g1_expected": 40,
+        "g1_reconstructed": 40,
+        "g2_expected": 41,
+        "g2_reconstructed": 41
+      },
+      {
+        "question_id": "TRAIN_Q488",
+        "g1_expected": 41,
+        "g1_reconstructed": 41,
+        "g2_expected": 58,
+        "g2_reconstructed": 58
+      },
+      {
+        "question_id": "TRAIN_Q537",
+        "g1_expected": 25,
+        "g1_reconstructed": 25,
+        "g2_expected": 36,
+        "g2_reconstructed": 36
+      },
+      {
+        "question_id": "TRAIN_Q240",
+        "g1_expected": 31,
+        "g1_reconstructed": 31,
+        "g2_expected": 34,
+        "g2_reconstructed": 34
+      },
+      {
+        "question_id": "TRAIN_Q442",
+        "g1_expected": 33,
+        "g1_reconstructed": 33,
+        "g2_expected": 37,
+        "g2_reconstructed": 37
+      },
+      {
+        "question_id": "TRAIN_Q431",
+        "g1_expected": 38,
+        "g1_reconstructed": 38,
+        "g2_expected": 28,
+        "g2_reconstructed": 28
+      },
+      {
+        "question_id": "TRAIN_Q372",
+        "g1_expected": 19,
+        "g1_reconstructed": 19,
+        "g2_expected": 24,
+        "g2_reconstructed": 24
+      },
+      {
+        "question_id": "TRAIN_Q278",
+        "g1_expected": 13,
+        "g1_reconstructed": 13,
+        "g2_expected": 28,
+        "g2_reconstructed": 28
+      },
+      {
+        "question_id": "TRAIN_Q267",
+        "g1_expected": 29,
+        "g1_reconstructed": 29,
+        "g2_expected": 23,
+        "g2_reconstructed": 23
+      },
+      {
+        "question_id": "TRAIN_Q378",
+        "g1_expected": 34,
+        "g1_reconstructed": 34,
+        "g2_expected": 31,
+        "g2_reconstructed": 31
+      },
+      {
+        "question_id": "TRAIN_Q367",
+        "g1_expected": 25,
+        "g1_reconstructed": 25,
+        "g2_expected": 25,
+        "g2_reconstructed": 25
+      },
+      {
+        "question_id": "TRAIN_Q085",
+        "g1_expected": 24,
+        "g1_reconstructed": 24,
+        "g2_expected": 24,
+        "g2_reconstructed": 24
+      },
+      {
+        "question_id": "TRAIN_Q578",
+        "g1_expected": 27,
+        "g1_reconstructed": 27,
+        "g2_expected": 27,
+        "g2_reconstructed": 27
+      }
+    ],
+    "corpus_sha256": "3c4c4fe05204efa99101a402dc4d1c6206bcd160eb20be28e6a0b594415b3edb"
+  },
+  "baseline": {
+    "policy": "Dense",
+    "k": 5,
+    "label": "Dense5",
+    "gold_admission_count": 22,
+    "gold_admission_miss_count": 8,
+    "gold_admission_recall": 0.7333333333333333,
+    "BOTH": 22,
+    "BASELINE_ONLY": 0,
+    "CANDIDATE_ONLY": 0,
+    "NEITHER": 8,
+    "paired_rescue_count": 0,
+    "paired_displacement_count": 0,
+    "candidate_document_count_mean": 5,
+    "raw_chunk_pool_mean": 30.533333333333335,
+    "raw_chunk_pool_p50": 27.0,
+    "raw_chunk_pool_p95": 49,
+    "raw_chunk_pool_max": 102,
+    "total_raw_chunks": 916,
+    "cases_ge_450": 0,
+    "cases_ge_500": 0,
+    "case_rows": [
+      {
+        "question_id": "TRAIN_Q489",
+        "gold_admitted": true,
+        "classification": "BOTH",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 26
+      },
+      {
+        "question_id": "TRAIN_Q277",
+        "gold_admitted": true,
+        "classification": "BOTH",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 25
+      },
+      {
+        "question_id": "TRAIN_Q090",
+        "gold_admitted": true,
+        "classification": "BOTH",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 102
+      },
+      {
+        "question_id": "TRAIN_Q393",
+        "gold_admitted": true,
+        "classification": "BOTH",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 26
+      },
+      {
+        "question_id": "TRAIN_Q500",
+        "gold_admitted": true,
+        "classification": "BOTH",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 16
+      },
+      {
+        "question_id": "TRAIN_Q570",
+        "gold_admitted": true,
+        "classification": "BOTH",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 16
+      },
+      {
+        "question_id": "TRAIN_Q291",
+        "gold_admitted": false,
+        "classification": "NEITHER",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 10
+      },
+      {
+        "question_id": "TRAIN_Q042",
+        "gold_admitted": true,
+        "classification": "BOTH",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 38
+      },
+      {
+        "question_id": "TRAIN_Q302",
+        "gold_admitted": true,
+        "classification": "BOTH",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 34
+      },
+      {
+        "question_id": "TRAIN_Q270",
+        "gold_admitted": true,
+        "classification": "BOTH",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 22
+      },
+      {
+        "question_id": "TRAIN_Q028",
+        "gold_admitted": true,
+        "classification": "BOTH",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 28
+      },
+      {
+        "question_id": "TRAIN_Q287",
+        "gold_admitted": false,
+        "classification": "NEITHER",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 21
+      },
+      {
+        "question_id": "TRAIN_Q172",
+        "gold_admitted": true,
+        "classification": "BOTH",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 26
+      },
+      {
+        "question_id": "TRAIN_Q158",
+        "gold_admitted": true,
+        "classification": "BOTH",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 27
+      },
+      {
+        "question_id": "TRAIN_Q193",
+        "gold_admitted": true,
+        "classification": "BOTH",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 49
+      },
+      {
+        "question_id": "TRAIN_Q543",
+        "gold_admitted": false,
+        "classification": "NEITHER",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 37
+      },
+      {
+        "question_id": "TRAIN_Q232",
+        "gold_admitted": true,
+        "classification": "BOTH",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 34
+      },
+      {
+        "question_id": "TRAIN_Q321",
+        "gold_admitted": true,
+        "classification": "BOTH",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 40
+      },
+      {
+        "question_id": "TRAIN_Q488",
+        "gold_admitted": true,
+        "classification": "BOTH",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 41
+      },
+      {
+        "question_id": "TRAIN_Q537",
+        "gold_admitted": true,
+        "classification": "BOTH",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 25
+      },
+      {
+        "question_id": "TRAIN_Q240",
+        "gold_admitted": true,
+        "classification": "BOTH",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 31
+      },
+      {
+        "question_id": "TRAIN_Q442",
+        "gold_admitted": true,
+        "classification": "BOTH",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 33
+      },
+      {
+        "question_id": "TRAIN_Q431",
+        "gold_admitted": true,
+        "classification": "BOTH",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 38
+      },
+      {
+        "question_id": "TRAIN_Q372",
+        "gold_admitted": false,
+        "classification": "NEITHER",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 19
+      },
+      {
+        "question_id": "TRAIN_Q278",
+        "gold_admitted": true,
+        "classification": "BOTH",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 13
+      },
+      {
+        "question_id": "TRAIN_Q267",
+        "gold_admitted": false,
+        "classification": "NEITHER",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 29
+      },
+      {
+        "question_id": "TRAIN_Q378",
+        "gold_admitted": true,
+        "classification": "BOTH",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 34
+      },
+      {
+        "question_id": "TRAIN_Q367",
+        "gold_admitted": false,
+        "classification": "NEITHER",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 25
+      },
+      {
+        "question_id": "TRAIN_Q085",
+        "gold_admitted": false,
+        "classification": "NEITHER",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 24
+      },
+      {
+        "question_id": "TRAIN_Q578",
+        "gold_admitted": false,
+        "classification": "NEITHER",
+        "admitted_document_count": 5,
+        "raw_expanded_chunk_count": 27
+      }
+    ],
+    "mean_chunk_increase_vs_dense5": 0.0,
+    "total_workload_ratio_vs_dense5": 1.0,
+    "mean_per_case_workload_ratio_vs_dense5": 1.0
+  },
+  "points": [
+    {
+      "policy": "Dense",
+      "k": 5,
+      "label": "Dense5",
+      "gold_admission_count": 22,
+      "gold_admission_miss_count": 8,
+      "gold_admission_recall": 0.7333333333333333,
+      "BOTH": 22,
+      "BASELINE_ONLY": 0,
+      "CANDIDATE_ONLY": 0,
+      "NEITHER": 8,
+      "paired_rescue_count": 0,
+      "paired_displacement_count": 0,
+      "candidate_document_count_mean": 5,
+      "raw_chunk_pool_mean": 30.533333333333335,
+      "raw_chunk_pool_p50": 27.0,
+      "raw_chunk_pool_p95": 49,
+      "raw_chunk_pool_max": 102,
+      "total_raw_chunks": 916,
+      "cases_ge_450": 0,
+      "cases_ge_500": 0,
+      "case_rows": [
+        {
+          "question_id": "TRAIN_Q489",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 26
+        },
+        {
+          "question_id": "TRAIN_Q277",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 25
+        },
+        {
+          "question_id": "TRAIN_Q090",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 102
+        },
+        {
+          "question_id": "TRAIN_Q393",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 26
+        },
+        {
+          "question_id": "TRAIN_Q500",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 16
+        },
+        {
+          "question_id": "TRAIN_Q570",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 16
+        },
+        {
+          "question_id": "TRAIN_Q291",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 10
+        },
+        {
+          "question_id": "TRAIN_Q042",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 38
+        },
+        {
+          "question_id": "TRAIN_Q302",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 34
+        },
+        {
+          "question_id": "TRAIN_Q270",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 22
+        },
+        {
+          "question_id": "TRAIN_Q028",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 28
+        },
+        {
+          "question_id": "TRAIN_Q287",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 21
+        },
+        {
+          "question_id": "TRAIN_Q172",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 26
+        },
+        {
+          "question_id": "TRAIN_Q158",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 27
+        },
+        {
+          "question_id": "TRAIN_Q193",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 49
+        },
+        {
+          "question_id": "TRAIN_Q543",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 37
+        },
+        {
+          "question_id": "TRAIN_Q232",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 34
+        },
+        {
+          "question_id": "TRAIN_Q321",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 40
+        },
+        {
+          "question_id": "TRAIN_Q488",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 41
+        },
+        {
+          "question_id": "TRAIN_Q537",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 25
+        },
+        {
+          "question_id": "TRAIN_Q240",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 31
+        },
+        {
+          "question_id": "TRAIN_Q442",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 33
+        },
+        {
+          "question_id": "TRAIN_Q431",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 38
+        },
+        {
+          "question_id": "TRAIN_Q372",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 19
+        },
+        {
+          "question_id": "TRAIN_Q278",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 13
+        },
+        {
+          "question_id": "TRAIN_Q267",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 29
+        },
+        {
+          "question_id": "TRAIN_Q378",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 34
+        },
+        {
+          "question_id": "TRAIN_Q367",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 25
+        },
+        {
+          "question_id": "TRAIN_Q085",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 24
+        },
+        {
+          "question_id": "TRAIN_Q578",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 27
+        }
+      ],
+      "mean_chunk_increase_vs_dense5": 0.0,
+      "total_workload_ratio_vs_dense5": 1.0,
+      "mean_per_case_workload_ratio_vs_dense5": 1.0
+    },
+    {
+      "policy": "Dense",
+      "k": 6,
+      "label": "Dense6",
+      "gold_admission_count": 22,
+      "gold_admission_miss_count": 8,
+      "gold_admission_recall": 0.7333333333333333,
+      "BOTH": 22,
+      "BASELINE_ONLY": 0,
+      "CANDIDATE_ONLY": 0,
+      "NEITHER": 8,
+      "paired_rescue_count": 0,
+      "paired_displacement_count": 0,
+      "candidate_document_count_mean": 6,
+      "raw_chunk_pool_mean": 36.2,
+      "raw_chunk_pool_p50": 32.0,
+      "raw_chunk_pool_p95": 55,
+      "raw_chunk_pool_max": 115,
+      "total_raw_chunks": 1086,
+      "cases_ge_450": 0,
+      "cases_ge_500": 0,
+      "case_rows": [
+        {
+          "question_id": "TRAIN_Q489",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 31
+        },
+        {
+          "question_id": "TRAIN_Q277",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 30
+        },
+        {
+          "question_id": "TRAIN_Q090",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 115
+        },
+        {
+          "question_id": "TRAIN_Q393",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 28
+        },
+        {
+          "question_id": "TRAIN_Q500",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 18
+        },
+        {
+          "question_id": "TRAIN_Q570",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 26
+        },
+        {
+          "question_id": "TRAIN_Q291",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 12
+        },
+        {
+          "question_id": "TRAIN_Q042",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 42
+        },
+        {
+          "question_id": "TRAIN_Q302",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 46
+        },
+        {
+          "question_id": "TRAIN_Q270",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 29
+        },
+        {
+          "question_id": "TRAIN_Q028",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 43
+        },
+        {
+          "question_id": "TRAIN_Q287",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 25
+        },
+        {
+          "question_id": "TRAIN_Q172",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 27
+        },
+        {
+          "question_id": "TRAIN_Q158",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 32
+        },
+        {
+          "question_id": "TRAIN_Q193",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 55
+        },
+        {
+          "question_id": "TRAIN_Q543",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 43
+        },
+        {
+          "question_id": "TRAIN_Q232",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 41
+        },
+        {
+          "question_id": "TRAIN_Q321",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 48
+        },
+        {
+          "question_id": "TRAIN_Q488",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 43
+        },
+        {
+          "question_id": "TRAIN_Q537",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 34
+        },
+        {
+          "question_id": "TRAIN_Q240",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 38
+        },
+        {
+          "question_id": "TRAIN_Q442",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 39
+        },
+        {
+          "question_id": "TRAIN_Q431",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 42
+        },
+        {
+          "question_id": "TRAIN_Q372",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 21
+        },
+        {
+          "question_id": "TRAIN_Q278",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 22
+        },
+        {
+          "question_id": "TRAIN_Q267",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 32
+        },
+        {
+          "question_id": "TRAIN_Q378",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 38
+        },
+        {
+          "question_id": "TRAIN_Q367",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 27
+        },
+        {
+          "question_id": "TRAIN_Q085",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 27
+        },
+        {
+          "question_id": "TRAIN_Q578",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 32
+        }
+      ],
+      "mean_chunk_increase_vs_dense5": 5.666666666666668,
+      "total_workload_ratio_vs_dense5": 1.185589519650655,
+      "mean_per_case_workload_ratio_vs_dense5": 1.185589519650655
+    },
+    {
+      "policy": "Dense",
+      "k": 7,
+      "label": "Dense7",
+      "gold_admission_count": 22,
+      "gold_admission_miss_count": 8,
+      "gold_admission_recall": 0.7333333333333333,
+      "BOTH": 22,
+      "BASELINE_ONLY": 0,
+      "CANDIDATE_ONLY": 0,
+      "NEITHER": 8,
+      "paired_rescue_count": 0,
+      "paired_displacement_count": 0,
+      "candidate_document_count_mean": 7,
+      "raw_chunk_pool_mean": 43.86666666666667,
+      "raw_chunk_pool_p50": 39.0,
+      "raw_chunk_pool_p95": 61,
+      "raw_chunk_pool_max": 188,
+      "total_raw_chunks": 1316,
+      "cases_ge_450": 0,
+      "cases_ge_500": 0,
+      "case_rows": [
+        {
+          "question_id": "TRAIN_Q489",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 38
+        },
+        {
+          "question_id": "TRAIN_Q277",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 33
+        },
+        {
+          "question_id": "TRAIN_Q090",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 188
+        },
+        {
+          "question_id": "TRAIN_Q393",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 31
+        },
+        {
+          "question_id": "TRAIN_Q500",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 21
+        },
+        {
+          "question_id": "TRAIN_Q570",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 36
+        },
+        {
+          "question_id": "TRAIN_Q291",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 14
+        },
+        {
+          "question_id": "TRAIN_Q042",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 46
+        },
+        {
+          "question_id": "TRAIN_Q302",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 52
+        },
+        {
+          "question_id": "TRAIN_Q270",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 35
+        },
+        {
+          "question_id": "TRAIN_Q028",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 49
+        },
+        {
+          "question_id": "TRAIN_Q287",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 29
+        },
+        {
+          "question_id": "TRAIN_Q172",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 40
+        },
+        {
+          "question_id": "TRAIN_Q158",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 34
+        },
+        {
+          "question_id": "TRAIN_Q193",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 61
+        },
+        {
+          "question_id": "TRAIN_Q543",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 48
+        },
+        {
+          "question_id": "TRAIN_Q232",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 46
+        },
+        {
+          "question_id": "TRAIN_Q321",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 55
+        },
+        {
+          "question_id": "TRAIN_Q488",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 46
+        },
+        {
+          "question_id": "TRAIN_Q537",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 44
+        },
+        {
+          "question_id": "TRAIN_Q240",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 42
+        },
+        {
+          "question_id": "TRAIN_Q442",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 49
+        },
+        {
+          "question_id": "TRAIN_Q431",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 49
+        },
+        {
+          "question_id": "TRAIN_Q372",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 28
+        },
+        {
+          "question_id": "TRAIN_Q278",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 24
+        },
+        {
+          "question_id": "TRAIN_Q267",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 36
+        },
+        {
+          "question_id": "TRAIN_Q378",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 44
+        },
+        {
+          "question_id": "TRAIN_Q367",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 29
+        },
+        {
+          "question_id": "TRAIN_Q085",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 33
+        },
+        {
+          "question_id": "TRAIN_Q578",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 36
+        }
+      ],
+      "mean_chunk_increase_vs_dense5": 13.333333333333332,
+      "total_workload_ratio_vs_dense5": 1.4366812227074235,
+      "mean_per_case_workload_ratio_vs_dense5": 1.4366812227074235
+    },
+    {
+      "policy": "Dense",
+      "k": 8,
+      "label": "Dense8",
+      "gold_admission_count": 22,
+      "gold_admission_miss_count": 8,
+      "gold_admission_recall": 0.7333333333333333,
+      "BOTH": 22,
+      "BASELINE_ONLY": 0,
+      "CANDIDATE_ONLY": 0,
+      "NEITHER": 8,
+      "paired_rescue_count": 0,
+      "paired_displacement_count": 0,
+      "candidate_document_count_mean": 8,
+      "raw_chunk_pool_mean": 49.36666666666667,
+      "raw_chunk_pool_p50": 43.5,
+      "raw_chunk_pool_p95": 74,
+      "raw_chunk_pool_max": 189,
+      "total_raw_chunks": 1481,
+      "cases_ge_450": 0,
+      "cases_ge_500": 0,
+      "case_rows": [
+        {
+          "question_id": "TRAIN_Q489",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 42
+        },
+        {
+          "question_id": "TRAIN_Q277",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 37
+        },
+        {
+          "question_id": "TRAIN_Q090",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 189
+        },
+        {
+          "question_id": "TRAIN_Q393",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 33
+        },
+        {
+          "question_id": "TRAIN_Q500",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 26
+        },
+        {
+          "question_id": "TRAIN_Q570",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 45
+        },
+        {
+          "question_id": "TRAIN_Q291",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 16
+        },
+        {
+          "question_id": "TRAIN_Q042",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 52
+        },
+        {
+          "question_id": "TRAIN_Q302",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 61
+        },
+        {
+          "question_id": "TRAIN_Q270",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 37
+        },
+        {
+          "question_id": "TRAIN_Q028",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 52
+        },
+        {
+          "question_id": "TRAIN_Q287",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 33
+        },
+        {
+          "question_id": "TRAIN_Q172",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 41
+        },
+        {
+          "question_id": "TRAIN_Q158",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 42
+        },
+        {
+          "question_id": "TRAIN_Q193",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 74
+        },
+        {
+          "question_id": "TRAIN_Q543",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 54
+        },
+        {
+          "question_id": "TRAIN_Q232",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 53
+        },
+        {
+          "question_id": "TRAIN_Q321",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 61
+        },
+        {
+          "question_id": "TRAIN_Q488",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 52
+        },
+        {
+          "question_id": "TRAIN_Q537",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 55
+        },
+        {
+          "question_id": "TRAIN_Q240",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 49
+        },
+        {
+          "question_id": "TRAIN_Q442",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 55
+        },
+        {
+          "question_id": "TRAIN_Q431",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 54
+        },
+        {
+          "question_id": "TRAIN_Q372",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 33
+        },
+        {
+          "question_id": "TRAIN_Q278",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 28
+        },
+        {
+          "question_id": "TRAIN_Q267",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 39
+        },
+        {
+          "question_id": "TRAIN_Q378",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 51
+        },
+        {
+          "question_id": "TRAIN_Q367",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 38
+        },
+        {
+          "question_id": "TRAIN_Q085",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 38
+        },
+        {
+          "question_id": "TRAIN_Q578",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 41
+        }
+      ],
+      "mean_chunk_increase_vs_dense5": 18.833333333333332,
+      "total_workload_ratio_vs_dense5": 1.6168122270742358,
+      "mean_per_case_workload_ratio_vs_dense5": 1.6168122270742358
+    },
+    {
+      "policy": "Dense",
+      "k": 9,
+      "label": "Dense9",
+      "gold_admission_count": 22,
+      "gold_admission_miss_count": 8,
+      "gold_admission_recall": 0.7333333333333333,
+      "BOTH": 22,
+      "BASELINE_ONLY": 0,
+      "CANDIDATE_ONLY": 0,
+      "NEITHER": 8,
+      "paired_rescue_count": 0,
+      "paired_displacement_count": 0,
+      "candidate_document_count_mean": 9,
+      "raw_chunk_pool_mean": 55.56666666666667,
+      "raw_chunk_pool_p50": 50.0,
+      "raw_chunk_pool_p95": 80,
+      "raw_chunk_pool_max": 194,
+      "total_raw_chunks": 1667,
+      "cases_ge_450": 0,
+      "cases_ge_500": 0,
+      "case_rows": [
+        {
+          "question_id": "TRAIN_Q489",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 46
+        },
+        {
+          "question_id": "TRAIN_Q277",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 41
+        },
+        {
+          "question_id": "TRAIN_Q090",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 194
+        },
+        {
+          "question_id": "TRAIN_Q393",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 38
+        },
+        {
+          "question_id": "TRAIN_Q500",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 32
+        },
+        {
+          "question_id": "TRAIN_Q570",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 57
+        },
+        {
+          "question_id": "TRAIN_Q291",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 18
+        },
+        {
+          "question_id": "TRAIN_Q042",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 59
+        },
+        {
+          "question_id": "TRAIN_Q302",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 77
+        },
+        {
+          "question_id": "TRAIN_Q270",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 40
+        },
+        {
+          "question_id": "TRAIN_Q028",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 58
+        },
+        {
+          "question_id": "TRAIN_Q287",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 37
+        },
+        {
+          "question_id": "TRAIN_Q172",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 47
+        },
+        {
+          "question_id": "TRAIN_Q158",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 47
+        },
+        {
+          "question_id": "TRAIN_Q193",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 80
+        },
+        {
+          "question_id": "TRAIN_Q543",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 57
+        },
+        {
+          "question_id": "TRAIN_Q232",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 60
+        },
+        {
+          "question_id": "TRAIN_Q321",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 66
+        },
+        {
+          "question_id": "TRAIN_Q488",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 64
+        },
+        {
+          "question_id": "TRAIN_Q537",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 66
+        },
+        {
+          "question_id": "TRAIN_Q240",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 53
+        },
+        {
+          "question_id": "TRAIN_Q442",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 63
+        },
+        {
+          "question_id": "TRAIN_Q431",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 65
+        },
+        {
+          "question_id": "TRAIN_Q372",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 38
+        },
+        {
+          "question_id": "TRAIN_Q278",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 31
+        },
+        {
+          "question_id": "TRAIN_Q267",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 44
+        },
+        {
+          "question_id": "TRAIN_Q378",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 56
+        },
+        {
+          "question_id": "TRAIN_Q367",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 43
+        },
+        {
+          "question_id": "TRAIN_Q085",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 44
+        },
+        {
+          "question_id": "TRAIN_Q578",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 46
+        }
+      ],
+      "mean_chunk_increase_vs_dense5": 25.033333333333335,
+      "total_workload_ratio_vs_dense5": 1.8198689956331877,
+      "mean_per_case_workload_ratio_vs_dense5": 1.8198689956331877
+    },
+    {
+      "policy": "Dense",
+      "k": 10,
+      "label": "Dense10",
+      "gold_admission_count": 22,
+      "gold_admission_miss_count": 8,
+      "gold_admission_recall": 0.7333333333333333,
+      "BOTH": 22,
+      "BASELINE_ONLY": 0,
+      "CANDIDATE_ONLY": 0,
+      "NEITHER": 8,
+      "paired_rescue_count": 0,
+      "paired_displacement_count": 0,
+      "candidate_document_count_mean": 10,
+      "raw_chunk_pool_mean": 61.56666666666667,
+      "raw_chunk_pool_p50": 59.5,
+      "raw_chunk_pool_p95": 85,
+      "raw_chunk_pool_max": 196,
+      "total_raw_chunks": 1847,
+      "cases_ge_450": 0,
+      "cases_ge_500": 0,
+      "case_rows": [
+        {
+          "question_id": "TRAIN_Q489",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 54
+        },
+        {
+          "question_id": "TRAIN_Q277",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 46
+        },
+        {
+          "question_id": "TRAIN_Q090",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 196
+        },
+        {
+          "question_id": "TRAIN_Q393",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 41
+        },
+        {
+          "question_id": "TRAIN_Q500",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 35
+        },
+        {
+          "question_id": "TRAIN_Q570",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 62
+        },
+        {
+          "question_id": "TRAIN_Q291",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 20
+        },
+        {
+          "question_id": "TRAIN_Q042",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 63
+        },
+        {
+          "question_id": "TRAIN_Q302",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 85
+        },
+        {
+          "question_id": "TRAIN_Q270",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 47
+        },
+        {
+          "question_id": "TRAIN_Q028",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 64
+        },
+        {
+          "question_id": "TRAIN_Q287",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 41
+        },
+        {
+          "question_id": "TRAIN_Q172",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 52
+        },
+        {
+          "question_id": "TRAIN_Q158",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 58
+        },
+        {
+          "question_id": "TRAIN_Q193",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 84
+        },
+        {
+          "question_id": "TRAIN_Q543",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 63
+        },
+        {
+          "question_id": "TRAIN_Q232",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 65
+        },
+        {
+          "question_id": "TRAIN_Q321",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 72
+        },
+        {
+          "question_id": "TRAIN_Q488",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 79
+        },
+        {
+          "question_id": "TRAIN_Q537",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 73
+        },
+        {
+          "question_id": "TRAIN_Q240",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 64
+        },
+        {
+          "question_id": "TRAIN_Q442",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 73
+        },
+        {
+          "question_id": "TRAIN_Q431",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 74
+        },
+        {
+          "question_id": "TRAIN_Q372",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 46
+        },
+        {
+          "question_id": "TRAIN_Q278",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 34
+        },
+        {
+          "question_id": "TRAIN_Q267",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 49
+        },
+        {
+          "question_id": "TRAIN_Q378",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 61
+        },
+        {
+          "question_id": "TRAIN_Q367",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 47
+        },
+        {
+          "question_id": "TRAIN_Q085",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 47
+        },
+        {
+          "question_id": "TRAIN_Q578",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 52
+        }
+      ],
+      "mean_chunk_increase_vs_dense5": 31.033333333333335,
+      "total_workload_ratio_vs_dense5": 2.0163755458515285,
+      "mean_per_case_workload_ratio_vs_dense5": 2.0163755458515285
+    },
+    {
+      "policy": "Global",
+      "k": 5,
+      "label": "Global5",
+      "gold_admission_count": 22,
+      "gold_admission_miss_count": 8,
+      "gold_admission_recall": 0.7333333333333333,
+      "BOTH": 20,
+      "BASELINE_ONLY": 2,
+      "CANDIDATE_ONLY": 2,
+      "NEITHER": 6,
+      "paired_rescue_count": 2,
+      "paired_displacement_count": 2,
+      "candidate_document_count_mean": 5,
+      "raw_chunk_pool_mean": 29.633333333333333,
+      "raw_chunk_pool_p50": 27.5,
+      "raw_chunk_pool_p95": 43,
+      "raw_chunk_pool_max": 58,
+      "total_raw_chunks": 889,
+      "cases_ge_450": 0,
+      "cases_ge_500": 0,
+      "case_rows": [
+        {
+          "question_id": "TRAIN_Q489",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 33
+        },
+        {
+          "question_id": "TRAIN_Q277",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 26
+        },
+        {
+          "question_id": "TRAIN_Q090",
+          "gold_admitted": false,
+          "classification": "BASELINE_ONLY",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 16
+        },
+        {
+          "question_id": "TRAIN_Q393",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 25
+        },
+        {
+          "question_id": "TRAIN_Q500",
+          "gold_admitted": false,
+          "classification": "BASELINE_ONLY",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 22
+        },
+        {
+          "question_id": "TRAIN_Q570",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 22
+        },
+        {
+          "question_id": "TRAIN_Q291",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 10
+        },
+        {
+          "question_id": "TRAIN_Q042",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 26
+        },
+        {
+          "question_id": "TRAIN_Q302",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 40
+        },
+        {
+          "question_id": "TRAIN_Q270",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 16
+        },
+        {
+          "question_id": "TRAIN_Q028",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 25
+        },
+        {
+          "question_id": "TRAIN_Q287",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 35
+        },
+        {
+          "question_id": "TRAIN_Q172",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 31
+        },
+        {
+          "question_id": "TRAIN_Q158",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 24
+        },
+        {
+          "question_id": "TRAIN_Q193",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 43
+        },
+        {
+          "question_id": "TRAIN_Q543",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 38
+        },
+        {
+          "question_id": "TRAIN_Q232",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 41
+        },
+        {
+          "question_id": "TRAIN_Q321",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 41
+        },
+        {
+          "question_id": "TRAIN_Q488",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 58
+        },
+        {
+          "question_id": "TRAIN_Q537",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 36
+        },
+        {
+          "question_id": "TRAIN_Q240",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 34
+        },
+        {
+          "question_id": "TRAIN_Q442",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 37
+        },
+        {
+          "question_id": "TRAIN_Q431",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 28
+        },
+        {
+          "question_id": "TRAIN_Q372",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 24
+        },
+        {
+          "question_id": "TRAIN_Q278",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 28
+        },
+        {
+          "question_id": "TRAIN_Q267",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 23
+        },
+        {
+          "question_id": "TRAIN_Q378",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 31
+        },
+        {
+          "question_id": "TRAIN_Q367",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 25
+        },
+        {
+          "question_id": "TRAIN_Q085",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 24
+        },
+        {
+          "question_id": "TRAIN_Q578",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 27
+        }
+      ],
+      "mean_chunk_increase_vs_dense5": -0.9000000000000021,
+      "total_workload_ratio_vs_dense5": 0.9705240174672489,
+      "mean_per_case_workload_ratio_vs_dense5": 0.9705240174672488
+    },
+    {
+      "policy": "Global",
+      "k": 6,
+      "label": "Global6",
+      "gold_admission_count": 22,
+      "gold_admission_miss_count": 8,
+      "gold_admission_recall": 0.7333333333333333,
+      "BOTH": 20,
+      "BASELINE_ONLY": 2,
+      "CANDIDATE_ONLY": 2,
+      "NEITHER": 6,
+      "paired_rescue_count": 2,
+      "paired_displacement_count": 2,
+      "candidate_document_count_mean": 6,
+      "raw_chunk_pool_mean": 36.06666666666667,
+      "raw_chunk_pool_p50": 34.0,
+      "raw_chunk_pool_p95": 55,
+      "raw_chunk_pool_max": 72,
+      "total_raw_chunks": 1082,
+      "cases_ge_450": 0,
+      "cases_ge_500": 0,
+      "case_rows": [
+        {
+          "question_id": "TRAIN_Q489",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 47
+        },
+        {
+          "question_id": "TRAIN_Q277",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 34
+        },
+        {
+          "question_id": "TRAIN_Q090",
+          "gold_admitted": false,
+          "classification": "BASELINE_ONLY",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 21
+        },
+        {
+          "question_id": "TRAIN_Q393",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 28
+        },
+        {
+          "question_id": "TRAIN_Q500",
+          "gold_admitted": false,
+          "classification": "BASELINE_ONLY",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 25
+        },
+        {
+          "question_id": "TRAIN_Q570",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 27
+        },
+        {
+          "question_id": "TRAIN_Q291",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 12
+        },
+        {
+          "question_id": "TRAIN_Q042",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 30
+        },
+        {
+          "question_id": "TRAIN_Q302",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 48
+        },
+        {
+          "question_id": "TRAIN_Q270",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 20
+        },
+        {
+          "question_id": "TRAIN_Q028",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 31
+        },
+        {
+          "question_id": "TRAIN_Q287",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 38
+        },
+        {
+          "question_id": "TRAIN_Q172",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 37
+        },
+        {
+          "question_id": "TRAIN_Q158",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 34
+        },
+        {
+          "question_id": "TRAIN_Q193",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 55
+        },
+        {
+          "question_id": "TRAIN_Q543",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 45
+        },
+        {
+          "question_id": "TRAIN_Q232",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 50
+        },
+        {
+          "question_id": "TRAIN_Q321",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 51
+        },
+        {
+          "question_id": "TRAIN_Q488",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 72
+        },
+        {
+          "question_id": "TRAIN_Q537",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 42
+        },
+        {
+          "question_id": "TRAIN_Q240",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 43
+        },
+        {
+          "question_id": "TRAIN_Q442",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 47
+        },
+        {
+          "question_id": "TRAIN_Q431",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 37
+        },
+        {
+          "question_id": "TRAIN_Q372",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 26
+        },
+        {
+          "question_id": "TRAIN_Q278",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 31
+        },
+        {
+          "question_id": "TRAIN_Q267",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 26
+        },
+        {
+          "question_id": "TRAIN_Q378",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 39
+        },
+        {
+          "question_id": "TRAIN_Q367",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 27
+        },
+        {
+          "question_id": "TRAIN_Q085",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 29
+        },
+        {
+          "question_id": "TRAIN_Q578",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 30
+        }
+      ],
+      "mean_chunk_increase_vs_dense5": 5.533333333333335,
+      "total_workload_ratio_vs_dense5": 1.1812227074235808,
+      "mean_per_case_workload_ratio_vs_dense5": 1.1812227074235808
+    },
+    {
+      "policy": "Global",
+      "k": 7,
+      "label": "Global7",
+      "gold_admission_count": 23,
+      "gold_admission_miss_count": 7,
+      "gold_admission_recall": 0.7666666666666667,
+      "BOTH": 20,
+      "BASELINE_ONLY": 2,
+      "CANDIDATE_ONLY": 3,
+      "NEITHER": 5,
+      "paired_rescue_count": 3,
+      "paired_displacement_count": 2,
+      "candidate_document_count_mean": 7,
+      "raw_chunk_pool_mean": 43.733333333333334,
+      "raw_chunk_pool_p50": 39.0,
+      "raw_chunk_pool_p95": 64,
+      "raw_chunk_pool_max": 82,
+      "total_raw_chunks": 1312,
+      "cases_ge_450": 0,
+      "cases_ge_500": 0,
+      "case_rows": [
+        {
+          "question_id": "TRAIN_Q489",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 51
+        },
+        {
+          "question_id": "TRAIN_Q277",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 37
+        },
+        {
+          "question_id": "TRAIN_Q090",
+          "gold_admitted": false,
+          "classification": "BASELINE_ONLY",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 60
+        },
+        {
+          "question_id": "TRAIN_Q393",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 36
+        },
+        {
+          "question_id": "TRAIN_Q500",
+          "gold_admitted": false,
+          "classification": "BASELINE_ONLY",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 30
+        },
+        {
+          "question_id": "TRAIN_Q570",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 35
+        },
+        {
+          "question_id": "TRAIN_Q291",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 14
+        },
+        {
+          "question_id": "TRAIN_Q042",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 33
+        },
+        {
+          "question_id": "TRAIN_Q302",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 58
+        },
+        {
+          "question_id": "TRAIN_Q270",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 23
+        },
+        {
+          "question_id": "TRAIN_Q028",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 37
+        },
+        {
+          "question_id": "TRAIN_Q287",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 40
+        },
+        {
+          "question_id": "TRAIN_Q172",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 44
+        },
+        {
+          "question_id": "TRAIN_Q158",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 38
+        },
+        {
+          "question_id": "TRAIN_Q193",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 61
+        },
+        {
+          "question_id": "TRAIN_Q543",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 60
+        },
+        {
+          "question_id": "TRAIN_Q232",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 59
+        },
+        {
+          "question_id": "TRAIN_Q321",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 64
+        },
+        {
+          "question_id": "TRAIN_Q488",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 82
+        },
+        {
+          "question_id": "TRAIN_Q537",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 56
+        },
+        {
+          "question_id": "TRAIN_Q240",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 55
+        },
+        {
+          "question_id": "TRAIN_Q442",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 55
+        },
+        {
+          "question_id": "TRAIN_Q431",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 42
+        },
+        {
+          "question_id": "TRAIN_Q372",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 29
+        },
+        {
+          "question_id": "TRAIN_Q278",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 37
+        },
+        {
+          "question_id": "TRAIN_Q267",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 31
+        },
+        {
+          "question_id": "TRAIN_Q378",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 48
+        },
+        {
+          "question_id": "TRAIN_Q367",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 29
+        },
+        {
+          "question_id": "TRAIN_Q085",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 35
+        },
+        {
+          "question_id": "TRAIN_Q578",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 33
+        }
+      ],
+      "mean_chunk_increase_vs_dense5": 13.2,
+      "total_workload_ratio_vs_dense5": 1.4323144104803494,
+      "mean_per_case_workload_ratio_vs_dense5": 1.4323144104803494
+    },
+    {
+      "policy": "Global",
+      "k": 8,
+      "label": "Global8",
+      "gold_admission_count": 27,
+      "gold_admission_miss_count": 3,
+      "gold_admission_recall": 0.9,
+      "BOTH": 22,
+      "BASELINE_ONLY": 0,
+      "CANDIDATE_ONLY": 5,
+      "NEITHER": 3,
+      "paired_rescue_count": 5,
+      "paired_displacement_count": 0,
+      "candidate_document_count_mean": 8,
+      "raw_chunk_pool_mean": 51.6,
+      "raw_chunk_pool_p50": 46.5,
+      "raw_chunk_pool_p95": 92,
+      "raw_chunk_pool_max": 107,
+      "total_raw_chunks": 1548,
+      "cases_ge_450": 0,
+      "cases_ge_500": 0,
+      "case_rows": [
+        {
+          "question_id": "TRAIN_Q489",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 64
+        },
+        {
+          "question_id": "TRAIN_Q277",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 41
+        },
+        {
+          "question_id": "TRAIN_Q090",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 107
+        },
+        {
+          "question_id": "TRAIN_Q393",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 39
+        },
+        {
+          "question_id": "TRAIN_Q500",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 33
+        },
+        {
+          "question_id": "TRAIN_Q570",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 39
+        },
+        {
+          "question_id": "TRAIN_Q291",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 17
+        },
+        {
+          "question_id": "TRAIN_Q042",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 47
+        },
+        {
+          "question_id": "TRAIN_Q302",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 63
+        },
+        {
+          "question_id": "TRAIN_Q270",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 30
+        },
+        {
+          "question_id": "TRAIN_Q028",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 46
+        },
+        {
+          "question_id": "TRAIN_Q287",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 43
+        },
+        {
+          "question_id": "TRAIN_Q172",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 49
+        },
+        {
+          "question_id": "TRAIN_Q158",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 43
+        },
+        {
+          "question_id": "TRAIN_Q193",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 64
+        },
+        {
+          "question_id": "TRAIN_Q543",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 66
+        },
+        {
+          "question_id": "TRAIN_Q232",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 64
+        },
+        {
+          "question_id": "TRAIN_Q321",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 78
+        },
+        {
+          "question_id": "TRAIN_Q488",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 92
+        },
+        {
+          "question_id": "TRAIN_Q537",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 71
+        },
+        {
+          "question_id": "TRAIN_Q240",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 65
+        },
+        {
+          "question_id": "TRAIN_Q442",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 62
+        },
+        {
+          "question_id": "TRAIN_Q431",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 50
+        },
+        {
+          "question_id": "TRAIN_Q372",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 33
+        },
+        {
+          "question_id": "TRAIN_Q278",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 40
+        },
+        {
+          "question_id": "TRAIN_Q267",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 35
+        },
+        {
+          "question_id": "TRAIN_Q378",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 58
+        },
+        {
+          "question_id": "TRAIN_Q367",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 32
+        },
+        {
+          "question_id": "TRAIN_Q085",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 38
+        },
+        {
+          "question_id": "TRAIN_Q578",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 39
+        }
+      ],
+      "mean_chunk_increase_vs_dense5": 21.066666666666666,
+      "total_workload_ratio_vs_dense5": 1.6899563318777293,
+      "mean_per_case_workload_ratio_vs_dense5": 1.6899563318777293
+    },
+    {
+      "policy": "Global",
+      "k": 9,
+      "label": "Global9",
+      "gold_admission_count": 27,
+      "gold_admission_miss_count": 3,
+      "gold_admission_recall": 0.9,
+      "BOTH": 22,
+      "BASELINE_ONLY": 0,
+      "CANDIDATE_ONLY": 5,
+      "NEITHER": 3,
+      "paired_rescue_count": 5,
+      "paired_displacement_count": 0,
+      "candidate_document_count_mean": 9,
+      "raw_chunk_pool_mean": 59,
+      "raw_chunk_pool_p50": 56.0,
+      "raw_chunk_pool_p95": 106,
+      "raw_chunk_pool_max": 111,
+      "total_raw_chunks": 1770,
+      "cases_ge_450": 0,
+      "cases_ge_500": 0,
+      "case_rows": [
+        {
+          "question_id": "TRAIN_Q489",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 72
+        },
+        {
+          "question_id": "TRAIN_Q277",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 50
+        },
+        {
+          "question_id": "TRAIN_Q090",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 111
+        },
+        {
+          "question_id": "TRAIN_Q393",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 47
+        },
+        {
+          "question_id": "TRAIN_Q500",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 36
+        },
+        {
+          "question_id": "TRAIN_Q570",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 41
+        },
+        {
+          "question_id": "TRAIN_Q291",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 19
+        },
+        {
+          "question_id": "TRAIN_Q042",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 58
+        },
+        {
+          "question_id": "TRAIN_Q302",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 73
+        },
+        {
+          "question_id": "TRAIN_Q270",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 40
+        },
+        {
+          "question_id": "TRAIN_Q028",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 52
+        },
+        {
+          "question_id": "TRAIN_Q287",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 54
+        },
+        {
+          "question_id": "TRAIN_Q172",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 60
+        },
+        {
+          "question_id": "TRAIN_Q158",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 46
+        },
+        {
+          "question_id": "TRAIN_Q193",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 77
+        },
+        {
+          "question_id": "TRAIN_Q543",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 71
+        },
+        {
+          "question_id": "TRAIN_Q232",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 79
+        },
+        {
+          "question_id": "TRAIN_Q321",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 87
+        },
+        {
+          "question_id": "TRAIN_Q488",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 106
+        },
+        {
+          "question_id": "TRAIN_Q537",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 80
+        },
+        {
+          "question_id": "TRAIN_Q240",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 77
+        },
+        {
+          "question_id": "TRAIN_Q442",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 69
+        },
+        {
+          "question_id": "TRAIN_Q431",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 61
+        },
+        {
+          "question_id": "TRAIN_Q372",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 41
+        },
+        {
+          "question_id": "TRAIN_Q278",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 43
+        },
+        {
+          "question_id": "TRAIN_Q267",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 38
+        },
+        {
+          "question_id": "TRAIN_Q378",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 66
+        },
+        {
+          "question_id": "TRAIN_Q367",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 35
+        },
+        {
+          "question_id": "TRAIN_Q085",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 40
+        },
+        {
+          "question_id": "TRAIN_Q578",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 41
+        }
+      ],
+      "mean_chunk_increase_vs_dense5": 28.466666666666665,
+      "total_workload_ratio_vs_dense5": 1.9323144104803494,
+      "mean_per_case_workload_ratio_vs_dense5": 1.9323144104803491
+    },
+    {
+      "policy": "Global",
+      "k": 10,
+      "label": "Global10",
+      "gold_admission_count": 27,
+      "gold_admission_miss_count": 3,
+      "gold_admission_recall": 0.9,
+      "BOTH": 22,
+      "BASELINE_ONLY": 0,
+      "CANDIDATE_ONLY": 5,
+      "NEITHER": 3,
+      "paired_rescue_count": 5,
+      "paired_displacement_count": 0,
+      "candidate_document_count_mean": 10,
+      "raw_chunk_pool_mean": 65.83333333333333,
+      "raw_chunk_pool_p50": 61.5,
+      "raw_chunk_pool_p95": 121,
+      "raw_chunk_pool_max": 124,
+      "total_raw_chunks": 1975,
+      "cases_ge_450": 0,
+      "cases_ge_500": 0,
+      "case_rows": [
+        {
+          "question_id": "TRAIN_Q489",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 82
+        },
+        {
+          "question_id": "TRAIN_Q277",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 56
+        },
+        {
+          "question_id": "TRAIN_Q090",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 124
+        },
+        {
+          "question_id": "TRAIN_Q393",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 49
+        },
+        {
+          "question_id": "TRAIN_Q500",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 39
+        },
+        {
+          "question_id": "TRAIN_Q570",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 44
+        },
+        {
+          "question_id": "TRAIN_Q291",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 21
+        },
+        {
+          "question_id": "TRAIN_Q042",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 68
+        },
+        {
+          "question_id": "TRAIN_Q302",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 83
+        },
+        {
+          "question_id": "TRAIN_Q270",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 45
+        },
+        {
+          "question_id": "TRAIN_Q028",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 58
+        },
+        {
+          "question_id": "TRAIN_Q287",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 60
+        },
+        {
+          "question_id": "TRAIN_Q172",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 63
+        },
+        {
+          "question_id": "TRAIN_Q158",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 52
+        },
+        {
+          "question_id": "TRAIN_Q193",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 83
+        },
+        {
+          "question_id": "TRAIN_Q543",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 76
+        },
+        {
+          "question_id": "TRAIN_Q232",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 84
+        },
+        {
+          "question_id": "TRAIN_Q321",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 98
+        },
+        {
+          "question_id": "TRAIN_Q488",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 121
+        },
+        {
+          "question_id": "TRAIN_Q537",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 91
+        },
+        {
+          "question_id": "TRAIN_Q240",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 81
+        },
+        {
+          "question_id": "TRAIN_Q442",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 76
+        },
+        {
+          "question_id": "TRAIN_Q431",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 72
+        },
+        {
+          "question_id": "TRAIN_Q372",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 44
+        },
+        {
+          "question_id": "TRAIN_Q278",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 47
+        },
+        {
+          "question_id": "TRAIN_Q267",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 44
+        },
+        {
+          "question_id": "TRAIN_Q378",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 71
+        },
+        {
+          "question_id": "TRAIN_Q367",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 44
+        },
+        {
+          "question_id": "TRAIN_Q085",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 54
+        },
+        {
+          "question_id": "TRAIN_Q578",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 45
+        }
+      ],
+      "mean_chunk_increase_vs_dense5": 35.3,
+      "total_workload_ratio_vs_dense5": 2.156113537117904,
+      "mean_per_case_workload_ratio_vs_dense5": 2.156113537117904
+    },
+    {
+      "policy": "RRF",
+      "k": 5,
+      "label": "RRF5",
+      "gold_admission_count": 24,
+      "gold_admission_miss_count": 6,
+      "gold_admission_recall": 0.8,
+      "BOTH": 22,
+      "BASELINE_ONLY": 0,
+      "CANDIDATE_ONLY": 2,
+      "NEITHER": 6,
+      "paired_rescue_count": 2,
+      "paired_displacement_count": 0,
+      "candidate_document_count_mean": 5,
+      "raw_chunk_pool_mean": 31.866666666666667,
+      "raw_chunk_pool_p50": 30.5,
+      "raw_chunk_pool_p95": 45,
+      "raw_chunk_pool_max": 94,
+      "total_raw_chunks": 956,
+      "cases_ge_450": 0,
+      "cases_ge_500": 0,
+      "case_rows": [
+        {
+          "question_id": "TRAIN_Q489",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 25
+        },
+        {
+          "question_id": "TRAIN_Q277",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 24
+        },
+        {
+          "question_id": "TRAIN_Q090",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 94
+        },
+        {
+          "question_id": "TRAIN_Q393",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 25
+        },
+        {
+          "question_id": "TRAIN_Q500",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 20
+        },
+        {
+          "question_id": "TRAIN_Q570",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 20
+        },
+        {
+          "question_id": "TRAIN_Q291",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 10
+        },
+        {
+          "question_id": "TRAIN_Q042",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 26
+        },
+        {
+          "question_id": "TRAIN_Q302",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 40
+        },
+        {
+          "question_id": "TRAIN_Q270",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 21
+        },
+        {
+          "question_id": "TRAIN_Q028",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 38
+        },
+        {
+          "question_id": "TRAIN_Q287",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 34
+        },
+        {
+          "question_id": "TRAIN_Q172",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 38
+        },
+        {
+          "question_id": "TRAIN_Q158",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 30
+        },
+        {
+          "question_id": "TRAIN_Q193",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 45
+        },
+        {
+          "question_id": "TRAIN_Q543",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 36
+        },
+        {
+          "question_id": "TRAIN_Q232",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 37
+        },
+        {
+          "question_id": "TRAIN_Q321",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 44
+        },
+        {
+          "question_id": "TRAIN_Q488",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 31
+        },
+        {
+          "question_id": "TRAIN_Q537",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 42
+        },
+        {
+          "question_id": "TRAIN_Q240",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 28
+        },
+        {
+          "question_id": "TRAIN_Q442",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 37
+        },
+        {
+          "question_id": "TRAIN_Q431",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 34
+        },
+        {
+          "question_id": "TRAIN_Q372",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 23
+        },
+        {
+          "question_id": "TRAIN_Q278",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 19
+        },
+        {
+          "question_id": "TRAIN_Q267",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 25
+        },
+        {
+          "question_id": "TRAIN_Q378",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 33
+        },
+        {
+          "question_id": "TRAIN_Q367",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 25
+        },
+        {
+          "question_id": "TRAIN_Q085",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 21
+        },
+        {
+          "question_id": "TRAIN_Q578",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 5,
+          "raw_expanded_chunk_count": 31
+        }
+      ],
+      "mean_chunk_increase_vs_dense5": 1.3333333333333321,
+      "total_workload_ratio_vs_dense5": 1.0436681222707425,
+      "mean_per_case_workload_ratio_vs_dense5": 1.0436681222707422
+    },
+    {
+      "policy": "RRF",
+      "k": 6,
+      "label": "RRF6",
+      "gold_admission_count": 25,
+      "gold_admission_miss_count": 5,
+      "gold_admission_recall": 0.8333333333333334,
+      "BOTH": 22,
+      "BASELINE_ONLY": 0,
+      "CANDIDATE_ONLY": 3,
+      "NEITHER": 5,
+      "paired_rescue_count": 3,
+      "paired_displacement_count": 0,
+      "candidate_document_count_mean": 6,
+      "raw_chunk_pool_mean": 37.56666666666667,
+      "raw_chunk_pool_p50": 34.5,
+      "raw_chunk_pool_p95": 60,
+      "raw_chunk_pool_max": 107,
+      "total_raw_chunks": 1127,
+      "cases_ge_450": 0,
+      "cases_ge_500": 0,
+      "case_rows": [
+        {
+          "question_id": "TRAIN_Q489",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 31
+        },
+        {
+          "question_id": "TRAIN_Q277",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 28
+        },
+        {
+          "question_id": "TRAIN_Q090",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 107
+        },
+        {
+          "question_id": "TRAIN_Q393",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 28
+        },
+        {
+          "question_id": "TRAIN_Q500",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 22
+        },
+        {
+          "question_id": "TRAIN_Q570",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 25
+        },
+        {
+          "question_id": "TRAIN_Q291",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 12
+        },
+        {
+          "question_id": "TRAIN_Q042",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 33
+        },
+        {
+          "question_id": "TRAIN_Q302",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 46
+        },
+        {
+          "question_id": "TRAIN_Q270",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 23
+        },
+        {
+          "question_id": "TRAIN_Q028",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 43
+        },
+        {
+          "question_id": "TRAIN_Q287",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 36
+        },
+        {
+          "question_id": "TRAIN_Q172",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 40
+        },
+        {
+          "question_id": "TRAIN_Q158",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 34
+        },
+        {
+          "question_id": "TRAIN_Q193",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 60
+        },
+        {
+          "question_id": "TRAIN_Q543",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 43
+        },
+        {
+          "question_id": "TRAIN_Q232",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 42
+        },
+        {
+          "question_id": "TRAIN_Q321",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 51
+        },
+        {
+          "question_id": "TRAIN_Q488",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 45
+        },
+        {
+          "question_id": "TRAIN_Q537",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 53
+        },
+        {
+          "question_id": "TRAIN_Q240",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 34
+        },
+        {
+          "question_id": "TRAIN_Q442",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 44
+        },
+        {
+          "question_id": "TRAIN_Q431",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 41
+        },
+        {
+          "question_id": "TRAIN_Q372",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 28
+        },
+        {
+          "question_id": "TRAIN_Q278",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 22
+        },
+        {
+          "question_id": "TRAIN_Q267",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 30
+        },
+        {
+          "question_id": "TRAIN_Q378",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 37
+        },
+        {
+          "question_id": "TRAIN_Q367",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 28
+        },
+        {
+          "question_id": "TRAIN_Q085",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 26
+        },
+        {
+          "question_id": "TRAIN_Q578",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 6,
+          "raw_expanded_chunk_count": 35
+        }
+      ],
+      "mean_chunk_increase_vs_dense5": 7.033333333333335,
+      "total_workload_ratio_vs_dense5": 1.230349344978166,
+      "mean_per_case_workload_ratio_vs_dense5": 1.230349344978166
+    },
+    {
+      "policy": "RRF",
+      "k": 7,
+      "label": "RRF7",
+      "gold_admission_count": 25,
+      "gold_admission_miss_count": 5,
+      "gold_admission_recall": 0.8333333333333334,
+      "BOTH": 22,
+      "BASELINE_ONLY": 0,
+      "CANDIDATE_ONLY": 3,
+      "NEITHER": 5,
+      "paired_rescue_count": 3,
+      "paired_displacement_count": 0,
+      "candidate_document_count_mean": 7,
+      "raw_chunk_pool_mean": 44.3,
+      "raw_chunk_pool_p50": 40.5,
+      "raw_chunk_pool_p95": 71,
+      "raw_chunk_pool_max": 112,
+      "total_raw_chunks": 1329,
+      "cases_ge_450": 0,
+      "cases_ge_500": 0,
+      "case_rows": [
+        {
+          "question_id": "TRAIN_Q489",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 45
+        },
+        {
+          "question_id": "TRAIN_Q277",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 33
+        },
+        {
+          "question_id": "TRAIN_Q090",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 112
+        },
+        {
+          "question_id": "TRAIN_Q393",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 31
+        },
+        {
+          "question_id": "TRAIN_Q500",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 25
+        },
+        {
+          "question_id": "TRAIN_Q570",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 35
+        },
+        {
+          "question_id": "TRAIN_Q291",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 14
+        },
+        {
+          "question_id": "TRAIN_Q042",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 37
+        },
+        {
+          "question_id": "TRAIN_Q302",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 53
+        },
+        {
+          "question_id": "TRAIN_Q270",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 27
+        },
+        {
+          "question_id": "TRAIN_Q028",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 49
+        },
+        {
+          "question_id": "TRAIN_Q287",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 40
+        },
+        {
+          "question_id": "TRAIN_Q172",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 46
+        },
+        {
+          "question_id": "TRAIN_Q158",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 39
+        },
+        {
+          "question_id": "TRAIN_Q193",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 71
+        },
+        {
+          "question_id": "TRAIN_Q543",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 49
+        },
+        {
+          "question_id": "TRAIN_Q232",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 52
+        },
+        {
+          "question_id": "TRAIN_Q321",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 60
+        },
+        {
+          "question_id": "TRAIN_Q488",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 60
+        },
+        {
+          "question_id": "TRAIN_Q537",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 63
+        },
+        {
+          "question_id": "TRAIN_Q240",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 39
+        },
+        {
+          "question_id": "TRAIN_Q442",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 52
+        },
+        {
+          "question_id": "TRAIN_Q431",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 50
+        },
+        {
+          "question_id": "TRAIN_Q372",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 31
+        },
+        {
+          "question_id": "TRAIN_Q278",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 28
+        },
+        {
+          "question_id": "TRAIN_Q267",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 37
+        },
+        {
+          "question_id": "TRAIN_Q378",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 49
+        },
+        {
+          "question_id": "TRAIN_Q367",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 29
+        },
+        {
+          "question_id": "TRAIN_Q085",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 32
+        },
+        {
+          "question_id": "TRAIN_Q578",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 41
+        }
+      ],
+      "mean_chunk_increase_vs_dense5": 13.766666666666662,
+      "total_workload_ratio_vs_dense5": 1.4508733624454149,
+      "mean_per_case_workload_ratio_vs_dense5": 1.4508733624454146
+    },
+    {
+      "policy": "RRF",
+      "k": 8,
+      "label": "RRF8",
+      "gold_admission_count": 25,
+      "gold_admission_miss_count": 5,
+      "gold_admission_recall": 0.8333333333333334,
+      "BOTH": 22,
+      "BASELINE_ONLY": 0,
+      "CANDIDATE_ONLY": 3,
+      "NEITHER": 5,
+      "paired_rescue_count": 3,
+      "paired_displacement_count": 0,
+      "candidate_document_count_mean": 8,
+      "raw_chunk_pool_mean": 49.733333333333334,
+      "raw_chunk_pool_p50": 46.0,
+      "raw_chunk_pool_p95": 77,
+      "raw_chunk_pool_max": 113,
+      "total_raw_chunks": 1492,
+      "cases_ge_450": 0,
+      "cases_ge_500": 0,
+      "case_rows": [
+        {
+          "question_id": "TRAIN_Q489",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 53
+        },
+        {
+          "question_id": "TRAIN_Q277",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 38
+        },
+        {
+          "question_id": "TRAIN_Q090",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 113
+        },
+        {
+          "question_id": "TRAIN_Q393",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 39
+        },
+        {
+          "question_id": "TRAIN_Q500",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 30
+        },
+        {
+          "question_id": "TRAIN_Q570",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 42
+        },
+        {
+          "question_id": "TRAIN_Q291",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 16
+        },
+        {
+          "question_id": "TRAIN_Q042",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 47
+        },
+        {
+          "question_id": "TRAIN_Q302",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 61
+        },
+        {
+          "question_id": "TRAIN_Q270",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 33
+        },
+        {
+          "question_id": "TRAIN_Q028",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 55
+        },
+        {
+          "question_id": "TRAIN_Q287",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 44
+        },
+        {
+          "question_id": "TRAIN_Q172",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 51
+        },
+        {
+          "question_id": "TRAIN_Q158",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 43
+        },
+        {
+          "question_id": "TRAIN_Q193",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 77
+        },
+        {
+          "question_id": "TRAIN_Q543",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 56
+        },
+        {
+          "question_id": "TRAIN_Q232",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 59
+        },
+        {
+          "question_id": "TRAIN_Q321",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 65
+        },
+        {
+          "question_id": "TRAIN_Q488",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 63
+        },
+        {
+          "question_id": "TRAIN_Q537",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 77
+        },
+        {
+          "question_id": "TRAIN_Q240",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 43
+        },
+        {
+          "question_id": "TRAIN_Q442",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 58
+        },
+        {
+          "question_id": "TRAIN_Q431",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 54
+        },
+        {
+          "question_id": "TRAIN_Q372",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 33
+        },
+        {
+          "question_id": "TRAIN_Q278",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 31
+        },
+        {
+          "question_id": "TRAIN_Q267",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 42
+        },
+        {
+          "question_id": "TRAIN_Q378",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 57
+        },
+        {
+          "question_id": "TRAIN_Q367",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 32
+        },
+        {
+          "question_id": "TRAIN_Q085",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 35
+        },
+        {
+          "question_id": "TRAIN_Q578",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 45
+        }
+      ],
+      "mean_chunk_increase_vs_dense5": 19.2,
+      "total_workload_ratio_vs_dense5": 1.6288209606986899,
+      "mean_per_case_workload_ratio_vs_dense5": 1.6288209606986899
+    },
+    {
+      "policy": "RRF",
+      "k": 9,
+      "label": "RRF9",
+      "gold_admission_count": 25,
+      "gold_admission_miss_count": 5,
+      "gold_admission_recall": 0.8333333333333334,
+      "BOTH": 22,
+      "BASELINE_ONLY": 0,
+      "CANDIDATE_ONLY": 3,
+      "NEITHER": 5,
+      "paired_rescue_count": 3,
+      "paired_displacement_count": 0,
+      "candidate_document_count_mean": 9,
+      "raw_chunk_pool_mean": 55.4,
+      "raw_chunk_pool_p50": 50.5,
+      "raw_chunk_pool_p95": 93,
+      "raw_chunk_pool_max": 118,
+      "total_raw_chunks": 1662,
+      "cases_ge_450": 0,
+      "cases_ge_500": 0,
+      "case_rows": [
+        {
+          "question_id": "TRAIN_Q489",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 56
+        },
+        {
+          "question_id": "TRAIN_Q277",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 43
+        },
+        {
+          "question_id": "TRAIN_Q090",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 118
+        },
+        {
+          "question_id": "TRAIN_Q393",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 43
+        },
+        {
+          "question_id": "TRAIN_Q500",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 40
+        },
+        {
+          "question_id": "TRAIN_Q570",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 50
+        },
+        {
+          "question_id": "TRAIN_Q291",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 18
+        },
+        {
+          "question_id": "TRAIN_Q042",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 51
+        },
+        {
+          "question_id": "TRAIN_Q302",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 69
+        },
+        {
+          "question_id": "TRAIN_Q270",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 36
+        },
+        {
+          "question_id": "TRAIN_Q028",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 61
+        },
+        {
+          "question_id": "TRAIN_Q287",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 48
+        },
+        {
+          "question_id": "TRAIN_Q172",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 54
+        },
+        {
+          "question_id": "TRAIN_Q158",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 49
+        },
+        {
+          "question_id": "TRAIN_Q193",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 83
+        },
+        {
+          "question_id": "TRAIN_Q543",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 62
+        },
+        {
+          "question_id": "TRAIN_Q232",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 66
+        },
+        {
+          "question_id": "TRAIN_Q321",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 78
+        },
+        {
+          "question_id": "TRAIN_Q488",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 70
+        },
+        {
+          "question_id": "TRAIN_Q537",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 93
+        },
+        {
+          "question_id": "TRAIN_Q240",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 50
+        },
+        {
+          "question_id": "TRAIN_Q442",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 64
+        },
+        {
+          "question_id": "TRAIN_Q431",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 57
+        },
+        {
+          "question_id": "TRAIN_Q372",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 39
+        },
+        {
+          "question_id": "TRAIN_Q278",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 35
+        },
+        {
+          "question_id": "TRAIN_Q267",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 45
+        },
+        {
+          "question_id": "TRAIN_Q378",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 61
+        },
+        {
+          "question_id": "TRAIN_Q367",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 34
+        },
+        {
+          "question_id": "TRAIN_Q085",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 40
+        },
+        {
+          "question_id": "TRAIN_Q578",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 49
+        }
+      ],
+      "mean_chunk_increase_vs_dense5": 24.866666666666664,
+      "total_workload_ratio_vs_dense5": 1.814410480349345,
+      "mean_per_case_workload_ratio_vs_dense5": 1.8144104803493448
+    },
+    {
+      "policy": "RRF",
+      "k": 10,
+      "label": "RRF10",
+      "gold_admission_count": 25,
+      "gold_admission_miss_count": 5,
+      "gold_admission_recall": 0.8333333333333334,
+      "BOTH": 22,
+      "BASELINE_ONLY": 0,
+      "CANDIDATE_ONLY": 3,
+      "NEITHER": 5,
+      "paired_rescue_count": 3,
+      "paired_displacement_count": 0,
+      "candidate_document_count_mean": 10,
+      "raw_chunk_pool_mean": 61.03333333333333,
+      "raw_chunk_pool_p50": 55.5,
+      "raw_chunk_pool_p95": 100,
+      "raw_chunk_pool_max": 121,
+      "total_raw_chunks": 1831,
+      "cases_ge_450": 0,
+      "cases_ge_500": 0,
+      "case_rows": [
+        {
+          "question_id": "TRAIN_Q489",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 68
+        },
+        {
+          "question_id": "TRAIN_Q277",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 47
+        },
+        {
+          "question_id": "TRAIN_Q090",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 121
+        },
+        {
+          "question_id": "TRAIN_Q393",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 47
+        },
+        {
+          "question_id": "TRAIN_Q500",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 45
+        },
+        {
+          "question_id": "TRAIN_Q570",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 62
+        },
+        {
+          "question_id": "TRAIN_Q291",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 20
+        },
+        {
+          "question_id": "TRAIN_Q042",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 53
+        },
+        {
+          "question_id": "TRAIN_Q302",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 74
+        },
+        {
+          "question_id": "TRAIN_Q270",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 43
+        },
+        {
+          "question_id": "TRAIN_Q028",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 68
+        },
+        {
+          "question_id": "TRAIN_Q287",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 51
+        },
+        {
+          "question_id": "TRAIN_Q172",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 55
+        },
+        {
+          "question_id": "TRAIN_Q158",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 51
+        },
+        {
+          "question_id": "TRAIN_Q193",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 89
+        },
+        {
+          "question_id": "TRAIN_Q543",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 68
+        },
+        {
+          "question_id": "TRAIN_Q232",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 75
+        },
+        {
+          "question_id": "TRAIN_Q321",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 84
+        },
+        {
+          "question_id": "TRAIN_Q488",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 82
+        },
+        {
+          "question_id": "TRAIN_Q537",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 100
+        },
+        {
+          "question_id": "TRAIN_Q240",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 56
+        },
+        {
+          "question_id": "TRAIN_Q442",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 70
+        },
+        {
+          "question_id": "TRAIN_Q431",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 68
+        },
+        {
+          "question_id": "TRAIN_Q372",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 46
+        },
+        {
+          "question_id": "TRAIN_Q278",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 39
+        },
+        {
+          "question_id": "TRAIN_Q267",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 47
+        },
+        {
+          "question_id": "TRAIN_Q378",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 67
+        },
+        {
+          "question_id": "TRAIN_Q367",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 38
+        },
+        {
+          "question_id": "TRAIN_Q085",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 43
+        },
+        {
+          "question_id": "TRAIN_Q578",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 54
+        }
+      ],
+      "mean_chunk_increase_vs_dense5": 30.499999999999996,
+      "total_workload_ratio_vs_dense5": 1.9989082969432315,
+      "mean_per_case_workload_ratio_vs_dense5": 1.9989082969432312
+    },
+    {
+      "policy": "Union",
+      "k": 5,
+      "label": "Union5",
+      "gold_admission_count": 24,
+      "gold_admission_miss_count": 6,
+      "gold_admission_recall": 0.8,
+      "BOTH": 22,
+      "BASELINE_ONLY": 0,
+      "CANDIDATE_ONLY": 2,
+      "NEITHER": 6,
+      "paired_rescue_count": 2,
+      "paired_displacement_count": 0,
+      "candidate_document_count_mean": 8.166666666666666,
+      "raw_chunk_pool_mean": 50.166666666666664,
+      "raw_chunk_pool_p50": 48.5,
+      "raw_chunk_pool_p95": 94,
+      "raw_chunk_pool_max": 112,
+      "total_raw_chunks": 1505,
+      "cases_ge_450": 0,
+      "cases_ge_500": 0,
+      "case_rows": [
+        {
+          "question_id": "TRAIN_Q489",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 42
+        },
+        {
+          "question_id": "TRAIN_Q277",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 45
+        },
+        {
+          "question_id": "TRAIN_Q090",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 112
+        },
+        {
+          "question_id": "TRAIN_Q393",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 31
+        },
+        {
+          "question_id": "TRAIN_Q500",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 30
+        },
+        {
+          "question_id": "TRAIN_Q570",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 35
+        },
+        {
+          "question_id": "TRAIN_Q291",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 16
+        },
+        {
+          "question_id": "TRAIN_Q042",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 52
+        },
+        {
+          "question_id": "TRAIN_Q302",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 58
+        },
+        {
+          "question_id": "TRAIN_Q270",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 27
+        },
+        {
+          "question_id": "TRAIN_Q028",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 42
+        },
+        {
+          "question_id": "TRAIN_Q287",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 56
+        },
+        {
+          "question_id": "TRAIN_Q172",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 56
+        },
+        {
+          "question_id": "TRAIN_Q158",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 48
+        },
+        {
+          "question_id": "TRAIN_Q193",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 77
+        },
+        {
+          "question_id": "TRAIN_Q543",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 56
+        },
+        {
+          "question_id": "TRAIN_Q232",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 61
+        },
+        {
+          "question_id": "TRAIN_Q321",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 62
+        },
+        {
+          "question_id": "TRAIN_Q488",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 94
+        },
+        {
+          "question_id": "TRAIN_Q537",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 49
+        },
+        {
+          "question_id": "TRAIN_Q240",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 59
+        },
+        {
+          "question_id": "TRAIN_Q442",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 64
+        },
+        {
+          "question_id": "TRAIN_Q431",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 53
+        },
+        {
+          "question_id": "TRAIN_Q372",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 10,
+          "raw_expanded_chunk_count": 43
+        },
+        {
+          "question_id": "TRAIN_Q278",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 34
+        },
+        {
+          "question_id": "TRAIN_Q267",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 36
+        },
+        {
+          "question_id": "TRAIN_Q378",
+          "gold_admitted": true,
+          "classification": "BOTH",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 54
+        },
+        {
+          "question_id": "TRAIN_Q367",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 7,
+          "raw_expanded_chunk_count": 32
+        },
+        {
+          "question_id": "TRAIN_Q085",
+          "gold_admitted": false,
+          "classification": "NEITHER",
+          "admitted_document_count": 9,
+          "raw_expanded_chunk_count": 44
+        },
+        {
+          "question_id": "TRAIN_Q578",
+          "gold_admitted": true,
+          "classification": "CANDIDATE_ONLY",
+          "admitted_document_count": 8,
+          "raw_expanded_chunk_count": 37
+        }
+      ],
+      "mean_chunk_increase_vs_dense5": 19.63333333333333,
+      "total_workload_ratio_vs_dense5": 1.6430131004366813,
+      "mean_per_case_workload_ratio_vs_dense5": 1.643013100436681
+    }
+  ],
+  "exploratory_non_dominated_frontier": [
+    "Dense5",
+    "Global5",
+    "Global8",
+    "RRF5",
+    "RRF6"
+  ],
+  "approximately_comparable_workload_pairs": [
+    {
+      "left": "Dense5",
+      "right": "Global5",
+      "workload_delta_ratio": 0.02947598253275109,
+      "left_summary": {
+        "gold_admission_count": 22,
+        "paired_rescue_count": 0,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 916
+      },
+      "right_summary": {
+        "gold_admission_count": 22,
+        "paired_rescue_count": 2,
+        "paired_displacement_count": 2,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 889
+      }
+    },
+    {
+      "left": "Dense5",
+      "right": "RRF5",
+      "workload_delta_ratio": 0.04184100418410042,
+      "left_summary": {
+        "gold_admission_count": 22,
+        "paired_rescue_count": 0,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 916
+      },
+      "right_summary": {
+        "gold_admission_count": 24,
+        "paired_rescue_count": 2,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 956
+      }
+    },
+    {
+      "left": "Dense6",
+      "right": "Global6",
+      "workload_delta_ratio": 0.003683241252302026,
+      "left_summary": {
+        "gold_admission_count": 22,
+        "paired_rescue_count": 0,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1086
+      },
+      "right_summary": {
+        "gold_admission_count": 22,
+        "paired_rescue_count": 2,
+        "paired_displacement_count": 2,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1082
+      }
+    },
+    {
+      "left": "Dense6",
+      "right": "RRF6",
+      "workload_delta_ratio": 0.03637976929902396,
+      "left_summary": {
+        "gold_admission_count": 22,
+        "paired_rescue_count": 0,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1086
+      },
+      "right_summary": {
+        "gold_admission_count": 25,
+        "paired_rescue_count": 3,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1127
+      }
+    },
+    {
+      "left": "Dense7",
+      "right": "Global7",
+      "workload_delta_ratio": 0.00303951367781155,
+      "left_summary": {
+        "gold_admission_count": 22,
+        "paired_rescue_count": 0,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1316
+      },
+      "right_summary": {
+        "gold_admission_count": 23,
+        "paired_rescue_count": 3,
+        "paired_displacement_count": 2,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1312
+      }
+    },
+    {
+      "left": "Dense7",
+      "right": "RRF7",
+      "workload_delta_ratio": 0.009781790820165538,
+      "left_summary": {
+        "gold_admission_count": 22,
+        "paired_rescue_count": 0,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1316
+      },
+      "right_summary": {
+        "gold_admission_count": 25,
+        "paired_rescue_count": 3,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1329
+      }
+    },
+    {
+      "left": "Dense8",
+      "right": "Global8",
+      "workload_delta_ratio": 0.043281653746770024,
+      "left_summary": {
+        "gold_admission_count": 22,
+        "paired_rescue_count": 0,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1481
+      },
+      "right_summary": {
+        "gold_admission_count": 27,
+        "paired_rescue_count": 5,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1548
+      }
+    },
+    {
+      "left": "Dense8",
+      "right": "RRF8",
+      "workload_delta_ratio": 0.007372654155495978,
+      "left_summary": {
+        "gold_admission_count": 22,
+        "paired_rescue_count": 0,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1481
+      },
+      "right_summary": {
+        "gold_admission_count": 25,
+        "paired_rescue_count": 3,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1492
+      }
+    },
+    {
+      "left": "Dense8",
+      "right": "Union5",
+      "workload_delta_ratio": 0.015946843853820596,
+      "left_summary": {
+        "gold_admission_count": 22,
+        "paired_rescue_count": 0,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1481
+      },
+      "right_summary": {
+        "gold_admission_count": 24,
+        "paired_rescue_count": 2,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1505
+      }
+    },
+    {
+      "left": "Dense9",
+      "right": "Dense10",
+      "workload_delta_ratio": 0.09745533297238766,
+      "left_summary": {
+        "gold_admission_count": 22,
+        "paired_rescue_count": 0,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1667
+      },
+      "right_summary": {
+        "gold_admission_count": 22,
+        "paired_rescue_count": 0,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1847
+      }
+    },
+    {
+      "left": "Dense9",
+      "right": "Global8",
+      "workload_delta_ratio": 0.07138572285542892,
+      "left_summary": {
+        "gold_admission_count": 22,
+        "paired_rescue_count": 0,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1667
+      },
+      "right_summary": {
+        "gold_admission_count": 27,
+        "paired_rescue_count": 5,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1548
+      }
+    },
+    {
+      "left": "Dense9",
+      "right": "Global9",
+      "workload_delta_ratio": 0.05819209039548023,
+      "left_summary": {
+        "gold_admission_count": 22,
+        "paired_rescue_count": 0,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1667
+      },
+      "right_summary": {
+        "gold_admission_count": 27,
+        "paired_rescue_count": 5,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1770
+      }
+    },
+    {
+      "left": "Dense9",
+      "right": "RRF9",
+      "workload_delta_ratio": 0.002999400119976005,
+      "left_summary": {
+        "gold_admission_count": 22,
+        "paired_rescue_count": 0,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1667
+      },
+      "right_summary": {
+        "gold_admission_count": 25,
+        "paired_rescue_count": 3,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1662
+      }
+    },
+    {
+      "left": "Dense9",
+      "right": "RRF10",
+      "workload_delta_ratio": 0.08956854178044785,
+      "left_summary": {
+        "gold_admission_count": 22,
+        "paired_rescue_count": 0,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1667
+      },
+      "right_summary": {
+        "gold_admission_count": 25,
+        "paired_rescue_count": 3,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1831
+      }
+    },
+    {
+      "left": "Dense9",
+      "right": "Union5",
+      "workload_delta_ratio": 0.09718056388722256,
+      "left_summary": {
+        "gold_admission_count": 22,
+        "paired_rescue_count": 0,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1667
+      },
+      "right_summary": {
+        "gold_admission_count": 24,
+        "paired_rescue_count": 2,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1505
+      }
+    },
+    {
+      "left": "Dense10",
+      "right": "Global9",
+      "workload_delta_ratio": 0.041689225771521385,
+      "left_summary": {
+        "gold_admission_count": 22,
+        "paired_rescue_count": 0,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1847
+      },
+      "right_summary": {
+        "gold_admission_count": 27,
+        "paired_rescue_count": 5,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1770
+      }
+    },
+    {
+      "left": "Dense10",
+      "right": "Global10",
+      "workload_delta_ratio": 0.06481012658227848,
+      "left_summary": {
+        "gold_admission_count": 22,
+        "paired_rescue_count": 0,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1847
+      },
+      "right_summary": {
+        "gold_admission_count": 27,
+        "paired_rescue_count": 5,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1975
+      }
+    },
+    {
+      "left": "Dense10",
+      "right": "RRF10",
+      "workload_delta_ratio": 0.008662696264212236,
+      "left_summary": {
+        "gold_admission_count": 22,
+        "paired_rescue_count": 0,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1847
+      },
+      "right_summary": {
+        "gold_admission_count": 25,
+        "paired_rescue_count": 3,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1831
+      }
+    },
+    {
+      "left": "Global5",
+      "right": "RRF5",
+      "workload_delta_ratio": 0.0700836820083682,
+      "left_summary": {
+        "gold_admission_count": 22,
+        "paired_rescue_count": 2,
+        "paired_displacement_count": 2,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 889
+      },
+      "right_summary": {
+        "gold_admission_count": 24,
+        "paired_rescue_count": 2,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 956
+      }
+    },
+    {
+      "left": "Global6",
+      "right": "RRF6",
+      "workload_delta_ratio": 0.03992901508429459,
+      "left_summary": {
+        "gold_admission_count": 22,
+        "paired_rescue_count": 2,
+        "paired_displacement_count": 2,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1082
+      },
+      "right_summary": {
+        "gold_admission_count": 25,
+        "paired_rescue_count": 3,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1127
+      }
+    },
+    {
+      "left": "Global7",
+      "right": "RRF7",
+      "workload_delta_ratio": 0.012791572610985704,
+      "left_summary": {
+        "gold_admission_count": 23,
+        "paired_rescue_count": 3,
+        "paired_displacement_count": 2,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1312
+      },
+      "right_summary": {
+        "gold_admission_count": 25,
+        "paired_rescue_count": 3,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1329
+      }
+    },
+    {
+      "left": "Global8",
+      "right": "RRF8",
+      "workload_delta_ratio": 0.03617571059431524,
+      "left_summary": {
+        "gold_admission_count": 27,
+        "paired_rescue_count": 5,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1548
+      },
+      "right_summary": {
+        "gold_admission_count": 25,
+        "paired_rescue_count": 3,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1492
+      }
+    },
+    {
+      "left": "Global8",
+      "right": "RRF9",
+      "workload_delta_ratio": 0.06859205776173286,
+      "left_summary": {
+        "gold_admission_count": 27,
+        "paired_rescue_count": 5,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1548
+      },
+      "right_summary": {
+        "gold_admission_count": 25,
+        "paired_rescue_count": 3,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1662
+      }
+    },
+    {
+      "left": "Global8",
+      "right": "Union5",
+      "workload_delta_ratio": 0.027777777777777776,
+      "left_summary": {
+        "gold_admission_count": 27,
+        "paired_rescue_count": 5,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1548
+      },
+      "right_summary": {
+        "gold_admission_count": 24,
+        "paired_rescue_count": 2,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1505
+      }
+    },
+    {
+      "left": "Global9",
+      "right": "RRF9",
+      "workload_delta_ratio": 0.061016949152542375,
+      "left_summary": {
+        "gold_admission_count": 27,
+        "paired_rescue_count": 5,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1770
+      },
+      "right_summary": {
+        "gold_admission_count": 25,
+        "paired_rescue_count": 3,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1662
+      }
+    },
+    {
+      "left": "Global9",
+      "right": "RRF10",
+      "workload_delta_ratio": 0.033315128345166575,
+      "left_summary": {
+        "gold_admission_count": 27,
+        "paired_rescue_count": 5,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1770
+      },
+      "right_summary": {
+        "gold_admission_count": 25,
+        "paired_rescue_count": 3,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1831
+      }
+    },
+    {
+      "left": "Global10",
+      "right": "RRF10",
+      "workload_delta_ratio": 0.0729113924050633,
+      "left_summary": {
+        "gold_admission_count": 27,
+        "paired_rescue_count": 5,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1975
+      },
+      "right_summary": {
+        "gold_admission_count": 25,
+        "paired_rescue_count": 3,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1831
+      }
+    },
+    {
+      "left": "RRF8",
+      "right": "Union5",
+      "workload_delta_ratio": 0.008637873754152824,
+      "left_summary": {
+        "gold_admission_count": 25,
+        "paired_rescue_count": 3,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1492
+      },
+      "right_summary": {
+        "gold_admission_count": 24,
+        "paired_rescue_count": 2,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1505
+      }
+    },
+    {
+      "left": "RRF9",
+      "right": "RRF10",
+      "workload_delta_ratio": 0.0922992900054615,
+      "left_summary": {
+        "gold_admission_count": 25,
+        "paired_rescue_count": 3,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1662
+      },
+      "right_summary": {
+        "gold_admission_count": 25,
+        "paired_rescue_count": 3,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1831
+      }
+    },
+    {
+      "left": "RRF9",
+      "right": "Union5",
+      "workload_delta_ratio": 0.09446450060168472,
+      "left_summary": {
+        "gold_admission_count": 25,
+        "paired_rescue_count": 3,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1662
+      },
+      "right_summary": {
+        "gold_admission_count": 24,
+        "paired_rescue_count": 2,
+        "paired_displacement_count": 0,
+        "cases_ge_450": 0,
+        "cases_ge_500": 0,
+        "total_raw_chunks": 1505
+      }
+    }
+  ]
+}
