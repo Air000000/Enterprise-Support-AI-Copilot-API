@@ -287,6 +287,23 @@ Important boundary:
 
 > The G1 result is a conditional evidence-sufficiency experiment on TRAIN cases under a frozen Stage2 contract. It is **not** a production generation uplift, a full-TechQA retrieval improvement, or evidence that G1 replaced E1.
 
+### G2-A rerank-informed document admission
+
+G2-A tested rerank-informed document admission on a fresh TRAIN sample of 30 cases. G1 admitted the first five unique documents by frozen Dense order; G2-A admitted the first five unique documents by one shared global rerank over the same Dense Top100. G2 changed no downstream document expansion or evidence-selection contract.
+
+| Metric | G1 | G2-A |
+| --- | ---: | ---: |
+| COMPLETE | 19 | 19 |
+| PARTIAL | 2 | 1 |
+| INSUFFICIENT | 9 | 10 |
+| Macro claim coverage | 0.666667 | 0.650000 |
+| Pairwise wins / ties / losses | - | 2 / 25 / 3 |
+| Catastrophic regressions | - | 2 |
+
+Final decision: **NO_GO**. E1 remains the reference policy; G1 and G2-A remain experimental NO_GO branches. G2-A is not promoted over E1. This was a fresh TRAIN development experiment, not frozen DEV validation. It does not establish generation accuracy uplift or production latency/cost improvement, and it does not show that global reranking is generally harmful. It only rejects this specific rerank-informed five-document admission policy.
+
+The detailed post-hoc, non-confirmatory movement analysis is in [G2 Rerank-Informed Admission Post-Hoc Forensic Analysis](reports/g2_rerank_informed_admission/post_hoc_forensic_analysis.md). The forensic report records the Task 7/8 execution deviations and confirms that no judgment, analytical logic, or gate logic changed after unblinding.
+
 ---
 
 ## 8. Leakage Rules
@@ -350,7 +367,13 @@ G1 document-local evidence experiment
         ↓
 aggregate gain + catastrophic gate failure → NO_GO
         ↓
-keep E1 reference; preserve G1 as experimental candidate
+G2-A rerank-informed 5-document admission
+        ↓
+2 wins / 25 ties / 3 losses + 2 catastrophic regressions
+        ↓
+NO_GO
+        ↓
+keep E1 reference; retain G1/G2-A as experimental evidence
 ```
 
 The value of this lineage is not that every experiment wins. The value is that each result determines the next engineering question without resetting the corpus, benchmark, or evaluation contract.
@@ -375,6 +398,8 @@ experiments/evals/
 │   └── g1_document_local/
 │       ├── evidence_sufficiency_30case_preregistration_v1_1.json
 │       └── final_decision.md
+│   └── g2_rerank_informed_admission/
+│       └── post_hoc_forensic_analysis.md
 ├── eval_techqa_generation.py
 ├── eval_techqa_hybrid_rerank.py
 └── rerankers/
@@ -395,6 +420,7 @@ Current claims are intentionally bounded:
 - Hybrid / RRF / reranking experiments remain offline evaluation evidence unless explicitly promoted into serving;
 - evidence-level audit is diagnostic and does not replace official document metrics;
 - G1 improved evidence sufficiency in its frozen conditional 30-case experiment but failed its preregistered catastrophic-regression gate and therefore does not replace E1;
+- G2-A rerank-informed five-document admission failed its preregistered gates and does not replace E1; its five-case movement analysis is post-hoc diagnostic evidence only;
 - generation uplift is not claimed before frozen generation evaluation is complete;
 - multi-source / conflict-resolution / autonomous Agentic RAG capability is not claimed by this benchmark.
 
