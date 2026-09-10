@@ -1,0 +1,133 @@
+{
+  "experiment_id": "techqa_g2_rerank_informed_admission_v1",
+  "artifact_state": "PREREGISTRATION_BEFORE_PAID_EXECUTION",
+  "baseline_commit": "7caf1a1245bdc73698c9fb218c863425ae3b7f8f",
+  "sample_seed": "techqa-g2-rerank-informed-admission-v1",
+  "sample_size": 30,
+  "selected_case_ids": [
+    "TRAIN_Q489",
+    "TRAIN_Q277",
+    "TRAIN_Q090",
+    "TRAIN_Q393",
+    "TRAIN_Q500",
+    "TRAIN_Q570",
+    "TRAIN_Q291",
+    "TRAIN_Q042",
+    "TRAIN_Q302",
+    "TRAIN_Q270",
+    "TRAIN_Q028",
+    "TRAIN_Q287",
+    "TRAIN_Q172",
+    "TRAIN_Q158",
+    "TRAIN_Q193",
+    "TRAIN_Q543",
+    "TRAIN_Q232",
+    "TRAIN_Q321",
+    "TRAIN_Q488",
+    "TRAIN_Q537",
+    "TRAIN_Q240",
+    "TRAIN_Q442",
+    "TRAIN_Q431",
+    "TRAIN_Q372",
+    "TRAIN_Q278",
+    "TRAIN_Q267",
+    "TRAIN_Q378",
+    "TRAIN_Q367",
+    "TRAIN_Q085",
+    "TRAIN_Q578"
+  ],
+  "selection_algorithm": "For every eligible question_id, compute sha256(sample_seed + ':' + question_id).hexdigest(); sort ascending by (hash, question_id); select the first 30. No shuffle, replacement, resampling, outcome-based exclusion, or parameter change is permitted after this artifact is frozen.",
+  "eligibility_rule": {
+    "question_id_prefix": "TRAIN_",
+    "split": "train",
+    "answerable": true,
+    "e0_trace_required": true,
+    "formal_relevant_document_count": 1,
+    "formal_relevant_document_boundary": "At least one chunk from the sole formal relevant document must appear somewhere in the frozen historical E0 Dense Top100; Dense first5 membership is not required."
+  },
+  "exclusion_contract": {
+    "sources": {
+      "historical_g0_12_case_pilot": {
+        "selector": "experiments/evals/eval_techqa_generation.py:select_g0_train_pilot_cases",
+        "seed": "techqa-g0-generation-pilot-v1",
+        "ids": [
+          "TRAIN_Q055", "TRAIN_Q102", "TRAIN_Q130", "TRAIN_Q294",
+          "TRAIN_Q299", "TRAIN_Q335", "TRAIN_Q418", "TRAIN_Q427",
+          "TRAIN_Q447", "TRAIN_Q485", "TRAIN_Q542", "TRAIN_Q572"
+        ]
+      },
+      "g1_preregistration": "experiments/evals/reports/g1_document_local/evidence_sufficiency_30case_preregistration_v1_1.json:selected_case_ids",
+      "manual_evidence_labels": "experiments/evals/reports/r1_evidence_audit/evidence_labels.jsonl:question_id",
+      "explicit_g1_forensic_ids": ["TRAIN_Q346", "TRAIN_Q492"]
+    },
+    "g1_selected_case_count": 30,
+    "manual_evidence_label_question_id_count": 60,
+    "exclusion_count_after_union": 94,
+    "sorted_exclusion_list_sha256": "58f9b7d85d92d6fa20602d6fc9bddeee2f542e6bfb4e75dbc722e448c38f1cab",
+    "hash_serialization": "UTF-8 bytes of the sorted unique question IDs joined by one actual LF separator byte (0x0A), with no leading or trailing separator",
+    "policy": "Apply the union before eligibility hashing and sampling."
+  },
+  "g1_contract": {
+    "document_admission_order": "frozen historical E0 Dense order",
+    "candidate_document_selection": "first 5 unique document IDs",
+    "candidate_pool_max_chunks": 500,
+    "merged_document_local_rerank_calls_per_case": 1,
+    "evidence_limit": 16,
+    "max_context_chunks": 16
+  },
+  "g2_contract": {
+    "document_admission_order": "one shared global rerank order over the same frozen historical E0 Dense Top100",
+    "candidate_document_selection": "first 5 unique document IDs",
+    "candidate_pool_max_chunks": 500,
+    "merged_document_local_rerank_calls_per_case": 1,
+    "evidence_limit": 16,
+    "max_context_chunks": 16,
+    "one_variable_statement": "Only document-admission order differs from G1; all downstream document expansion, merged rerank, Top16 evidence selection, context cap, model, and instruction remain fixed."
+  },
+  "rerank_contract": {
+    "model": "qwen3-rerank",
+    "instruction": "Rank the candidate passages by relevance to resolving the technical support query.",
+    "global_input": "frozen historical E0 Dense Top100",
+    "same_instruction_for_global_and_merged_reranks": true,
+    "forbidden": [
+      "prompt tuning",
+      "method-specific instruction",
+      "query rewrite",
+      "alternate reranker",
+      "per-document reranking",
+      "second-pass rerank"
+    ]
+  },
+  "provider_call_budget": {
+    "shared_global_calls_per_case": 1,
+    "g1_merged_calls_per_case": 1,
+    "g2_merged_calls_per_case": 1,
+    "max_real_rerank_calls": 90,
+    "max_embedding_calls": 0,
+    "max_generation_calls": 0,
+    "max_judge_calls": 0,
+    "provider_failure_policy": "Any provider failure stops the run; no retry, candidate truncation, case replacement, or model change is allowed."
+  },
+  "go_no_go_rule": {
+    "GO_TO_NEXT_STAGE": "yes only if every gate is satisfied",
+    "gates": [
+      "all 30 cases execute under the frozen provider/capacity contract",
+      "unresolved evidence-review count is 0",
+      "G2_complete_count >= G1_complete_count",
+      "G2_insufficient_count <= G1_insufficient_count",
+      "G2_macro_claim_coverage >= G1_macro_claim_coverage",
+      "pairwise ordinal G2_wins > G2_losses",
+      "catastrophic regression count is 0, where catastrophic regression is G1=COMPLETE && G2=INSUFFICIENT"
+    ],
+    "all_contexts_tie": "NO_GO because the strict G2_wins > G2_losses gate is not met.",
+    "go_scope": "A GO authorizes only a next design/evaluation stage; it does not establish production accuracy, latency improvement, statistical significance, or serving-path promotion."
+  },
+  "source_artifacts": {
+    "generation_cases": "experiments/evals/datasets/techqa/manifest.json",
+    "historical_e0_dense_trace": "experiments/evals/reports/e0_dense/train_results.jsonl",
+    "g1_preregistration": "experiments/evals/reports/g1_document_local/evidence_sufficiency_30case_preregistration_v1_1.json",
+    "manual_evidence_labels": "experiments/evals/reports/r1_evidence_audit/evidence_labels.jsonl",
+    "g1_forensics": "experiments/evals/reports/g1_document_local/final_decision.md"
+  },
+  "experiment_results": "intentionally absent"
+}
