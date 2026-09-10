@@ -425,3 +425,19 @@ Current claims are intentionally bounded:
 - multi-source / conflict-resolution / autonomous Agentic RAG capability is not claimed by this benchmark.
 
 If new stress sets are added later, they should extend this evaluation system rather than replace the existing TechQA lineage and force a new primary-corpus embedding / benchmark reset.
+
+## 13. Retrieval Line Closeout
+
+Retrieval research line frozen as of **2026-09-10**.
+
+- E1 remains the reference policy.
+- G1 and G2-A remain experimental **NO_GO** evidence.
+- The 30 G2 cases are now design/diagnostic cases and cannot serve as future confirmation evidence.
+- The final offline frontier audit is exploratory only: [final offline frontier audit](reports/retrieval_frontier_freeze/final_offline_frontier_audit.md).
+
+Any future G3 requires:
+
+- new preregistration;
+- fresh TRAIN confirmation cases;
+- no reuse of G1/G2 forensic cases as confirmation;
+- explicit new authorization.
