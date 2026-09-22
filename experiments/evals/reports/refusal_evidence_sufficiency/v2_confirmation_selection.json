@@ -1,0 +1,438 @@
+{
+  "schema_version": 1,
+  "run": "refusal_v2_confirmation_set_v1",
+  "status": "SELECTED_NOT_ANNOTATED",
+  "selection": {
+    "seed": "refusal-v2-confirmation-set-v1",
+    "algorithm": "lowest_sha256(seed + ':' + question_id)",
+    "per_stratum": 40,
+    "context_top_k": 14,
+    "excluded_prior_audit_cases": 60
+  },
+  "source_sha256": {
+    "metadata": "69d97231509482ed6bd5ec1c4bc0607acb82a88d11169eb8383592d0ca8b93c7",
+    "fused_snapshot": "12db56e50efaf11dab4a28ff3c1b4df223e2ad985a8b48021f4c7dd9fdd889d2",
+    "rerank_results": "12b312a8403cda2c5fe8afe53aa18853891a7e87feaf863e2d438ca15367ee5b",
+    "prior_evidence_labels": "d522eff8daba8435d34ee0e51ad8c56fbbbb759b3f71dbf3a253cd9a1b506013"
+  },
+  "population": {
+    "fresh_answerable_train": 390,
+    "gold_document_in_top14": 305,
+    "gold_document_outside_top14": 85,
+    "selected_total": 80
+  },
+  "selected_cases": [
+    {
+      "question_id": "TRAIN_Q000",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "14dfbc910cc9ef7b5ebbb8155f207b5f81856f75cd889f504cb540d1a17e9414"
+    },
+    {
+      "question_id": "TRAIN_Q005",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "3293dcf649a1ec387f9280f249ea77ab8eea6091cc1bb9195c2af6edecec8dc2"
+    },
+    {
+      "question_id": "TRAIN_Q011",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "52c20bede0ed0b0f4228f98aac403475952170c02b61fb7fb9b75befa7b85509"
+    },
+    {
+      "question_id": "TRAIN_Q015",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "4bc4aa653b351ecf2d50028814cc70e8fda998b324dcbc481f3122566553d538"
+    },
+    {
+      "question_id": "TRAIN_Q024",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "3671d0de310d0d683b180af336036b58bee581e6b88f74fd62857e74ea434a34"
+    },
+    {
+      "question_id": "TRAIN_Q033",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "74819e7a4af35d4bade1bd74e6f51e83221b8e59724d542e2984c10cf8915a54"
+    },
+    {
+      "question_id": "TRAIN_Q037",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "60a57c7753e95b7b95c06cd3ee1d9f00da3c652789ccce1a9531f03ce0c7d9e1"
+    },
+    {
+      "question_id": "TRAIN_Q038",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "375a8189c2b1d06e5d1e72cc27a289fee65d355048905196e42237a946d844a8"
+    },
+    {
+      "question_id": "TRAIN_Q043",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "14e1845617f87a4dd1d38781a51e7f25c89f4cebb31b906a59ed52af6b14ac4d"
+    },
+    {
+      "question_id": "TRAIN_Q044",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "7fabf171b0c45596e898628cfa8237ea7eefdae0787a9db195bcf419cb398d73"
+    },
+    {
+      "question_id": "TRAIN_Q062",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "05188f0fb48a150e3413c3af6c3356afa654f8dd124e2505a9c7db2126e2097d"
+    },
+    {
+      "question_id": "TRAIN_Q082",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "318a7d601698c46feedbe3fd3e69e982dde055f07be847361e98749fa47b0f9e"
+    },
+    {
+      "question_id": "TRAIN_Q083",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "5350906be64128eb466f1c6cfa6b746a9f63227ad504baf4292163af270ffb0e"
+    },
+    {
+      "question_id": "TRAIN_Q085",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "2c2aa7554c04d6aa982076071a2dc4aa98bfe2896b4ea3b0cee0cb26bfb81044"
+    },
+    {
+      "question_id": "TRAIN_Q098",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "524363f2e10eb9bed45a575b9a93be08bc6bac83458bd867f3b6df81c1c4338f"
+    },
+    {
+      "question_id": "TRAIN_Q124",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "1e938409903c14abb2cfe0d22fd808dcb1de741725f1deaf470e2f1448d6a6b5"
+    },
+    {
+      "question_id": "TRAIN_Q128",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "37a7dc02bb09710aaea3e087eba3ea2e4952276459266d6b551f8ceef4a5d89f"
+    },
+    {
+      "question_id": "TRAIN_Q130",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "684c64dc9ec3d4f47e0d899b43cceda80b3a2d1eeb706750074395374b9c1e47"
+    },
+    {
+      "question_id": "TRAIN_Q137",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "4326fe054e468e2e23e34df979cb18ffb99bfef42a0f01e5b0dc8738303cf557"
+    },
+    {
+      "question_id": "TRAIN_Q158",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "19fc828c0fe250866e7585a2c9d411681af0c10c08bd9446f4df84aaaf6a119a"
+    },
+    {
+      "question_id": "TRAIN_Q161",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "02d302947501a635d7ce5b681ae5e54be6795455b3f86efbb1220a36ab844661"
+    },
+    {
+      "question_id": "TRAIN_Q183",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "133a3ff548bd4206b1a6e1e97cd9e93d6792c7da0b0b15e255ad20e90509a6ba"
+    },
+    {
+      "question_id": "TRAIN_Q187",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "1f3fa652d8147b115032348dea5e14a6558b91c7498416e3ec019fd2222a1389"
+    },
+    {
+      "question_id": "TRAIN_Q205",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "0d2e23037d7945e19eccc35b5b0c52df37107f18ffc98a804714266a22eed5c5"
+    },
+    {
+      "question_id": "TRAIN_Q212",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "0e9e26dcbcaab749758059662c938670b43af07a5d42f2663c849d9763aac0b6"
+    },
+    {
+      "question_id": "TRAIN_Q224",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "10fbfe3c1b0027bbf057e69ca8fba2fd590c38bf31ee14882019fe1f286fe211"
+    },
+    {
+      "question_id": "TRAIN_Q225",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "43cb4f9351aea37a9dd4e7387a51b6d2d0d20236712b876245fac7d5d58e2d4f"
+    },
+    {
+      "question_id": "TRAIN_Q228",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "10513cf20d68bc1343e9c7cbdb9be8e1d2ddb73d9fae71b93f57001df756f373"
+    },
+    {
+      "question_id": "TRAIN_Q233",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "0aa4191d12b97957df19cab4f47ad0df77f876496b978f75df7874fa2fef0d1e"
+    },
+    {
+      "question_id": "TRAIN_Q236",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "5b3a13b0ab1bf085aaa8c7c2889ca114ac509e316da75bf4340b39888b3cdde8"
+    },
+    {
+      "question_id": "TRAIN_Q259",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "38045e5ff0435f6f044f564f0ce368d4718d2e47eb334e4153940810e21c9a52"
+    },
+    {
+      "question_id": "TRAIN_Q261",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "2bd9240677b1ed87b57bb8173c8a96f3d1fa42a17b50711f2283dd653e75d81d"
+    },
+    {
+      "question_id": "TRAIN_Q267",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "0a33e8f68fd81046b540a95d6a88867b5ffdb4b2584c65c6558a9b69203324e5"
+    },
+    {
+      "question_id": "TRAIN_Q269",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "12a7536f7426b9604df507d7bc4947c35956badc04fdd2180572571640053f5c"
+    },
+    {
+      "question_id": "TRAIN_Q276",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "121841ecae93aa8abfd6ae295f0f5967ba94fd507412723a551d0a9963e5423d"
+    },
+    {
+      "question_id": "TRAIN_Q280",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "13fe32a8fdd6806921ef1298103db7f2675756daca90377b7df23c1c13abde2f"
+    },
+    {
+      "question_id": "TRAIN_Q283",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "59bbe77106766f57602adc7b900aab21bb27972d5f7d01eaa577fdfe95ffb409"
+    },
+    {
+      "question_id": "TRAIN_Q291",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "105773673eb16e91cb260721beaab79ff0f4e9a82c27cc3af5df178ba716fcf0"
+    },
+    {
+      "question_id": "TRAIN_Q301",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "0ddfc7d77f999c5f5fdc4c0c530464b12c295c54e2c20ce6b54ae6738ab68ccb"
+    },
+    {
+      "question_id": "TRAIN_Q302",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "17a40ebeda951f47804b70599c3f8edca90bb754aab24fb408a6572c7cb741d6"
+    },
+    {
+      "question_id": "TRAIN_Q304",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "0425c946638712ed8a0dca7d091c9934871e944cd445d0a16c501b3152a0c6b7"
+    },
+    {
+      "question_id": "TRAIN_Q305",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "1cfcd3dd7d7d5ea6c2f49c399ad9d384ec846fa48a9fc6fb7312f3cfb9526be4"
+    },
+    {
+      "question_id": "TRAIN_Q312",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "0f157151b70243810ac10cf21ade1817a0002996cd49574c1d29150a33df7834"
+    },
+    {
+      "question_id": "TRAIN_Q318",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "60bf3140f5d7a80fa305f94db52e36c331f1690979a6366f04d43cf4f26112ef"
+    },
+    {
+      "question_id": "TRAIN_Q319",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "22641633f0ec2a6666b24374e6d2b5b2d85b6a6fe00fb1358866e9dd7e592ff4"
+    },
+    {
+      "question_id": "TRAIN_Q320",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "021080b16ad6e6347e21b4a0e09a02adbaaa45e9eec654c91ed1de54a6b05327"
+    },
+    {
+      "question_id": "TRAIN_Q321",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "1010101473289ac5510411bbc21bb700f7ea969efe7a5d7b0b43e1056f22576e"
+    },
+    {
+      "question_id": "TRAIN_Q324",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "09c92d06f6f616856c681a7483e9909ea2105f1779dfe56b94c8ec1f9f8e8264"
+    },
+    {
+      "question_id": "TRAIN_Q328",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "82bffbe5ba2900b5ad6e4e23a53e33e7e62028112cfd14229ff83e2b69e73257"
+    },
+    {
+      "question_id": "TRAIN_Q333",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "6c5f9bcffa052e4b8142d95652caa6bf7061e597a4b3b6127ff7ebe833b7d1e0"
+    },
+    {
+      "question_id": "TRAIN_Q340",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "077a8fdc208530f8afa762eb1b02aab34679c95a7b8c997b8a7827ac2da37219"
+    },
+    {
+      "question_id": "TRAIN_Q341",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "0a9935afd856886e3693b5b66b01fe624c29b24e83d96698848f98abf7d28021"
+    },
+    {
+      "question_id": "TRAIN_Q343",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "07205af14b3affc0f7e07cb47bb0258609134cda1046279dd4ca4cc7fb3de554"
+    },
+    {
+      "question_id": "TRAIN_Q350",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "10a87b5d0722489bb4db4f8a066da863cde9abf093136bcd0fd3b214b468d365"
+    },
+    {
+      "question_id": "TRAIN_Q351",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "2d14aa8a653c648c3edbf02ae9fff4079a5997e0043d9caa232047e599cfde35"
+    },
+    {
+      "question_id": "TRAIN_Q358",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "0476b9b0f024c59980e6b8137a0dd171d646930439368c8d216decc6be7a5fc9"
+    },
+    {
+      "question_id": "TRAIN_Q366",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "4e3cc7e7103c3c446671ad3077fa3f4677e8e1b617c4f591594bd428acd552a6"
+    },
+    {
+      "question_id": "TRAIN_Q375",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "115be128c96d268939227cb1b319e904dacd4f3e4ea317de6f5edf753ddfa513"
+    },
+    {
+      "question_id": "TRAIN_Q389",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "038abd2a20242e6efcb773f4739522bcfec491b9e524d2ff0b7fe04c261591a6"
+    },
+    {
+      "question_id": "TRAIN_Q395",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "11ae0eabab912da767a7f740cab571164a7a55c9959a29c59f79bb74c69a2081"
+    },
+    {
+      "question_id": "TRAIN_Q401",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "0fbb197c06654a7dc1c4f79224b7e5056e2af1c2318d45b2b0aca279a691747d"
+    },
+    {
+      "question_id": "TRAIN_Q406",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "1a86f8057d36f4ec8fde1fb967c516d9d3e9d7f18ca73033f6a7dd03b59c49cc"
+    },
+    {
+      "question_id": "TRAIN_Q414",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "10c8168dd6ee60094a03f6316372c35118c4bcae04f3a810f23049e386f950a8"
+    },
+    {
+      "question_id": "TRAIN_Q416",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "11e818bb43f15561eaad15671ad38785559a2ca380aa2b33414b1eb9c0a094b9"
+    },
+    {
+      "question_id": "TRAIN_Q428",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "133b8b1422956039df6caa1828491e7c320e7161e21ff491946b09c798cd7ca8"
+    },
+    {
+      "question_id": "TRAIN_Q430",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "3b6d6db82319dfd4210f71c5dbe8a8ed6296b086a177f99f37a4ac7a83030444"
+    },
+    {
+      "question_id": "TRAIN_Q438",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "150f3b0e6319b4ef9a79e836defc29113b61cd1892cfdbf650eb4828cbab1f26"
+    },
+    {
+      "question_id": "TRAIN_Q460",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "268e6fbd4d3c86acf579988bcfb6c93d2298954a8497246c5fbffc38bea8b49f"
+    },
+    {
+      "question_id": "TRAIN_Q493",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "4057415f4f04685b8c505c98f43934a6176491f9c49008ee18ed568955e6b94d"
+    },
+    {
+      "question_id": "TRAIN_Q505",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "75767b3834f50aab8d3d66296749c8e82f129fb1b723ec6b012b03333043ad04"
+    },
+    {
+      "question_id": "TRAIN_Q511",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "075e8c71dbf628dc3b61a53439b35ff78d0f36fc5b22f6a7afc706b2136cfd4a"
+    },
+    {
+      "question_id": "TRAIN_Q517",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "0cd2ea6815488de3d1a07ba1433cc873ce12ae9a9cd1ad3160400a2b7c6d9b94"
+    },
+    {
+      "question_id": "TRAIN_Q546",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "114c88379053748591a0ed20a59c58b03536a4cdf06a35fa82c04ff779f69fdd"
+    },
+    {
+      "question_id": "TRAIN_Q567",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "0c2a46295f75e6baebf4cfeee8eac7d952f2574183d6d1487f289dea4c59969e"
+    },
+    {
+      "question_id": "TRAIN_Q569",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "002ee878ab34ddad80147b0bdb58e6f33c779bd553ad0277de53b213d460a823"
+    },
+    {
+      "question_id": "TRAIN_Q578",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "046a725dcf4f33233cbf2a912ddf0126b71dd608444bfa9f83993bf1910c7996"
+    },
+    {
+      "question_id": "TRAIN_Q584",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "3795fca1f6a15d8e22327ca07008b4f981fb1de9670604db2683629dd99ddc00"
+    },
+    {
+      "question_id": "TRAIN_Q596",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "69475fb2c49b179d800afdb995de55cf2462b317a18ba150ea9a904ec1c913b9"
+    },
+    {
+      "question_id": "TRAIN_Q598",
+      "selection_stratum": "gold_document_outside_top14",
+      "selection_sha256": "624ed36978effbdc4366fe83ea228f2b38fa5b7e874fec01442392e6b69c8ec6"
+    },
+    {
+      "question_id": "TRAIN_Q599",
+      "selection_stratum": "gold_document_in_top14",
+      "selection_sha256": "194e14adf449e5fe2f31af2aa576d72cd27ebdd97c6457c6fb8454a22272d20f"
+    }
+  ],
+  "annotation_packet": {
+    "path": "data/refusal_v2_confirmation_set/annotation_packets.jsonl",
+    "rows": 80,
+    "sha256": "3029acd916bfff10def1448b28181e1d5341513232f6edcb4fafa8dc578092f4",
+    "contains_gold_answer_for_annotation_only": true,
+    "classifier_eligible": false
+  },
+  "controls": {
+    "provider_calls": 0,
+    "dev_artifact_opened": false,
+    "classifier_predictions_created": false
+  }
+}
