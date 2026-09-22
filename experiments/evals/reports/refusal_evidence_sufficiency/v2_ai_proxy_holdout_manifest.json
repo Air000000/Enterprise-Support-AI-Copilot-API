@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "run": "refusal_v2_ai_proxy_holdout_v1",
+  "status": "PREREGISTERED_INPUTS_FROZEN",
+  "label_provenance": "AI_DRAFT_DEVELOPMENT_ONLY",
+  "selection": {
+    "selection_seed": "refusal-v2-ai-proxy-holdout-v1",
+    "algorithm": "lowest_sha256(seed + ':' + question_id) per class",
+    "per_class": 20,
+    "selected_total": 40,
+    "questionable_excluded": 6,
+    "detail_opened_exclusions": [
+      "TRAIN_Q000",
+      "TRAIN_Q005"
+    ],
+    "selected_question_ids": [
+      "TRAIN_Q033",
+      "TRAIN_Q037",
+      "TRAIN_Q038",
+      "TRAIN_Q043",
+      "TRAIN_Q044",
+      "TRAIN_Q062",
+      "TRAIN_Q082",
+      "TRAIN_Q085",
+      "TRAIN_Q098",
+      "TRAIN_Q124",
+      "TRAIN_Q128",
+      "TRAIN_Q158",
+      "TRAIN_Q183",
+      "TRAIN_Q205",
+      "TRAIN_Q212",
+      "TRAIN_Q233",
+      "TRAIN_Q267",
+      "TRAIN_Q269",
+      "TRAIN_Q276",
+      "TRAIN_Q283",
+      "TRAIN_Q291",
+      "TRAIN_Q301",
+      "TRAIN_Q304",
+      "TRAIN_Q318",
+      "TRAIN_Q319",
+      "TRAIN_Q321",
+      "TRAIN_Q324",
+      "TRAIN_Q340",
+      "TRAIN_Q343",
+      "TRAIN_Q350",
+      "TRAIN_Q401",
+      "TRAIN_Q406",
+      "TRAIN_Q416",
+      "TRAIN_Q430",
+      "TRAIN_Q493",
+      "TRAIN_Q517",
+      "TRAIN_Q567",
+      "TRAIN_Q578",
+      "TRAIN_Q584",
+      "TRAIN_Q599"
+    ],
+    "classifier_payload_fields": [
+      "question",
+      "sources"
+    ],
+    "source_payload_fields": [
+      "source_id",
+      "content"
+    ]
+  },
+  "artifacts": {
+    "blank_packet_sha256": "3029acd916bfff10def1448b28181e1d5341513232f6edcb4fafa8dc578092f4",
+    "source_targets_sha256": "0d08f8f06b6acdaa3da7b36e04c795571e8f25fd8de22a9fdb7a89a6c81b6c67",
+    "holdout_inputs_path": "data/refusal_v2_ai_proxy/holdout_inputs.jsonl",
+    "holdout_inputs_sha256": "0b5f9cd0c797930c7d7efefe5f9721435cb94de3bb98721d2a703d50b4cb269d",
+    "holdout_targets_path": "data/refusal_v2_ai_proxy/holdout_targets.jsonl",
+    "holdout_targets_sha256": "b4828f0b9870c53774c5b78722ddf2f3dc0d23a85aeea71281a4cda6f1603fd7",
+    "prompt_sha256": "eff5768921067cc04a0686fff0ff50599f4bf295f3ad263e63a143f110fe3c20"
+  },
+  "controls": {
+    "provider_calls": 0,
+    "dev_artifact_opened": false,
+    "classifier_predictions_created": false,
+    "targets_must_not_be_loaded_by_paid_loop": true
+  }
+}
