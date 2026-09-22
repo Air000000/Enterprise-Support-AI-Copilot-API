@@ -9,6 +9,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Literal
 
+from dotenv import load_dotenv
 from openai import OpenAI
 
 from experiments.evals.refusal_evidence_sufficiency import (
@@ -363,14 +364,64 @@ def _parse_classifier_json(
     return decision, reason.strip(), tuple(normalized)
 
 
-def get_classifier_client() -> OpenAI:
-    api_key = os.getenv("DASHSCOPE_API_KEY")
+def resolve_classifier_auth() -> tuple[str, str, str]:
+    """Resolve a Singapore-scoped key without reusing Beijing chat config."""
+    load_dotenv()
+
+    phase_b_key = os.getenv("DASHSCOPE_PHASE_B_API_KEY")
+    rerank_key = os.getenv("DASHSCOPE_RERANK_API_KEY")
+
+    if phase_b_key:
+        api_key = phase_b_key
+        key_source = "DASHSCOPE_PHASE_B_API_KEY"
+    elif rerank_key:
+        api_key = rerank_key
+        key_source = "DASHSCOPE_RERANK_API_KEY"
+    else:
+        generic_key = os.getenv("DASHSCOPE_API_KEY")
+        if generic_key:
+            raise RuntimeError(
+                "Phase B is frozen to the Singapore/International endpoint, "
+                "but only generic DASHSCOPE_API_KEY is configured. "
+                "That project key is historically paired with the Beijing "
+                "chat endpoint and must not be reused across regions. "
+                "Set DASHSCOPE_PHASE_B_API_KEY to a Singapore key or keep "
+                "the existing Singapore DASHSCOPE_RERANK_API_KEY in .env."
+            )
+        raise RuntimeError(
+            "Missing Singapore API key for Phase B. "
+            "Set DASHSCOPE_PHASE_B_API_KEY or DASHSCOPE_RERANK_API_KEY."
+        )
+
     base_url = os.getenv(
-        "DASHSCOPE_BASE_URL",
+        "DASHSCOPE_PHASE_B_BASE_URL",
         "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+    ).rstrip("/")
+
+    shared_singapore = (
+        "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
     )
-    if not api_key:
-        raise RuntimeError("Missing DASHSCOPE_API_KEY")
+    workspace_suffix = (
+        ".ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
+    )
+    if not (
+        base_url == shared_singapore
+        or (
+            base_url.startswith("https://")
+            and base_url.endswith(workspace_suffix)
+        )
+    ):
+        raise RuntimeError(
+            "Phase B base URL must be a Singapore/International "
+            "OpenAI-compatible endpoint. Got: "
+            + base_url
+        )
+
+    return api_key, base_url, key_source
+
+
+def get_classifier_client() -> OpenAI:
+    api_key, base_url, _ = resolve_classifier_auth()
     return OpenAI(
         api_key=api_key,
         base_url=base_url,
@@ -762,11 +813,15 @@ def print_preflight(
         )
         for row in rows
     )
+    _, base_url, key_source = resolve_classifier_auth()
+
     print("PHASE_B_RUNNER_PREFLIGHT=PASS")
     print(f"INPUT_CASES={len(rows)}")
     print(f"INPUT_SHA256={_sha256(inputs_path)}")
     print(f"TOTAL_QUESTION_CONTEXT_CHARS={char_count}")
     print(f"MODEL={contract['classifier']['model']}")
+    print(f"AUTH_KEY_SOURCE={key_source}")
+    print(f"BASE_URL={base_url}")
     print("ENABLE_THINKING=NO")
     print("TEMPERATURE=0.0")
     print(
