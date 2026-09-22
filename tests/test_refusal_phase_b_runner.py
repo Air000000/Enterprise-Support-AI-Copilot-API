@@ -308,6 +308,10 @@ def test_resolve_classifier_auth_falls_back_to_singapore_rerank_key(
     monkeypatch.delenv("DASHSCOPE_PHASE_B_API_KEY", raising=False)
     monkeypatch.delenv("DASHSCOPE_PHASE_B_BASE_URL", raising=False)
     monkeypatch.setenv("DASHSCOPE_RERANK_API_KEY", "rerank-key")
+    monkeypatch.setenv(
+        "DASHSCOPE_RERANK_BASE_URL",
+        "https://workspace.ap-southeast-1.maas.aliyuncs.com/compatible-api/v1",
+    )
     monkeypatch.setenv("DASHSCOPE_API_KEY", "generic-key")
 
     api_key, base_url, key_source = runner.resolve_classifier_auth()
@@ -315,7 +319,7 @@ def test_resolve_classifier_auth_falls_back_to_singapore_rerank_key(
     assert api_key == "rerank-key"
     assert (
         base_url
-        == "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+        == "https://workspace.ap-southeast-1.maas.aliyuncs.com/compatible-api/v1"
     )
     assert key_source == "DASHSCOPE_RERANK_API_KEY"
 
