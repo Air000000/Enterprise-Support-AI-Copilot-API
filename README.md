@@ -18,7 +18,8 @@
 Technical Support Request
           │
           ▼
-   Dense Chroma Retrieval
+   Current Runtime:
+ Dense Chroma Retrieval
           │
           ├──────────────► Answer + Sources
           │
@@ -65,6 +66,13 @@ Evaluation & Iteration
                            │
                            └────► RAG / context policy / evaluation loop
 ```
+
+### Runtime / Portfolio-v1 boundary
+
+- **Current runtime:** Dense Chroma Retrieval.
+- **Frozen portfolio-v1 integration target:** Dense100 + BM25100 -> RRF60 -> fused100 -> `qwen3-rerank` -> Flat Top14.
+- **Integration status:** not yet promoted into online runtime.
+- **Refusal / generation:** not yet frozen.
 
 ### 当前核心能力
 
@@ -255,6 +263,10 @@ request.draft == server-side approval_request.draft_json
 
 这里强调的是**同一冻结 Benchmark 上的 held-out improvement**，不跨不同数据集比较孤立绝对分数。
 
+### Context assembly closure
+
+在 54 条冻结 TRAIN evidence audit 上，Flat Top14 保留 **35/54 条 answer-bearing evidence** 和 **43/54 条 useful evidence**。Locality second-rerank 没有新增命中；structure-preserving synthesis 则使 answer evidence 从 **35 降至 32**。后续 paired attribution 表明 **5/5 regression** 均由固定上下文预算下的 budget crowd-out 导致，因此 portfolio-v1 保留 Flat Top14。
+
 ---
 
 # 5. Failure Diagnosis：从指标到 Evidence
@@ -278,7 +290,9 @@ MRR@10 gate: FAIL
 Overall C1 decision: FAIL
 ```
 
-因此停止继续付费优化，而不是把小幅上涨包装成成功路线。
+因此没有继续进入针对 RRF、source weight、candidate depth 等 Hybrid fusion 参数的付费调优，而不是把小幅上涨包装成正式成功。
+
+The fixed Hybrid route is retained as the frozen portfolio-v1 engineering candidate without further fusion tuning. This later retention does not rewrite R4 C1's formal **FAIL** status, and it is not an online-serving claim.
 
 相关报告：
 
@@ -306,74 +320,11 @@ Document Recall 可能掩盖一个更细的失败模式：
 
 ---
 
-# 6. Generation / Abstention Harness
+# 6. Historical Generation Harness
 
-基于 retrieval 与 evidence failure analysis，Generation Eval Harness 当前使用：
+`document_aware_forward_expansion_v1` remains the real **historical generation harness context policy**, implemented in [experiments/evals/eval_techqa_generation.py](experiments/evals/eval_techqa_generation.py). It is not the frozen portfolio-v1 final context policy.
 
-```text
-Dense Top-100
-   ↓
-qwen3-rerank
-   ↓
-Top-3 rerank anchors
-   + Dense Top-1 rescue anchor
-   ↓
-per unique anchor document:
-forward sibling expansion (max 3)
-   ↓
-deduplicate
-   ↓
-max 16 context chunks
-```
-
-当前 context policy：
-
-```text
-document_aware_forward_expansion_v1
-```
-
-实现：
-
-- [experiments/evals/eval_techqa_generation.py](experiments/evals/eval_techqa_generation.py)
-
-Harness 已包含：
-
-- correctness；
-- faithfulness；
-- abstention accuracy；
-- hallucination rate；
-- end-to-end latency；
-- frozen run identity / manifest / checkpoint。
-
-## G1：Document-local evidence candidate
-
-在 E1 的 document-aware forward expansion 之后，项目进一步测试 G1：先从历史 E0 排名中取前 5 个 unique documents，展开这些文档的 frozen full chunks，再用同一 `qwen3-rerank` instruction 做一次 merged rerank，最终保留 Top16 evidence chunks。
-
-30-case method-label-blinded evidence-sufficiency 结果：
-
-| Metric | E1 | G1 |
-| --- | ---: | ---: |
-| COMPLETE | 24 / 30 | **28 / 30** |
-| PARTIAL | 1 / 30 | 1 / 30 |
-| INSUFFICIENT | 5 / 30 | **1 / 30** |
-| Macro claim coverage | 0.825000 | **0.955556** |
-
-G1 相对 E1 为 **6 wins / 22 ties / 2 losses**。但其中 `TRAIN_Q346` 触发了预注册 catastrophic regression：`E1=COMPLETE`、`G1=INSUFFICIENT`。因此正式结论是：
-
-```text
-aggregate evidence sufficiency: improved
-catastrophic-regression gate: FAIL
-G1 decision: NO_GO
-current reference: E1
-```
-
-后续对全部 65 个 frozen claims 的 transition forensic 显示：G1 新增覆盖 6 个 claims、丢失 2 个 claims；两条 regression 分别是一个 candidate-document admission miss（Q346）和一个 continuity miss（Q492），且都没有在其他 case 重复形成系统性模式。因此不针对已经看过的 TRAIN case 继续 patch G1。
-
-完整报告：
-
-- [experiments/evals/reports/g1_document_local/final_decision.md](experiments/evals/reports/g1_document_local/final_decision.md)
-
-> **结果边界：** G1 的 95.6% 是冻结 conditional Stage2 evidence-sufficiency experiment 的 macro claim coverage，不是 production generation accuracy，也不表示 G1 已替代 E1。当前仍以 E1 为 reference，G1 保留为 evaluated experimental candidate。
+Portfolio-v1 context is `flat_rerank_top14_v1`; final refusal and generation contracts remain unresolved. G1 document-local and G2-A rerank-informed admission are historical TRAIN branches with formal **NO_GO** outcomes. Their evidence and links remain in [experiments/evals/README.md](experiments/evals/README.md), which is the complete experiment index.
 
 ---
 
@@ -594,10 +545,14 @@ Workflow：
 
 # 14. Current Scope / Non-Claims
 
-当前 README、代码和简历保持以下边界：
+当前项目对外表述保持以下边界：
 
 - TechQA 是长期主技术支持语料与主评测基准，不再计划迁移到另一套 primary corpus；
 - 不把离线 BM25 / RRF / Hybrid 实验写成线上 Hybrid Serving；
+- portfolio-v1 Hybrid+rereank is evaluated/frozen, not serving; R4 C1 remains formal FAIL；
+- Flat Top14 is a TRAIN-development selection, not a universal optimum；
+- locality/structure-expansion negatives do not prove Parent-Child or document structure generally ineffective；
+- refusal policy and final generation validation are not yet frozen；
 - 不把规则化 Ticket 分类写成自主 ReAct / autonomous planning；
 - 不把 Demo JWT + tenant scope 写成完整生产级 IAM / multi-tenant isolation；
 - 不把 Docker Compose 写成生产部署；
