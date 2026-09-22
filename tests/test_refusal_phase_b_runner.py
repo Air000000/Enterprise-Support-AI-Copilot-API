@@ -8,8 +8,16 @@ from experiments.evals import refusal_phase_b_runner as runner
 
 def _contract() -> dict:
     return {
-        "run": "refusal_evidence_sufficiency_phase_b_v1",
+        "run": "refusal_evidence_sufficiency_phase_b_v1_1",
         "status": "PREREGISTERED_NOT_RUN",
+        "amendment": {
+            "supersedes_run": "refusal_evidence_sufficiency_phase_b_v1",
+            "bare_source_id_range": [1, 14],
+            "canonical_source_id_format": "Source N",
+            "chat_endpoint_suffix": "compatible-mode/v1",
+            "prompt_changed": False,
+            "all_provider_attempts_count_toward_limits": True,
+        },
         "population": {
             "total_cases": 54,
             "gated_cases": 51,
@@ -33,6 +41,8 @@ def _contract() -> dict:
         },
         "pricing_snapshot": {
             "hard_cost_cap_cny": 3.0,
+            "input_cny_per_1m_tokens": 2.936,
+            "output_cny_per_1m_tokens": 17.614,
         },
         "gate": {
             "balanced_accuracy_min": 0.80,
@@ -123,6 +133,22 @@ def test_parse_classifier_json_rejects_unknown_source():
         )
 
 
+@pytest.mark.parametrize("source_id", [1, "1", 14, "14"])
+def test_parse_classifier_json_canonicalizes_bare_source_ids(source_id):
+    _, _, source_ids = runner._parse_classifier_json(
+        json.dumps(
+            {
+                "decision": "SUFFICIENT",
+                "reason": "enough",
+                "supporting_source_ids": [source_id],
+            }
+        ),
+        allowed_source_ids={f"Source {index}" for index in range(1, 15)},
+    )
+
+    assert source_ids == (f"Source {int(source_id)}",)
+
+
 def test_classify_one_does_not_send_question_id():
     captured = {}
 
@@ -174,6 +200,114 @@ def test_classify_one_does_not_send_question_id():
     assert captured["max_tokens"] == 256
     assert captured["response_format"] == {"type": "json_object"}
     assert captured["extra_body"] == {"enable_thinking": False}
+
+
+def test_classify_one_audits_schema_failure():
+    attempts = []
+
+    class FakeCompletions:
+        def create(self, **_):
+            return SimpleNamespace(
+                id="req-schema",
+                choices=[
+                    SimpleNamespace(
+                        message=SimpleNamespace(
+                            content=json.dumps(
+                                {
+                                    "decision": "SUFFICIENT",
+                                    "reason": "bad citation",
+                                    "supporting_source_ids": ["Source 99"],
+                                }
+                            )
+                        )
+                    )
+                ],
+                usage=SimpleNamespace(
+                    prompt_tokens=100,
+                    completion_tokens=20,
+                    total_tokens=120,
+                ),
+            )
+
+    client = SimpleNamespace(
+        chat=SimpleNamespace(completions=FakeCompletions())
+    )
+
+    with pytest.raises(RuntimeError, match="outside the frozen context"):
+        runner.classify_one(
+            _input_row(),
+            client=client,
+            model="qwen3.5-plus-2026-04-20",
+            input_rate_cny_per_1m=2.936,
+            output_rate_cny_per_1m=17.614,
+            failed_attempt_recorder=attempts.append,
+            clock=lambda: 1.0,
+        )
+
+    assert attempts[0]["stage"] == "schema"
+    assert attempts[0]["request_id"] == "req-schema"
+    assert attempts[0]["total_tokens"] == 120
+    assert attempts[0]["raw_response"] is not None
+
+
+def test_classify_one_audits_provider_failure():
+    attempts = []
+
+    class FakeCompletions:
+        def create(self, **_):
+            raise RuntimeError("provider unavailable")
+
+    client = SimpleNamespace(
+        chat=SimpleNamespace(completions=FakeCompletions())
+    )
+
+    with pytest.raises(RuntimeError, match="provider unavailable"):
+        runner.classify_one(
+            _input_row(),
+            client=client,
+            model="qwen3.5-plus-2026-04-20",
+            input_rate_cny_per_1m=2.936,
+            output_rate_cny_per_1m=17.614,
+            failed_attempt_recorder=attempts.append,
+            clock=lambda: 1.0,
+        )
+
+    assert attempts[0]["stage"] == "provider"
+    assert attempts[0]["usage_available"] is False
+    assert attempts[0]["raw_response"] is None
+
+
+def test_run_paid_counts_failed_attempts_toward_call_cap(
+    monkeypatch,
+):
+    rows = [
+        _input_row(f"TRAIN_Q{index:03d}")
+        for index in range(runner.EXPECTED_CASES)
+    ]
+    monkeypatch.setattr(runner, "_read_json", lambda _: _contract())
+    monkeypatch.setattr(runner, "load_classifier_inputs", lambda _: rows)
+    monkeypatch.setattr(runner, "load_predictions", lambda _: [])
+    monkeypatch.setattr(
+        runner,
+        "load_failed_attempts",
+        lambda _: [
+            {
+                "question_id": row["question_id"],
+                "stage": "provider",
+                "estimated_cost_cny": 0.0,
+            }
+            for row in rows
+        ],
+    )
+
+    with pytest.raises(RuntimeError, match="maximum provider-call count"):
+        runner.run_paid_phase_b(
+            contract_path="unused.json",
+            inputs_path="unused.jsonl",
+            checkpoint_path="unused-predictions.jsonl",
+            failed_attempts_path="unused-failures.jsonl",
+            client=object(),
+        )
 
 
 def test_evaluate_predictions_passes_preregistered_gate():
@@ -310,7 +444,7 @@ def test_resolve_classifier_auth_falls_back_to_singapore_rerank_key(
     monkeypatch.setenv("DASHSCOPE_RERANK_API_KEY", "rerank-key")
     monkeypatch.setenv(
         "DASHSCOPE_RERANK_BASE_URL",
-        "https://workspace.ap-southeast-1.maas.aliyuncs.com/compatible-api/v1",
+        "https://workspace.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
     )
     monkeypatch.setenv("DASHSCOPE_API_KEY", "generic-key")
 
@@ -319,9 +453,23 @@ def test_resolve_classifier_auth_falls_back_to_singapore_rerank_key(
     assert api_key == "rerank-key"
     assert (
         base_url
-        == "https://workspace.ap-southeast-1.maas.aliyuncs.com/compatible-api/v1"
+        == "https://workspace.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
     )
     assert key_source == "DASHSCOPE_RERANK_API_KEY"
+
+
+def test_resolve_classifier_auth_rejects_rerank_api_path(monkeypatch):
+    monkeypatch.setattr(runner, "load_dotenv", lambda: None)
+    monkeypatch.delenv("DASHSCOPE_PHASE_B_API_KEY", raising=False)
+    monkeypatch.delenv("DASHSCOPE_PHASE_B_BASE_URL", raising=False)
+    monkeypatch.setenv("DASHSCOPE_RERANK_API_KEY", "rerank-key")
+    monkeypatch.setenv(
+        "DASHSCOPE_RERANK_BASE_URL",
+        "https://workspace.ap-southeast-1.maas.aliyuncs.com/compatible-api/v1",
+    )
+
+    with pytest.raises(RuntimeError, match="compatible-mode/v1"):
+        runner.resolve_classifier_auth()
 
 
 def test_resolve_classifier_auth_rejects_generic_cross_region_key(

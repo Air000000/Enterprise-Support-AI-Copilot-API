@@ -8,6 +8,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -20,7 +21,7 @@ from experiments.evals.refusal_evidence_sufficiency import (
 
 DEFAULT_CONTRACT_PATH = Path(
     "experiments/evals/reports/refusal_evidence_sufficiency/"
-    "phase_b_run_contract.json"
+    "phase_b_v1_1_run_contract.json"
 )
 DEFAULT_INPUTS_PATH = Path(
     "data/refusal_evidence_sufficiency_phase_a/"
@@ -31,13 +32,16 @@ DEFAULT_TARGETS_PATH = Path(
     "phase_b_targets.jsonl"
 )
 DEFAULT_OUTPUT_DIR = Path(
-    "data/refusal_evidence_sufficiency_phase_b"
+    "data/refusal_evidence_sufficiency_phase_b_v1_1"
 )
 DEFAULT_CHECKPOINT_PATH = (
     DEFAULT_OUTPUT_DIR / "predictions.jsonl"
 )
 DEFAULT_SUMMARY_PATH = (
     DEFAULT_OUTPUT_DIR / "summary.json"
+)
+DEFAULT_FAILED_ATTEMPTS_PATH = (
+    DEFAULT_OUTPUT_DIR / "failed_attempts.jsonl"
 )
 
 EXPECTED_INPUTS_SHA256 = (
@@ -73,6 +77,23 @@ class PhaseBPrediction:
     total_tokens: int
     latency_ms: float
     estimated_cost_cny: float
+
+
+@dataclass(frozen=True)
+class PhaseBFailedAttempt:
+    question_id: str
+    stage: str
+    error_type: str
+    error_message: str
+    model: str
+    request_id: str | None
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    latency_ms: float
+    estimated_cost_cny: float
+    usage_available: bool
+    raw_response: str | None
 
 
 @dataclass(frozen=True)
@@ -163,7 +184,7 @@ def _percentile(values: Sequence[float], percentile: float) -> float:
 
 
 def validate_contract(contract: Mapping[str, Any]) -> None:
-    if contract.get("run") != "refusal_evidence_sufficiency_phase_b_v1":
+    if contract.get("run") != "refusal_evidence_sufficiency_phase_b_v1_1":
         raise RuntimeError("unexpected Phase B run identifier")
     if contract.get("status") != "PREREGISTERED_NOT_RUN":
         raise RuntimeError("Phase B contract status changed")
@@ -174,6 +195,7 @@ def validate_contract(contract: Mapping[str, Any]) -> None:
     gate = contract.get("gate")
     controls = contract.get("controls")
     pricing = contract.get("pricing_snapshot")
+    amendment = contract.get("amendment")
 
     if not all(
         isinstance(value, Mapping)
@@ -184,6 +206,7 @@ def validate_contract(contract: Mapping[str, Any]) -> None:
             gate,
             controls,
             pricing,
+            amendment,
         )
     ):
         raise RuntimeError("Phase B contract is malformed")
@@ -241,6 +264,20 @@ def validate_contract(contract: Mapping[str, Any]) -> None:
 
     if pricing.get("hard_cost_cap_cny") != 3.0:
         raise RuntimeError("Phase B hard cost cap changed")
+    if amendment.get("supersedes_run") != (
+        "refusal_evidence_sufficiency_phase_b_v1"
+    ):
+        raise RuntimeError("Phase B amendment history changed")
+    if amendment.get("bare_source_id_range") != [1, 14]:
+        raise RuntimeError("Phase B source-ID normalization changed")
+    if amendment.get("canonical_source_id_format") != "Source N":
+        raise RuntimeError("Phase B canonical source-ID format changed")
+    if amendment.get("chat_endpoint_suffix") != "compatible-mode/v1":
+        raise RuntimeError("Phase B chat endpoint contract changed")
+    if amendment.get("prompt_changed") is not False:
+        raise RuntimeError("Phase B v1.1 must not change the prompt")
+    if amendment.get("all_provider_attempts_count_toward_limits") is not True:
+        raise RuntimeError("Phase B attempt accounting changed")
     if controls.get("dev_artifact_opened") is not False:
         raise RuntimeError("DEV must remain closed")
     if controls.get("retrieval_calls") != 0:
@@ -348,6 +385,8 @@ def _parse_classifier_json(
     normalized: list[str] = []
     for source_id in source_ids:
         value = str(source_id)
+        if value in {str(index) for index in range(1, 15)}:
+            value = f"Source {value}"
         if value not in allowed_source_ids:
             raise RuntimeError(
                 "classifier cited a source outside the frozen context: "
@@ -405,25 +444,25 @@ def resolve_classifier_auth() -> tuple[str, str, str]:
             )
 
     base_url = base_url.rstrip("/")
-    shared_singapore = (
-        "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
-    )
-    workspace_host = ".ap-southeast-1.maas.aliyuncs.com/"
-    workspace_suffixes = (
-        "compatible-api/v1",
-        "compatible-mode/v1",
+    parsed = urlparse(base_url)
+    host = parsed.hostname or ""
+    singapore_host = (
+        host == "dashscope-intl.aliyuncs.com"
+        or host.endswith(".ap-southeast-1.maas.aliyuncs.com")
     )
     if not (
-        base_url == shared_singapore
-        or (
-            base_url.startswith("https://")
-            and workspace_host in base_url
-            and base_url.endswith(workspace_suffixes)
-        )
+        parsed.scheme == "https"
+        and parsed.username is None
+        and parsed.password is None
+        and parsed.port is None
+        and singapore_host
+        and parsed.path == "/compatible-mode/v1"
+        and not parsed.query
+        and not parsed.fragment
     ):
         raise RuntimeError(
-            "Phase B base URL must be a Singapore/International "
-            "OpenAI-compatible endpoint. Got: "
+            "Phase B base URL must be a Singapore/International chat "
+            "endpoint ending in compatible-mode/v1. Got: "
             + base_url
         )
 
@@ -446,6 +485,7 @@ def classify_one(
     model: str,
     input_rate_cny_per_1m: float,
     output_rate_cny_per_1m: float,
+    failed_attempt_recorder: Callable[[Mapping[str, Any]], None] | None = None,
     clock: Callable[[], float] = time.perf_counter,
 ) -> PhaseBPrediction:
     classifier_input = _classifier_input_from_row(row)
@@ -460,25 +500,38 @@ def classify_one(
         raise RuntimeError("question_id leaked into classifier prompt")
 
     started = clock()
-    response = client.chat.completions.create(
-        model=model,
-        messages=messages,
-        temperature=0.0,
-        max_tokens=256,
-        response_format={"type": "json_object"},
-        extra_body={"enable_thinking": False},
-    )
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=0.0,
+            max_tokens=256,
+            response_format={"type": "json_object"},
+            extra_body={"enable_thinking": False},
+        )
+    except Exception as error:
+        if failed_attempt_recorder is not None:
+            failed_attempt_recorder(
+                asdict(
+                    PhaseBFailedAttempt(
+                        question_id=question_id,
+                        stage="provider",
+                        error_type=type(error).__name__,
+                        error_message=str(error),
+                        model=model,
+                        request_id=getattr(error, "request_id", None),
+                        prompt_tokens=0,
+                        completion_tokens=0,
+                        total_tokens=0,
+                        latency_ms=(clock() - started) * 1000.0,
+                        estimated_cost_cny=0.0,
+                        usage_available=False,
+                        raw_response=None,
+                    )
+                )
+            )
+        raise
     latency_ms = (clock() - started) * 1000.0
-
-    raw_text = response.choices[0].message.content or ""
-    allowed_source_ids = {
-        str(source["source_id"])
-        for source in row["sources"]
-    }
-    decision, reason, supporting_source_ids = _parse_classifier_json(
-        raw_text,
-        allowed_source_ids=allowed_source_ids,
-    )
 
     usage = getattr(response, "usage", None)
     prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
@@ -497,6 +550,40 @@ def classify_one(
     request_id = getattr(response, "id", None)
     if request_id is not None:
         request_id = str(request_id)
+
+    raw_text: str | None = None
+    try:
+        raw_text = response.choices[0].message.content or ""
+        allowed_source_ids = {
+            str(source["source_id"])
+            for source in row["sources"]
+        }
+        decision, reason, supporting_source_ids = _parse_classifier_json(
+            raw_text,
+            allowed_source_ids=allowed_source_ids,
+        )
+    except Exception as error:
+        if failed_attempt_recorder is not None:
+            failed_attempt_recorder(
+                asdict(
+                    PhaseBFailedAttempt(
+                        question_id=question_id,
+                        stage="schema",
+                        error_type=type(error).__name__,
+                        error_message=str(error),
+                        model=model,
+                        request_id=request_id,
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens,
+                        total_tokens=total_tokens,
+                        latency_ms=latency_ms,
+                        estimated_cost_cny=cost_cny,
+                        usage_available=usage is not None,
+                        raw_response=raw_text,
+                    )
+                )
+            )
+        raise
 
     return PhaseBPrediction(
         question_id=question_id,
@@ -538,11 +625,28 @@ def load_predictions(
     return predictions
 
 
+def load_failed_attempts(
+    path: str | Path = DEFAULT_FAILED_ATTEMPTS_PATH,
+) -> list[dict[str, Any]]:
+    source = Path(path)
+    if not source.exists():
+        return []
+
+    attempts = _read_jsonl(source)
+    for attempt in attempts:
+        if str(attempt.get("stage")) not in {"provider", "schema", "cost"}:
+            raise RuntimeError("invalid failed-attempt stage")
+        if float(attempt.get("estimated_cost_cny", -1)) < 0:
+            raise RuntimeError("invalid failed-attempt cost")
+    return attempts
+
+
 def run_paid_phase_b(
     *,
     contract_path: str | Path = DEFAULT_CONTRACT_PATH,
     inputs_path: str | Path = DEFAULT_INPUTS_PATH,
     checkpoint_path: str | Path = DEFAULT_CHECKPOINT_PATH,
+    failed_attempts_path: str | Path = DEFAULT_FAILED_ATTEMPTS_PATH,
     client: Any | None = None,
 ) -> tuple[PhaseBPrediction, ...]:
     contract = _read_json(contract_path)
@@ -560,6 +664,7 @@ def run_paid_phase_b(
 
     checkpoint = Path(checkpoint_path)
     existing = load_predictions(checkpoint)
+    failed_attempts = load_failed_attempts(failed_attempts_path)
     by_question_id = {
         prediction.question_id: prediction
         for prediction in existing
@@ -570,11 +675,22 @@ def run_paid_phase_b(
         raise RuntimeError(
             "checkpoint contains question IDs outside frozen inputs"
         )
+    if not {
+        str(attempt.get("question_id"))
+        for attempt in failed_attempts
+    }.issubset(input_ids):
+        raise RuntimeError(
+            "failed-attempt log contains question IDs outside frozen inputs"
+        )
 
     spent_cny = sum(
         prediction.estimated_cost_cny
         for prediction in existing
+    ) + sum(
+        float(attempt["estimated_cost_cny"])
+        for attempt in failed_attempts
     )
+    provider_calls = len(existing) + len(failed_attempts)
     if spent_cny >= hard_cost_cap_cny and len(existing) < len(rows):
         raise RuntimeError("hard cost cap already reached")
 
@@ -584,7 +700,7 @@ def run_paid_phase_b(
         question_id = str(row["question_id"])
         if question_id in by_question_id:
             continue
-        if len(by_question_id) >= max_calls:
+        if provider_calls >= max_calls:
             raise RuntimeError("maximum provider-call count reached")
 
         prediction = classify_one(
@@ -593,9 +709,35 @@ def run_paid_phase_b(
             model=model,
             input_rate_cny_per_1m=input_rate,
             output_rate_cny_per_1m=output_rate,
+            failed_attempt_recorder=lambda payload: _append_jsonl(
+                Path(failed_attempts_path), payload
+            ),
         )
+        provider_calls += 1
         projected_spend = spent_cny + prediction.estimated_cost_cny
         if projected_spend > hard_cost_cap_cny:
+            _append_jsonl(
+                Path(failed_attempts_path),
+                asdict(
+                    PhaseBFailedAttempt(
+                        question_id=question_id,
+                        stage="cost",
+                        error_type="HardCostCapExceeded",
+                        error_message=(
+                            "provider response exceeded the hard cost cap"
+                        ),
+                        model=prediction.model,
+                        request_id=prediction.request_id,
+                        prompt_tokens=prediction.prompt_tokens,
+                        completion_tokens=prediction.completion_tokens,
+                        total_tokens=prediction.total_tokens,
+                        latency_ms=prediction.latency_ms,
+                        estimated_cost_cny=prediction.estimated_cost_cny,
+                        usage_available=True,
+                        raw_response=None,
+                    )
+                ),
+            )
             raise RuntimeError(
                 "hard cost cap exceeded after provider response; "
                 "prediction was not checkpointed"
@@ -788,9 +930,15 @@ def evaluate_checkpoint(
     checkpoint_path: str | Path = DEFAULT_CHECKPOINT_PATH,
     targets_path: str | Path = DEFAULT_TARGETS_PATH,
     summary_path: str | Path = DEFAULT_SUMMARY_PATH,
+    failed_attempts_path: str | Path = DEFAULT_FAILED_ATTEMPTS_PATH,
 ) -> PhaseBEvaluation:
     contract = _read_json(contract_path)
     predictions = load_predictions(checkpoint_path)
+    failed_attempts = load_failed_attempts(failed_attempts_path)
+    if failed_attempts:
+        raise RuntimeError(
+            "evaluation is forbidden after a failed provider attempt"
+        )
     if len(predictions) != EXPECTED_CASES:
         raise RuntimeError(
             "evaluation requires all 54 classifier predictions"
@@ -810,6 +958,8 @@ def print_preflight(
     *,
     contract_path: str | Path = DEFAULT_CONTRACT_PATH,
     inputs_path: str | Path = DEFAULT_INPUTS_PATH,
+    checkpoint_path: str | Path = DEFAULT_CHECKPOINT_PATH,
+    failed_attempts_path: str | Path = DEFAULT_FAILED_ATTEMPTS_PATH,
 ) -> None:
     contract = _read_json(contract_path)
     validate_contract(contract)
@@ -824,8 +974,11 @@ def print_preflight(
         for row in rows
     )
     _, base_url, key_source = resolve_classifier_auth()
+    predictions = load_predictions(checkpoint_path)
+    failed_attempts = load_failed_attempts(failed_attempts_path)
 
     print("PHASE_B_RUNNER_PREFLIGHT=PASS")
+    print(f"RUN_ID={contract['run']}")
     print(f"INPUT_CASES={len(rows)}")
     print(f"INPUT_SHA256={_sha256(inputs_path)}")
     print(f"TOTAL_QUESTION_CONTEXT_CHARS={char_count}")
@@ -838,7 +991,9 @@ def print_preflight(
         "HARD_COST_CAP_CNY="
         f"{contract['pricing_snapshot']['hard_cost_cap_cny']}"
     )
-    print("PROVIDER_CALLS=0")
+    print(f"CHECKPOINTED_PREDICTIONS={len(predictions)}")
+    print(f"FAILED_ATTEMPTS={len(failed_attempts)}")
+    print(f"PROVIDER_CALLS={len(predictions) + len(failed_attempts)}")
     print("DEV_ARTIFACT_OPENED=NO")
     print("NEXT_ACTION=EXPLICITLY_AUTHORIZE_PHASE_B_PAID_RUN")
 
@@ -937,6 +1092,10 @@ def main() -> None:
         "--summary-path",
         default=str(DEFAULT_SUMMARY_PATH),
     )
+    parser.add_argument(
+        "--failed-attempts-path",
+        default=str(DEFAULT_FAILED_ATTEMPTS_PATH),
+    )
     args = parser.parse_args()
 
     if args.run_paid:
@@ -944,6 +1103,7 @@ def main() -> None:
             contract_path=args.contract_path,
             inputs_path=args.inputs_path,
             checkpoint_path=args.checkpoint_path,
+            failed_attempts_path=args.failed_attempts_path,
         )
         print("PHASE_B_PAID_RUN=COMPLETE")
         print("TARGETS_OPENED=NO")
@@ -956,6 +1116,7 @@ def main() -> None:
             checkpoint_path=args.checkpoint_path,
             targets_path=args.targets_path,
             summary_path=args.summary_path,
+            failed_attempts_path=args.failed_attempts_path,
         )
         _print_evaluation(summary)
         return
@@ -963,6 +1124,8 @@ def main() -> None:
     print_preflight(
         contract_path=args.contract_path,
         inputs_path=args.inputs_path,
+        checkpoint_path=args.checkpoint_path,
+        failed_attempts_path=args.failed_attempts_path,
     )
 
 
