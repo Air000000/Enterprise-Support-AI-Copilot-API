@@ -42,7 +42,7 @@ R4 C1 Hybrid+Rerank's formal historical status remains **FAIL** because its prer
 
 Historical `dense_top1_distance > 0.9` does not automatically become the portfolio-v1 refusal contract: Dense Top1 distance is only one first-stage signal while the frozen candidate is Hybrid+rereank.
 
-This README is the published summary of the current portfolio-v1 retrieval/context freeze; historical reports remain the auditable sources for the individual experiments.
+The published freeze bundle is in [reports/portfolio_v1_rag_freeze/](reports/portfolio_v1_rag_freeze/). Historical reports remain the auditable sources for the individual experiments.
 
 ---
 
@@ -111,15 +111,18 @@ Frozen TechQA contract
 
 ## Artifact Map
 
-Published report entry points on the current GitHub branch:
+Published decision and report entry points:
 
+- Portfolio-v1 architecture freeze: `reports/portfolio_v1_rag_freeze/architecture_freeze.md`
+- Machine-readable freeze contract: `reports/portfolio_v1_rag_freeze/freeze.json`
+- Evidence timeline: `reports/portfolio_v1_rag_freeze/evidence_timeline.md`
 - Held-out E1: `reports/e1_rerank/comparison.md`
 - Hybrid R4 C1: `reports/r4_c1_hybrid_rerank/`
 - Evidence audit: `reports/r1_evidence_audit/`
 - Historical G1/G2: `reports/g1_document_local/`, `reports/g2_rerank_informed_admission/`
 - Retrieval frontier audit: `reports/retrieval_frontier_freeze/`
 
-The newer Flat Top14, locality, structure-forensic, structure-preserving-synthesis, failure-attribution, and portfolio-v1 freeze artifacts were produced in the local closure lineage and are summarized above. They should be published together with that lineage rather than represented here as GitHub paths that do not yet exist on this branch.
+The final Flat Top14, locality, structure-forensic, structure-preserving-synthesis, and failure-attribution runs were completed in the local closure lineage. Their audited results are published in the freeze bundle above; the original local run artifacts are not represented as GitHub paths unless they are actually published.
 
 ## Leakage, Reproducibility, and Scope
 
