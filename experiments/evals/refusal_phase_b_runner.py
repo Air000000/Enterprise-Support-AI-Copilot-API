@@ -365,50 +365,60 @@ def _parse_classifier_json(
 
 
 def resolve_classifier_auth() -> tuple[str, str, str]:
-    """Resolve a Singapore-scoped key without reusing Beijing chat config."""
+    """Resolve a Singapore-scoped key/base-URL pair."""
     load_dotenv()
 
     phase_b_key = os.getenv("DASHSCOPE_PHASE_B_API_KEY")
-    rerank_key = os.getenv("DASHSCOPE_RERANK_API_KEY")
+    phase_b_base = os.getenv("DASHSCOPE_PHASE_B_BASE_URL")
 
-    if phase_b_key:
-        api_key = phase_b_key
-        key_source = "DASHSCOPE_PHASE_B_API_KEY"
-    elif rerank_key:
-        api_key = rerank_key
-        key_source = "DASHSCOPE_RERANK_API_KEY"
-    else:
-        generic_key = os.getenv("DASHSCOPE_API_KEY")
-        if generic_key:
+    if phase_b_key or phase_b_base:
+        if not phase_b_key or not phase_b_base:
             raise RuntimeError(
-                "Phase B is frozen to the Singapore/International endpoint, "
-                "but only generic DASHSCOPE_API_KEY is configured. "
-                "That project key is historically paired with the Beijing "
-                "chat endpoint and must not be reused across regions. "
-                "Set DASHSCOPE_PHASE_B_API_KEY to a Singapore key or keep "
-                "the existing Singapore DASHSCOPE_RERANK_API_KEY in .env."
+                "DASHSCOPE_PHASE_B_API_KEY and "
+                "DASHSCOPE_PHASE_B_BASE_URL must be configured together."
             )
-        raise RuntimeError(
-            "Missing Singapore API key for Phase B. "
-            "Set DASHSCOPE_PHASE_B_API_KEY or DASHSCOPE_RERANK_API_KEY."
-        )
+        api_key = phase_b_key
+        base_url = phase_b_base
+        key_source = "DASHSCOPE_PHASE_B_API_KEY"
+    else:
+        rerank_key = os.getenv("DASHSCOPE_RERANK_API_KEY")
+        rerank_base = os.getenv("DASHSCOPE_RERANK_BASE_URL")
+        if rerank_key and rerank_base:
+            api_key = rerank_key
+            base_url = rerank_base
+            key_source = "DASHSCOPE_RERANK_API_KEY"
+        else:
+            generic_key = os.getenv("DASHSCOPE_API_KEY")
+            if generic_key:
+                raise RuntimeError(
+                    "Phase B is frozen to Singapore/International, but only "
+                    "the generic DASHSCOPE_API_KEY is configured. The project "
+                    "pairs that key with the Beijing chat endpoint, so it must "
+                    "not be reused against a Singapore endpoint. Configure "
+                    "DASHSCOPE_PHASE_B_API_KEY + DASHSCOPE_PHASE_B_BASE_URL, "
+                    "or keep the existing Singapore rerank key/base-url pair."
+                )
+            raise RuntimeError(
+                "Missing Singapore credentials for Phase B. Configure "
+                "DASHSCOPE_PHASE_B_API_KEY + DASHSCOPE_PHASE_B_BASE_URL, "
+                "or DASHSCOPE_RERANK_API_KEY + DASHSCOPE_RERANK_BASE_URL."
+            )
 
-    base_url = os.getenv(
-        "DASHSCOPE_PHASE_B_BASE_URL",
-        "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-    ).rstrip("/")
-
+    base_url = base_url.rstrip("/")
     shared_singapore = (
         "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
     )
-    workspace_suffix = (
-        ".ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
+    workspace_host = ".ap-southeast-1.maas.aliyuncs.com/"
+    workspace_suffixes = (
+        "compatible-api/v1",
+        "compatible-mode/v1",
     )
     if not (
         base_url == shared_singapore
         or (
             base_url.startswith("https://")
-            and base_url.endswith(workspace_suffix)
+            and workspace_host in base_url
+            and base_url.endswith(workspace_suffixes)
         )
     ):
         raise RuntimeError(
