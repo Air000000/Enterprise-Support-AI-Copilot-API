@@ -85,3 +85,21 @@ This phase ends after the 80 packets are selected. Its decision is
 `PROCEED_TO_BLIND_HUMAN_ANNOTATION`, not approval of a v2 classifier. The v2
 prompt, model, decoding settings, cost cap, and promotion gate require a
 separate preregistration after targets are frozen and before predictions.
+
+## Annotation handoff
+
+The human annotator edits only the `annotation` object in the local ignored
+file `data/refusal_v2_confirmation_set/annotation_packets.jsonl`. IDs, order,
+questions, gold fields, sampling strata, and sources must remain unchanged.
+
+After all 80 rows are labelled, validate and freeze the compact targets with:
+
+```bash
+python -m experiments.evals.refusal_v2_confirmation_set \
+  --metadata-path <TRAIN_METADATA_JSON> \
+  --freeze-annotated-packet \
+  data/refusal_v2_confirmation_set/annotation_packets.jsonl
+```
+
+The command makes no provider calls, does not open DEV, rejects modified
+frozen inputs, and emits no classifier payload or prediction.
