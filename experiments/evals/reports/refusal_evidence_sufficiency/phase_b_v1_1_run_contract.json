@@ -1,0 +1,78 @@
+{
+  "schema_version": 2,
+  "run": "refusal_evidence_sufficiency_phase_b_v1_1",
+  "status": "PREREGISTERED_NOT_RUN",
+  "split": "train",
+  "amendment": {
+    "supersedes_run": "refusal_evidence_sufficiency_phase_b_v1",
+    "reason": "v1 terminated before checkpointing when the provider returned a bare numeric supporting source ID",
+    "bare_source_id_range": [1, 14],
+    "canonical_source_id_format": "Source N",
+    "chat_endpoint_suffix": "compatible-mode/v1",
+    "prompt_changed": false,
+    "all_provider_attempts_count_toward_limits": true,
+    "failed_attempts_checkpointed": true
+  },
+  "prior_run_incident": {
+    "provider_attempts": 3,
+    "checkpointed_predictions": 0,
+    "known_failures": [
+      "401 invalid_api_key from cross-region key/endpoint mismatch",
+      "404 from using the rerank compatible-api path for chat completions",
+      "schema mismatch from bare supporting source ID"
+    ],
+    "recorded_cost_cny": null,
+    "dev_artifact_opened": false,
+    "targets_opened": false
+  },
+  "population": {
+    "total_cases": 54,
+    "gated_cases": 51,
+    "sufficient_proxy": 35,
+    "insufficient_proxy": 16,
+    "ambiguous_multi_chunk": 3
+  },
+  "frozen_inputs": {
+    "classifier_inputs_path": "data/refusal_evidence_sufficiency_phase_a/phase_b_classifier_inputs.jsonl",
+    "classifier_inputs_sha256": "bf0164d096758bf0c4cdda3ea0e106a3914e6e43aa1b627f13e8d6cd7efb9fa9",
+    "targets_path": "data/refusal_evidence_sufficiency_phase_a/phase_b_targets.jsonl",
+    "targets_sha256": "7b1535d033da3b8bf6b6d94c9a6f93105c76e593828dd53e1b0873d35b89e655",
+    "context_policy": "flat_rerank_top14_v1",
+    "top_k": 14
+  },
+  "classifier": {
+    "provider": "Alibaba Cloud Model Studio",
+    "region": "Singapore",
+    "model": "qwen3.5-plus-2026-04-20",
+    "temperature": 0,
+    "enable_thinking": false,
+    "response_format": "json_object",
+    "max_output_tokens": 256,
+    "max_calls": 54,
+    "prompt_contract": "CLASSIFIER_SYSTEM_PROMPT in experiments/evals/refusal_evidence_sufficiency.py"
+  },
+  "pricing_snapshot": {
+    "currency": "CNY",
+    "input_cny_per_1m_tokens": 2.936,
+    "output_cny_per_1m_tokens": 17.614,
+    "context_band": "0<Token<=256K",
+    "hard_cost_cap_cny": 3,
+    "source": "https://help.aliyun.com/en/model-studio/model-pricing",
+    "checked_date": "2026-09-22"
+  },
+  "gate": {
+    "balanced_accuracy_min": 0.8,
+    "sufficient_recall_min": 0.85,
+    "insufficient_recall_min": 0.7,
+    "sufficient_to_insufficient_max": 5
+  },
+  "controls": {
+    "dev_artifact_opened": false,
+    "retrieval_calls": 0,
+    "rerank_calls": 0,
+    "generation_calls": 0,
+    "judge_calls": 0,
+    "target_file_must_not_be_loaded_by_paid_classifier_loop": true,
+    "no_prompt_tuning_after_unblinding": true
+  }
+}
