@@ -279,3 +279,55 @@ def test_evaluate_predictions_rejects_excessive_over_refusal():
     assert summary.sufficient_to_insufficient == 6
     assert summary.gate_over_refusal_pass is False
     assert summary.decision == "REJECT_EVIDENCE_SUFFICIENCY_V1"
+
+
+def test_resolve_classifier_auth_prefers_phase_b_key(monkeypatch):
+    monkeypatch.setattr(runner, "load_dotenv", lambda: None)
+    monkeypatch.setenv("DASHSCOPE_PHASE_B_API_KEY", "phase-b-key")
+    monkeypatch.setenv(
+        "DASHSCOPE_PHASE_B_BASE_URL",
+        "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+    )
+    monkeypatch.setenv("DASHSCOPE_RERANK_API_KEY", "rerank-key")
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "generic-key")
+
+    api_key, base_url, key_source = runner.resolve_classifier_auth()
+
+    assert api_key == "phase-b-key"
+    assert (
+        base_url
+        == "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+    )
+    assert key_source == "DASHSCOPE_PHASE_B_API_KEY"
+
+
+def test_resolve_classifier_auth_falls_back_to_singapore_rerank_key(
+    monkeypatch,
+):
+    monkeypatch.setattr(runner, "load_dotenv", lambda: None)
+    monkeypatch.delenv("DASHSCOPE_PHASE_B_API_KEY", raising=False)
+    monkeypatch.delenv("DASHSCOPE_PHASE_B_BASE_URL", raising=False)
+    monkeypatch.setenv("DASHSCOPE_RERANK_API_KEY", "rerank-key")
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "generic-key")
+
+    api_key, base_url, key_source = runner.resolve_classifier_auth()
+
+    assert api_key == "rerank-key"
+    assert (
+        base_url
+        == "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+    )
+    assert key_source == "DASHSCOPE_RERANK_API_KEY"
+
+
+def test_resolve_classifier_auth_rejects_generic_cross_region_key(
+    monkeypatch,
+):
+    monkeypatch.setattr(runner, "load_dotenv", lambda: None)
+    monkeypatch.delenv("DASHSCOPE_PHASE_B_API_KEY", raising=False)
+    monkeypatch.delenv("DASHSCOPE_PHASE_B_BASE_URL", raising=False)
+    monkeypatch.delenv("DASHSCOPE_RERANK_API_KEY", raising=False)
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "generic-key")
+
+    with pytest.raises(RuntimeError, match="must not be reused across regions"):
+        runner.resolve_classifier_auth()
