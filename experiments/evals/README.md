@@ -1,443 +1,137 @@
 # TechQA Evaluation
 
-This directory contains the **primary long-term evaluation harness** for Enterprise Support AI Copilot.
+This directory is the primary long-term TechQA evaluation harness for Enterprise Support AI Copilot. It records frozen evidence and decisions; it is not an online-runtime configuration file.
 
-The project uses **TechQA** as its main technical-support data and evaluation backbone. It is not treated as a temporary Phase before migrating to another primary corpus.
+## Portfolio-v1 Frozen Decision
 
-Current focus:
+### Current online runtime
 
-- retrieval quality;
-- reranking / hybrid retrieval comparison;
-- evidence-level failure diagnosis;
-- generation correctness and faithfulness;
-- abstention / hallucination behavior;
-- reproducibility and leakage control.
+The current online/API serving path is **Dense Chroma Retrieval**. BM25, RRF, Hybrid, reranking, and Flat Top14 are not described as deployed serving behavior.
 
-> Future multi-source, conflict, completeness, or agentic stress tests, if added, are supplemental evaluation surfaces. They do not replace TechQA as the primary corpus or reset the current benchmark lineage.
+### Held-out validation evidence
 
----
+The frozen DEV comparison for Dense Top100 plus `qwen3-rerank` is:
 
-## 1. Why TechQA
+| Metric | Dense | Dense + rerank |
+| --- | ---: | ---: |
+| Recall@5 | 0.643750 | 0.725000 |
+| Recall@20 | 0.818750 | 0.843750 |
+| MRR@10 | 0.518931 | 0.560841 |
 
-TechQA matches the project's **Technical Support** domain and supports a continuous evaluation story across retrieval, evidence quality, generation, and abstention.
+This is a held-out retrieval result, not an online-serving claim.
 
-### Retrieval corpus
-
-- **28,481** Technote documents;
-- **610** answerable retrieval queries;
-- **610** deterministic qrels rows;
-- each answerable query has exactly **1 relevant document**.
-
-### Generation / abstention dataset
-
-- **610** answerable questions;
-- **300** impossible questions;
-- **910** QA records total.
-
-This lets the project evaluate the same support domain through the following chain:
+### Portfolio-v1 frozen engineering candidate
 
 ```text
-Dense Retrieval
-      ↓
-Rerank / Hybrid Comparison
-      ↓
-Evidence-level Diagnosis
-      ↓
-Generation Evaluation
-      ↓
-Abstention / Hallucination Evaluation
+Dense chunk Top100 + BM25 chunk Top100
+    -> equal-weight chunk RRF (k=60)
+    -> fused Top100
+    -> qwen3-rerank
+    -> flat_rerank_top14_v1
 ```
 
-Frozen dataset identities and SHA256 values live in:
+R4 C1 Hybrid+Rerank's formal historical status remains **FAIL** because its preregistered MRR promotion gate failed. All three TRAIN aggregate metrics improved and Dense/BM25 lexical complementarity was demonstrated, but the later retention of this fixed Hybrid route is a portfolio-v1 engineering decision—not a rewrite of that formal experiment outcome. No additional fusion tuning is admitted.
 
-- `datasets/techqa/manifest.json`
-- `datasets/techqa/corpus_manifest.json`
+### Unresolved items
+
+- refusal / evidence-sufficiency policy;
+- final generation acceptance;
+- final DEV generation validation;
+- runtime integration;
+- Ticket Agent shared retrieval integration.
+
+Historical `dense_top1_distance > 0.9` does not automatically become the portfolio-v1 refusal contract: Dense Top1 distance is only one first-stage signal while the frozen candidate is Hybrid+rereank.
+
+This README is the published summary of the current portfolio-v1 retrieval/context freeze; historical reports remain the auditable sources for the individual experiments.
 
 ---
 
-## 2. Split Contract
+## Dataset and Split Contract
 
-Question IDs preserve original provenance:
+TechQA supplies 28,481 Technote documents, 610 answerable retrieval queries with deterministic document-level qrels, and 910 generation/abstention QA records (610 answerable, 300 impossible). Each answerable retrieval query has one relevant document.
 
 | Split | Answerable | Impossible | Usage |
 | --- | ---: | ---: | --- |
 | `TRAIN_*` | 450 | 150 | development, failure analysis, parameter selection |
 | `DEV_*` | 160 | 150 | frozen held-out comparison |
 
-Rules:
+TRAIN is the development surface and DEV is held out. Do not inspect individual DEV failures to tune a frozen comparison, remove difficult cases, or turn TRAIN tuning into a DEV claim. Dataset identities and SHA256 values are in `datasets/techqa/manifest.json` and `datasets/techqa/corpus_manifest.json`.
 
-- TRAIN is the development surface;
-- DEV is the held-out comparison surface;
-- once an E0 / E1 comparison is frozen, do not inspect individual DEV failures to tune the compared configuration;
-- hard cases are not removed to improve aggregate metrics.
+## Retrieval Metric Contract
 
-This split discipline is part of the benchmark itself, not optional reporting metadata.
+The runtime retrieves chunks while TechQA qrels are document-level. For formal IR metrics, preserve the raw chunk ranking, collapse to unique `document_id` values at the first occurrence, then evaluate that document ranking. The primary metrics are Document Recall@5, Document Recall@20, and MRR@10. On single-relevant-document TechQA, Recall@K and Hit@K are numerically equivalent.
 
----
+## Experiment Decision Table
 
-## 3. Retrieval Contract
+| Stage | Question | Key evidence | Formal status | Portfolio decision |
+| --- | --- | --- | --- | --- |
+| E0 Dense | Establish a baseline? | Frozen Dense route. | Baseline | Historical comparator. |
+| E1 Dense+rereank | Does reranking improve held-out retrieval? | DEV R@5 .643750 -> .725000; R@20 .818750 -> .843750; MRR .518931 -> .560841. | PASS | Held-out evidence retained. |
+| R4 C1 Hybrid+rereank | Does Hybrid+rereank clear the preregistered promotion gates? | TRAIN E1 .691111/.815556/.567206; Hybrid .702222/.831111/.570929. | **FAIL** | Fixed Hybrid route retained later as a portfolio-v1 engineering candidate; no fusion tuning. |
+| R1 evidence audit | Are document hits answer evidence? | 60 labels; 54 usable cases. | Diagnostic | Use evidence-hit accounting. |
+| G1 document-local | Does this Stage2 context hypothesis promote? | Aggregate gain with catastrophic regression. | NO_GO | Historical experimental branch. |
+| G2-A rerank-informed admission | Does rerank-informed admission promote? | 2 wins / 25 ties / 3 losses; 2 catastrophic regressions. | NO_GO | Historical experimental branch. |
+| Retrieval frontier freeze | Are more retrieval parameters justified? | Post-hoc frontier audit closed without admitting another retrieval parameter-search cycle. | CLOSED | Retrieval parameter research closed; no RRF-k, candidate-depth, source-weight, quota, or per-doc-cap tuning. |
+| Final context budget | What K reaches the audited ceiling? | K14 and K20: answer 35/54; useful 43/54. | Selected | Flat Top14. |
+| Final locality recovery | Can second locality rerank recover residuals? | Answer 35 -> 35; useful 43 -> 43; 0/7 actionable recovery. | Rejected | No locality second rerank. |
+| TechQA structure forensic | Is structure observable for diagnosis? | 28,481 docs; 0.994347 allowlist coverage, not parser accuracy. | Diagnostic | Bounded synthesis only. |
+| Structure-preserving synthesis | Does static parent expansion help net hits? | Answer 35 -> 32; useful 43 -> 38; 2 miss->hit, 5 hit->miss. | Rejected | No parent expansion. |
+| Failure attribution | What caused the regressions? | 5/5 budget crowd-out; 2/2 whole-document recovery; median docs 12 -> 4.5. | Established for audited cases | Retain Flat Top14. |
+| Portfolio-v1 freeze | What is the contract? | Fixed retrieval route and `flat_rerank_top14_v1`. | CLOSED | Stop retrieval/context research. |
 
-The online RAG retrieves **chunks**, while TechQA qrels are **document-level**.
+Static parent expansion traded cross-document breadth for within-document depth under a fixed context budget. This supports the audited Flat Top14 decision; it does **not** establish that breadth is always better than depth, Parent-Child is bad, or document structure is generally ineffective.
 
-For formal IR evaluation:
+## Historical Generation Harness
 
-1. preserve the raw chunk ranking;
-2. collapse chunks to unique `document_id` values;
-3. retain each document at the rank where its first chunk appears;
-4. evaluate the collapsed document ranking against qrels.
+`document_aware_forward_expansion_v1` remains the real **historical generation harness context policy** and its artifacts are retained. It is **not** the frozen portfolio-v1 final context policy.
 
-Because each answerable TechQA query has exactly one relevant Technote:
+The frozen portfolio-v1 context is `flat_rerank_top14_v1`. Final refusal and generation contracts remain unresolved. G1 and G2-A are historical TRAIN experiments with formal NO_GO outcomes; see their reports for their detailed evidence rather than treating them as current design.
 
-- Document Recall@K and Hit@K are numerically equivalent on this benchmark;
-- MRR additionally measures how early the first relevant document appears.
-
-Primary retrieval metrics:
-
-- Document Recall@5
-- Document Recall@20
-- MRR@10
-
-This contract prevents a chunk-level implementation detail from being silently compared against document-level gold labels.
-
----
-
-## 4. Frozen Dense → Rerank Result
-
-Formal held-out DEV comparison:
-
-| Method | Recall@5 | Recall@20 | MRR@10 |
-| --- | ---: | ---: | ---: |
-| Dense baseline | 0.643750 | 0.818750 | 0.518931 |
-| Dense Top-100 + `qwen3-rerank` | **0.725000** | **0.843750** | **0.560841** |
-
-Equivalent presentation:
-
-- Recall@5: **64.4% → 72.5% (+8.1pp)**
-- Recall@20: **81.9% → 84.4%**
-- MRR@10: **0.519 → 0.561**
-
-The important claim is the improvement on the **same frozen held-out benchmark**, not an isolated cross-benchmark absolute score.
-
-Primary report:
-
-- `reports/e1_rerank/comparison.md`
-
----
-
-## 5. Controlled Retrieval Experiments
-
-The evaluation line did not stop at a single successful reranker result.
-
-Offline comparisons include:
-
-- Dense Retrieval;
-- BM25;
-- Dense + BM25 / RRF Hybrid;
-- Dense / Hybrid candidate pools + `qwen3-rerank`.
-
-These are **offline evaluation routes**. They are not claims that the online API serving path has switched to Hybrid Retrieval.
-
-### C1 Hybrid + Rerank decision
-
-C1 improved all three TRAIN aggregate metrics, but did not clear the preregistered early-rank MRR gate:
+## Evaluation Lineage
 
 ```text
-Recall@20 gate: PASS
-MRR@10 gate: FAIL
-Overall C1 decision: FAIL
+Frozen TechQA contract
+  -> E0 Dense
+  -> E1 Dense+rereank held-out improvement
+  -> BM25/RRF complementarity
+  -> R4 C1 formal FAIL
+  -> evidence-level audit
+  -> G1/G2 NO_GO
+  -> retrieval frontier closure
+  -> Flat context budget analysis
+  -> Top14 selected
+  -> locality second-rerank rejected
+  -> TechQA structure forensic
+  -> structure-preserving synthesis rejected
+  -> budget-crowd-out attribution
+  -> portfolio-v1 retrieval/context freeze
 ```
 
-The route was therefore stopped instead of being described as a successful optimization merely because some metrics increased.
+`retrieval_parameter_research = CLOSED` and `context_assembly_research = CLOSED`. Reopen only for a new failure mode outside portfolio-v1 finalization, not to tune current artifacts.
 
-Relevant reports:
+## Artifact Map
 
-- `reports/r4_c1_hybrid_rerank/comparison.md`
-- `reports/r4_c1_hybrid_rerank/postmortem_decision.md`
+Published report entry points on the current GitHub branch:
 
-This is an explicit **go / no-go evaluation decision**, not just metric logging.
+- Held-out E1: `reports/e1_rerank/comparison.md`
+- Hybrid R4 C1: `reports/r4_c1_hybrid_rerank/`
+- Evidence audit: `reports/r1_evidence_audit/`
+- Historical G1/G2: `reports/g1_document_local/`, `reports/g2_rerank_informed_admission/`
+- Retrieval frontier audit: `reports/retrieval_frontier_freeze/`
 
----
+The newer Flat Top14, locality, structure-forensic, structure-preserving-synthesis, failure-attribution, and portfolio-v1 freeze artifacts were produced in the local closure lineage and are summarized above. They should be published together with that lineage rather than represented here as GitHub paths that do not yet exist on this branch.
 
-## 6. Evidence-level Audit
+## Leakage, Reproducibility, and Scope
 
-Document-level success can hide a more important failure mode:
+Do not use gold answers or contexts for retrieval, hard-code question-to-document mappings, retune from individual frozen DEV failures, or present TRAIN tuning as held-out gains. Formal runs record commit, dataset identity, file SHA256, split, model/configuration, latency, dependency, and checkpoint/manifest identities.
 
-> The correct document may be retrieved while the actual answer-bearing evidence remains too low in the chunk ranking to reach the final context.
+Current non-claims:
 
-To separate document retrieval from evidence quality, the project adds a small audited evidence layer:
+- online runtime remains Dense Chroma;
+- the Hybrid+rereank route is an evaluated/frozen candidate, not serving;
+- R4 C1 remains formal FAIL;
+- Flat Top14 is a TRAIN-development selection, not a universal optimum;
+- locality and structure-expansion negatives do not generalize to Parent-Child or document structure generally;
+- refusal policy and final generation validation are not frozen.
 
-- **60** labeled TRAIN queries;
-- **54** formally evaluated queries;
-- **187** candidate chunk labels;
-- labels distinguish weak / irrelevant, useful, and answer-bearing evidence.
-
-Evidence-level metrics include:
-
-- AnswerEvidenceHit@K
-- AnswerEvidenceMRR@10
-- UsefulEvidenceHit@K
-- GoldDocHitButEvidenceMissRate@K
-
-The audit is used for **failure attribution and route selection**. It does not replace the official TechQA document-level benchmark.
-
-Relevant artifacts:
-
-- `reports/r1_evidence_audit/evidence_labels.jsonl`
-- `reports/r1_evidence_audit/evidence_metrics.json`
-
-A key conclusion from this layer is:
-
-> **Document hit != answer evidence hit.**
-
-This explains why improving document-level Recall alone is not sufficient to guarantee better generation context.
-
----
-
-## 7. Generation / Abstention Evaluation
-
-TechQA also provides the project's main generation and abstention evaluation surface.
-
-Dataset:
-
-- 610 answerable;
-- 300 impossible;
-- 910 total QA records.
-
-The generation harness tracks:
-
-- correctness;
-- faithfulness;
-- abstention accuracy;
-- hallucination rate;
-- end-to-end latency;
-- retrieved context identities;
-- frozen run identity / manifest / checkpoints.
-
-Current retrieval-to-context policy used by the generation harness:
-
-```text
-Dense Top-100
-   ↓
-qwen3-rerank
-   ↓
-Top-3 rerank anchors
-   + Dense Top-1 rescue anchor
-   ↓
-forward sibling expansion per unique anchor document
-   ↓
-deduplicate
-   ↓
-max 16 context chunks
-```
-
-Policy identifier:
-
-```text
-document_aware_forward_expansion_v1
-```
-
-Implementation:
-
-- `eval_techqa_generation.py`
-
-### G1 document-local evidence experiment
-
-G1 tested a different Stage2 evidence-construction hypothesis without promoting it into the serving path:
-
-```text
-historical E0 ranking
-   ↓
-first 5 unique candidate documents
-   ↓
-full frozen document-local chunks
-   ↓
-merged qwen3-rerank
-   ↓
-Top16 evidence chunks
-```
-
-The formal 30-case method-label-blinded comparison against E1 produced:
-
-| Metric | E1 | G1 |
-| --- | ---: | ---: |
-| COMPLETE | 24 / 30 | **28 / 30** |
-| PARTIAL | 1 / 30 | 1 / 30 |
-| INSUFFICIENT | 5 / 30 | **1 / 30** |
-| Macro claim coverage | 0.825000 | **0.955556** |
-
-Pairwise movement was **6 wins / 22 ties / 2 losses** for G1. However, one loss (`TRAIN_Q346`) met the preregistered catastrophic-regression definition `E1=COMPLETE && G1=INSUFFICIENT`.
-
-Therefore:
-
-```text
-aggregate evidence sufficiency: improved
-preregistered catastrophic-regression gate: failed
-formal G1 decision: NO_GO
-reference policy: keep E1
-```
-
-A 65-claim transition forensic found 6 newly covered claims and 2 lost claims. The two regressions had different, non-repeating boundaries: one candidate-document admission miss (`TRAIN_Q346`) and one continuity miss (`TRAIN_Q492`). Because neither mechanism repeated elsewhere in the frozen sample, the project does not patch G1 against those already-inspected TRAIN cases.
-
-Full closeout:
-
-- `reports/g1_document_local/final_decision.md`
-- `reports/g1_document_local/evidence_sufficiency_30case_preregistration_v1_1.json`
-
-Important boundary:
-
-> The G1 result is a conditional evidence-sufficiency experiment on TRAIN cases under a frozen Stage2 contract. It is **not** a production generation uplift, a full-TechQA retrieval improvement, or evidence that G1 replaced E1.
-
-### G2-A rerank-informed document admission
-
-G2-A tested rerank-informed document admission on a fresh TRAIN sample of 30 cases. G1 admitted the first five unique documents by frozen Dense order; G2-A admitted the first five unique documents by one shared global rerank over the same Dense Top100. G2 changed no downstream document expansion or evidence-selection contract.
-
-| Metric | G1 | G2-A |
-| --- | ---: | ---: |
-| COMPLETE | 19 | 19 |
-| PARTIAL | 2 | 1 |
-| INSUFFICIENT | 9 | 10 |
-| Macro claim coverage | 0.666667 | 0.650000 |
-| Pairwise wins / ties / losses | - | 2 / 25 / 3 |
-| Catastrophic regressions | - | 2 |
-
-Final decision: **NO_GO**. E1 remains the reference policy; G1 and G2-A remain experimental NO_GO branches. G2-A is not promoted over E1. This was a fresh TRAIN development experiment, not frozen DEV validation. It does not establish generation accuracy uplift or production latency/cost improvement, and it does not show that global reranking is generally harmful. It only rejects this specific rerank-informed five-document admission policy.
-
-The detailed post-hoc, non-confirmatory movement analysis is in [G2 Rerank-Informed Admission Post-Hoc Forensic Analysis](reports/g2_rerank_informed_admission/post_hoc_forensic_analysis.md). The forensic report records the Task 7/8 execution deviations and confirms that no judgment, analytical logic, or gate logic changed after unblinding.
-
----
-
-## 8. Leakage Rules
-
-Do not:
-
-- construct the retrieval corpus from NVIDIA gold contexts;
-- use gold answers during retrieval;
-- substitute gold contexts for actual retrieved context in end-to-end evaluation;
-- hard-code question IDs to document IDs;
-- tune a frozen comparison from individual DEV failures;
-- remove difficult cases to improve reported metrics;
-- report TRAIN tuning results as held-out DEV gains;
-- patch Q346/Q492-specific rules and present the same 30-case sample as fresh validation.
-
-The goal is to preserve a benchmark that can still falsify an optimization hypothesis.
-
----
-
-## 9. Reproducibility Contract
-
-Formal runs record enough identity to reproduce or audit the result, including:
-
-- project commit SHA;
-- dataset repository and revision;
-- raw-file SHA256 values;
-- loaded corpus / query counts;
-- split rules;
-- embedding / reranker / judge identities;
-- retrieval and context-policy configuration;
-- latency;
-- dependency versions;
-- checkpoint / manifest identities where applicable.
-
-This prevents an aggregate score from becoming detached from the exact data and configuration that produced it.
-
----
-
-## 10. Evaluation Lineage
-
-The current evaluation story is intentionally continuous:
-
-```text
-Frozen TechQA data contract
-        ↓
-E0 Dense baseline
-        ↓
-E1 qwen3-rerank held-out improvement
-        ↓
-BM25 / RRF / Hybrid controlled comparison
-        ↓
-C1 preregistered gate → STOP
-        ↓
-Evidence-level audit
-        ↓
-Candidate coverage vs evidence-ranking diagnosis
-        ↓
-E1 document-aware context policy
-        ↓
-G1 document-local evidence experiment
-        ↓
-aggregate gain + catastrophic gate failure → NO_GO
-        ↓
-G2-A rerank-informed 5-document admission
-        ↓
-2 wins / 25 ties / 3 losses + 2 catastrophic regressions
-        ↓
-NO_GO
-        ↓
-keep E1 reference; retain G1/G2-A as experimental evidence
-```
-
-The value of this lineage is not that every experiment wins. The value is that each result determines the next engineering question without resetting the corpus, benchmark, or evaluation contract.
-
----
-
-## 11. Artifact Map
-
-Key entry points:
-
-```text
-experiments/evals/
-├── README.md
-├── datasets/techqa/
-│   ├── manifest.json
-│   └── corpus_manifest.json
-├── reports/
-│   ├── e1_rerank/
-│   ├── r4_c1_hybrid_rerank/
-│   ├── r1_evidence_audit/
-│   ├── g0_generation/
-│   └── g1_document_local/
-│       ├── evidence_sufficiency_30case_preregistration_v1_1.json
-│       └── final_decision.md
-│   └── g2_rerank_informed_admission/
-│       └── post_hoc_forensic_analysis.md
-├── eval_techqa_generation.py
-├── eval_techqa_hybrid_rerank.py
-└── rerankers/
-```
-
-For the application-level architecture and Agent workflow, return to the repository root [README](../../README.md).
-
----
-
-## 12. Current Scope
-
-TechQA is the **long-term primary technical-support corpus and benchmark** for this project.
-
-Current claims are intentionally bounded:
-
-- formal retrieval claims use the frozen TechQA contract;
-- online RAG remains Dense Chroma unless runtime code says otherwise;
-- Hybrid / RRF / reranking experiments remain offline evaluation evidence unless explicitly promoted into serving;
-- evidence-level audit is diagnostic and does not replace official document metrics;
-- G1 improved evidence sufficiency in its frozen conditional 30-case experiment but failed its preregistered catastrophic-regression gate and therefore does not replace E1;
-- G2-A rerank-informed five-document admission failed its preregistered gates and does not replace E1; its five-case movement analysis is post-hoc diagnostic evidence only;
-- generation uplift is not claimed before frozen generation evaluation is complete;
-- multi-source / conflict-resolution / autonomous Agentic RAG capability is not claimed by this benchmark.
-
-If new stress sets are added later, they should extend this evaluation system rather than replace the existing TechQA lineage and force a new primary-corpus embedding / benchmark reset.
-
-## 13. Retrieval Line Closeout
-
-Retrieval research line frozen as of **2026-09-10**.
-
-- E1 remains the reference policy.
-- G1 and G2-A remain experimental **NO_GO** evidence.
-- The 30 G2 cases are now design/diagnostic cases and cannot serve as future confirmation evidence.
-- The final offline frontier audit is exploratory only: [final offline frontier audit](reports/retrieval_frontier_freeze/final_offline_frontier_audit.md).
-
-Any future G3 requires:
-
-- new preregistration;
-- fresh TRAIN confirmation cases;
-- no reuse of G1/G2 forensic cases as confirmation;
-- explicit new authorization.
+For application architecture and the Agent workflow, see the repository [README](../../README.md).
