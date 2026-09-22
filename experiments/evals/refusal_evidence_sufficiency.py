@@ -5,7 +5,7 @@ import hashlib
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, Iterable, Literal, Mapping, Sequence
 
 DEFAULT_FREEZE_PATH = Path(
     "experiments/evals/reports/portfolio_v1_rag_freeze/freeze.json"
@@ -40,8 +40,15 @@ EXPECTED_LABELED_CASES = 60
 EXPECTED_USABLE_CASES = 54
 EXPECTED_QUESTIONABLE_CASES = 6
 EXPECTED_SUFFICIENT_CASES = 35
-EXPECTED_INSUFFICIENT_CASES = 19
+EXPECTED_INSUFFICIENT_CASES = 16
+EXPECTED_AMBIGUOUS_CASES = 3
 FROZEN_CONTEXT_TOP_K = 14
+
+PhaseBTarget = Literal[
+    "SUFFICIENT_PROXY",
+    "INSUFFICIENT_PROXY",
+    "AMBIGUOUS_MULTI_CHUNK",
+]
 
 CLASSIFIER_SYSTEM_PROMPT = """
 You are an evidence-sufficiency gate for a technical-support RAG system.
@@ -90,7 +97,15 @@ class ClassifierInput:
 class PhaseBCase:
     question_id: str
     classifier_input: ClassifierInput
-    evidence_sufficient: bool
+    target_class: PhaseBTarget
+
+    @property
+    def evidence_sufficient(self) -> bool:
+        return self.target_class == "SUFFICIENT_PROXY"
+
+    @property
+    def binary_gate_eligible(self) -> bool:
+        return self.target_class != "AMBIGUOUS_MULTI_CHUNK"
 
 
 @dataclass(frozen=True)
@@ -104,6 +119,8 @@ class PhaseAPreflightSummary:
     usable_case_count: int
     sufficient_case_count: int
     insufficient_case_count: int
+    ambiguous_case_count: int
+    gated_case_count: int
     context_top_k: int
     provider_calls: int
     dev_artifact_opened: bool
@@ -353,7 +370,13 @@ def build_phase_b_cases(
             for item in candidate_labels
             if isinstance(item, Mapping) and int(item["evidence_label"]) == 2
         }
-        evidence_sufficient = bool(top_chunk_ids & answer_bearing_ids)
+
+        if top_chunk_ids & answer_bearing_ids:
+            target_class: PhaseBTarget = "SUFFICIENT_PROXY"
+        elif answer_bearing_ids:
+            target_class = "INSUFFICIENT_PROXY"
+        else:
+            target_class = "AMBIGUOUS_MULTI_CHUNK"
 
         cases.append(
             PhaseBCase(
@@ -362,7 +385,7 @@ def build_phase_b_cases(
                     question=str(snapshot["question"]),
                     sources=sources,
                 ),
-                evidence_sufficient=evidence_sufficient,
+                target_class=target_class,
             )
         )
 
@@ -450,7 +473,8 @@ def _classifier_input_row(case: PhaseBCase) -> dict[str, Any]:
 def _target_row(case: PhaseBCase) -> dict[str, Any]:
     return {
         "question_id": case.question_id,
-        "evidence_sufficient": case.evidence_sufficient,
+        "target_class": case.target_class,
+        "binary_gate_eligible": case.binary_gate_eligible,
     }
 
 
@@ -518,8 +542,20 @@ def run_phase_a_preflight(
             f"usable Phase B case count mismatch: {len(cases)}"
         )
 
-    sufficient_count = sum(case.evidence_sufficient for case in cases)
-    insufficient_count = len(cases) - sufficient_count
+    sufficient_count = sum(
+        case.target_class == "SUFFICIENT_PROXY"
+        for case in cases
+    )
+    insufficient_count = sum(
+        case.target_class == "INSUFFICIENT_PROXY"
+        for case in cases
+    )
+    ambiguous_count = sum(
+        case.target_class == "AMBIGUOUS_MULTI_CHUNK"
+        for case in cases
+    )
+    gated_count = sufficient_count + insufficient_count
+
     if sufficient_count != EXPECTED_SUFFICIENT_CASES:
         raise RuntimeError(
             "Flat Top14 answer-bearing count mismatch: "
@@ -528,7 +564,19 @@ def run_phase_a_preflight(
         )
     if insufficient_count != EXPECTED_INSUFFICIENT_CASES:
         raise RuntimeError(
-            "Flat Top14 insufficient-case count mismatch"
+            "Flat Top14 defensible insufficient-proxy count mismatch: "
+            f"actual={insufficient_count}, "
+            f"expected={EXPECTED_INSUFFICIENT_CASES}"
+        )
+    if ambiguous_count != EXPECTED_AMBIGUOUS_CASES:
+        raise RuntimeError(
+            "multi-chunk ambiguous-case count mismatch: "
+            f"actual={ambiguous_count}, "
+            f"expected={EXPECTED_AMBIGUOUS_CASES}"
+        )
+    if gated_count != 51:
+        raise RuntimeError(
+            f"binary Phase B gate must contain 51 cases: {gated_count}"
         )
 
     for case in cases:
@@ -565,6 +613,8 @@ def run_phase_a_preflight(
         usable_case_count=len(cases),
         sufficient_case_count=sufficient_count,
         insufficient_case_count=insufficient_count,
+        ambiguous_case_count=ambiguous_count,
+        gated_case_count=gated_count,
         context_top_k=FROZEN_CONTEXT_TOP_K,
         provider_calls=0,
         dev_artifact_opened=False,
@@ -626,8 +676,13 @@ def main() -> None:
 
     print("REFUSAL_PREFLIGHT=PASS")
     print(f"USABLE_CASES={summary.usable_case_count}")
-    print(f"SUFFICIENT_CASES={summary.sufficient_case_count}")
-    print(f"INSUFFICIENT_CASES={summary.insufficient_case_count}")
+    print(f"SUFFICIENT_PROXY_CASES={summary.sufficient_case_count}")
+    print(f"INSUFFICIENT_PROXY_CASES={summary.insufficient_case_count}")
+    print(
+        "AMBIGUOUS_MULTI_CHUNK_CASES="
+        f"{summary.ambiguous_case_count}"
+    )
+    print(f"GATED_CASES={summary.gated_case_count}")
     print(f"CONTEXT_TOP_K={summary.context_top_k}")
     print(f"PROVIDER_CALLS={summary.provider_calls}")
     print("DEV_ARTIFACT_OPENED=NO")
