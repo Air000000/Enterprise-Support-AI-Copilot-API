@@ -42,6 +42,8 @@ R4 C1 Hybrid+Rerank's formal historical status remains **FAIL** because its prer
 
 Historical `dense_top1_distance > 0.9` does not automatically become the portfolio-v1 refusal contract: Dense Top1 distance is only one first-stage signal while the frozen candidate is Hybrid+rereank.
 
+The next refusal stage is preregistered as an explicit evidence-sufficiency classifier over frozen Flat Top14 context: [refusal_evidence_sufficiency/preregistration.md](reports/refusal_evidence_sufficiency/preregistration.md). DEV remains closed during this design stage.
+
 The published freeze bundle is in [reports/portfolio_v1_rag_freeze/](reports/portfolio_v1_rag_freeze/). Historical reports remain the auditable sources for the individual experiments.
 
 ---
