@@ -165,8 +165,10 @@ Before any classifier call:
    - context policy=`flat_rerank_top14_v1`
    - TopK=14
 3. verify the 54-case evidence audit still contains:
-   - 35 answer-bearing hits at Top14
-   - 19 answer-bearing misses at Top14
+   - 35 answer-bearing hits at Top14;
+   - 19 answer-bearing misses at Top14;
+   - among those 19 misses, 16 rows have a label=2 chunk elsewhere in the frozen annotation set;
+   - 3 rows have no label=2 candidate anywhere and are therefore marked AMBIGUOUS_MULTI_CHUNK for the context-level gate;
 4. construct classifier input records without exposing evidence labels to the classifier path;
 5. add tripwire tests proving gold answer / qrels / evidence labels cannot enter classifier input;
 6. perform zero provider calls.
@@ -175,6 +177,11 @@ Exit:
 
 ```text
 REFUSAL_PREFLIGHT=PASS
+USABLE_CASES=54
+SUFFICIENT_PROXY_CASES=35
+INSUFFICIENT_PROXY_CASES=16
+AMBIGUOUS_MULTI_CHUNK_CASES=3
+GATED_CASES=51
 PROVIDER_CALLS=0
 DEV_ARTIFACT_OPENED=NO
 ```
