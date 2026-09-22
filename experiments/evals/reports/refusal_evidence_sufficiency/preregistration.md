@@ -520,3 +520,54 @@ Expected stop point:
 ```text
 NEXT_ACTION=STOP_FOR_REFUSAL_PREFLIGHT_REVIEW
 ```
+
+
+## 17. Phase B executable run contract
+
+The paid Phase B runner is separated into two stages so the classifier loop
+cannot read the frozen targets.
+
+Frozen run contract:
+
+- model: `qwen3.5-plus-2026-04-20`
+- region/deployment scope: Singapore / International
+- temperature: `0.0`
+- thinking: disabled
+- response format: JSON object
+- maximum output tokens: 256
+- maximum provider calls: 54
+- hard estimated cost cap: CNY 3.0
+- classifier input SHA256:
+  `bf0164d096758bf0c4cdda3ea0e106a3914e6e43aa1b627f13e8d6cd7efb9fa9`
+- amended target SHA256:
+  `7b1535d033da3b8bf6b6d94c9a6f93105c76e593828dd53e1b0873d35b89e655`
+
+The exact machine-readable contract is:
+
+`phase_b_run_contract.json`
+
+Alibaba Cloud Model Studio's current International pricing table lists
+`qwen3.5-plus-2026-04-20` at CNY 2.936 / 1M input tokens and
+CNY 17.614 / 1M output tokens for the <=256K-token band. The contract stores
+that pricing snapshot only for experiment cost accounting; runtime billing
+remains provider-controlled.
+
+Execution is intentionally explicit:
+
+```bash
+# zero-provider runner preflight
+python -m experiments.evals.refusal_phase_b_runner
+
+# paid classifier run; this stage does not open targets
+python -m experiments.evals.refusal_phase_b_runner --run-paid
+
+# unblind only after all 54 predictions are checkpointed
+python -m experiments.evals.refusal_phase_b_runner --evaluate
+```
+
+The paid loop is resumable from
+`data/refusal_evidence_sufficiency_phase_b/predictions.jsonl`.
+
+The target file is not an argument to the paid-loop function. It is opened
+only by the separate evaluation command after the 54-call checkpoint is
+complete.
