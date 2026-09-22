@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "status": "FROZEN_FOR_PORTFOLIO_V1",
+  "base_main_sha": "a39cdae8a3054e61b1133f688befef29c3a6de22",
+  "local_lineage": {
+    "final_context_budget_commit": "e8e6f04eeca2c63094627d913b5223a1dceaaef1",
+    "closure_commit": "6948dfdd5beed1c2664ec72922f70e82b81a46a6",
+    "note": "Local provenance only; these SHAs were not published GitHub refs when this freeze bundle was created."
+  },
+  "retrieval": {
+    "dense_k": 100,
+    "bm25_k": 100,
+    "fusion": "equal_weight_chunk_rrf",
+    "rrf_k": 60,
+    "fused_k": 100,
+    "reranker_model": "qwen3-rerank",
+    "parameter_research_closed": true
+  },
+  "context": {
+    "policy": "flat_rerank_top14_v1",
+    "top_k": 14,
+    "dense_top1_rescue": false,
+    "forward_siblings": 0,
+    "locality_second_rerank": false,
+    "whole_document_expansion": false,
+    "section_expansion": false,
+    "parent_child": false,
+    "research_closed": true
+  },
+  "historical_status": {
+    "r4_c1_hybrid_rerank": "FAIL",
+    "locality_result": "REJECTED_NO_GAIN",
+    "structure_synthesis_result": "REJECTED_NET_REGRESSION",
+    "failure_attribution": "BUDGET_CROWD_OUT"
+  },
+  "audited_evidence": {
+    "usable_cases": 54,
+    "flat_top14": {
+      "answer_hits": 35,
+      "useful_hits": 43
+    },
+    "flat_top20": {
+      "answer_hits": 35,
+      "useful_hits": 43
+    },
+    "structure_synthesis": {
+      "answer_hits": 32,
+      "useful_hits": 38,
+      "miss_to_hit": 2,
+      "hit_to_miss": 5
+    }
+  },
+  "unresolved": {
+    "refusal_policy": true,
+    "generation_acceptance": true,
+    "final_dev_generation": true,
+    "runtime_integration": true,
+    "ticket_agent_shared_retrieval": true
+  }
+}

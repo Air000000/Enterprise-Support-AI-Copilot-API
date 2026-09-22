@@ -534,10 +534,11 @@ Workflow：
 
 1. [README.md](README.md) — 项目定位与能力总览；
 2. [experiments/evals/README.md](experiments/evals/README.md) — TechQA 长期主评测与实验契约；
-3. [docs/architecture.md](docs/architecture.md) — 系统结构与边界；
-4. [docs/agent_workflow.md](docs/agent_workflow.md) — Ticket Agent preview / confirm；
-5. [docs/security.md](docs/security.md) — 当前认证与权限边界；
-6. `experiments/evals/reports/` — retrieval / hybrid / evidence / generation artifacts。
+3. [Portfolio-v1 RAG Architecture Freeze](experiments/evals/reports/portfolio_v1_rag_freeze/architecture_freeze.md) — 当前冻结的 retrieval / context 工程决策；
+4. [docs/architecture.md](docs/architecture.md) — 系统结构与边界；
+5. [docs/agent_workflow.md](docs/agent_workflow.md) — Ticket Agent preview / confirm；
+6. [docs/security.md](docs/security.md) — 当前认证与权限边界；
+7. `experiments/evals/reports/` — retrieval / hybrid / evidence / generation artifacts。
 
 `docs/*_report.md` 与 `docs/superpowers/` 中保留历史阶段报告、设计与实验计划，用于追溯项目演进；历史 roadmap 不自动代表当前产品方向。
 
