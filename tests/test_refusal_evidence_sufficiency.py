@@ -118,7 +118,9 @@ def test_phase_b_cases_use_topk_answer_evidence_and_exclude_questionable():
 
     assert len(cases) == 1
     assert cases[0].question_id == "TRAIN_Q001"
+    assert cases[0].target_class == "SUFFICIENT_PROXY"
     assert cases[0].evidence_sufficient is True
+    assert cases[0].binary_gate_eligible is True
     assert [
         source.chunk_id
         for source in cases[0].classifier_input.sources
@@ -147,7 +149,37 @@ def test_phase_b_cases_mark_missing_answer_chunk_insufficient():
         top_k=2,
     )
 
+    assert cases[0].target_class == "INSUFFICIENT_PROXY"
     assert cases[0].evidence_sufficient is False
+    assert cases[0].binary_gate_eligible is True
+
+
+def test_phase_b_cases_mark_no_label2_annotation_ambiguous_multi_chunk():
+    cases = refusal.build_phase_b_cases(
+        [_snapshot("TRAIN_Q001")],
+        [_result("TRAIN_Q001")],
+        [
+            {
+                "question_id": "TRAIN_Q001",
+                "candidate_labels": [
+                    {
+                        "chunk_id": "doc_chunk_0",
+                        "evidence_label": 1,
+                    },
+                    {
+                        "chunk_id": "doc_chunk_1",
+                        "evidence_label": 1,
+                    },
+                ],
+                "questionable_gold": False,
+            },
+        ],
+        top_k=2,
+    )
+
+    assert cases[0].target_class == "AMBIGUOUS_MULTI_CHUNK"
+    assert cases[0].evidence_sufficient is False
+    assert cases[0].binary_gate_eligible is False
 
 
 def test_classifier_payload_does_not_expose_labels_ids_or_gold_metadata():
@@ -164,7 +196,7 @@ def test_classifier_payload_does_not_expose_labels_ids_or_gold_metadata():
                 ),
             ),
         ),
-        evidence_sufficient=True,
+        target_class="SUFFICIENT_PROXY",
     )
 
     payload = refusal.classifier_payload(case.classifier_input)
