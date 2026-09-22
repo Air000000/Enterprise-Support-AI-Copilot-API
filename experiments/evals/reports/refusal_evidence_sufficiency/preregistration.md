@@ -165,8 +165,10 @@ Before any classifier call:
    - context policy=`flat_rerank_top14_v1`
    - TopK=14
 3. verify the 54-case evidence audit still contains:
-   - 35 answer-bearing hits at Top14
-   - 19 answer-bearing misses at Top14
+   - 35 answer-bearing hits at Top14;
+   - 19 answer-bearing misses at Top14;
+   - among those 19 misses, 16 rows have a label=2 chunk elsewhere in the frozen annotation set;
+   - 3 rows have no label=2 candidate anywhere and are therefore marked AMBIGUOUS_MULTI_CHUNK for the context-level gate;
 4. construct classifier input records without exposing evidence labels to the classifier path;
 5. add tripwire tests proving gold answer / qrels / evidence labels cannot enter classifier input;
 6. perform zero provider calls.
@@ -175,6 +177,11 @@ Exit:
 
 ```text
 REFUSAL_PREFLIGHT=PASS
+USABLE_CASES=54
+SUFFICIENT_PROXY_CASES=35
+INSUFFICIENT_PROXY_CASES=16
+AMBIGUOUS_MULTI_CHUNK_CASES=3
+GATED_CASES=51
 PROVIDER_CALLS=0
 DEV_ARTIFACT_OPENED=NO
 ```
@@ -187,22 +194,59 @@ Population:
 - final context = frozen Flat Top14;
 - no retrieval, rerank, generation, or judge rerun.
 
-Ground-truth proxy for this **mechanism probe only**:
+### 7.1 Target-compatibility amendment before any paid classifier call
+
+The original binary proxy treated every case without a Top14 `label=2`
+chunk as `INSUFFICIENT`.
+
+A zero-provider review of the already-frozen manual labels found three usable
+queries with **no `label=2` candidate anywhere in the annotation set**:
+
+- `TRAIN_Q526`: the version header and ReporterPlus row are split across chunks;
+- `TRAIN_Q365`: the two CVEs and remediation details are split across chunks;
+- `TRAIN_Q427`: the configuration locations and precedence relation are split across chunks.
+
+Those label notes explicitly describe multi-chunk evidence. The classifier,
+however, evaluates the **whole Top14 context**, not one chunk at a time.
+Therefore those three rows are not defensible hard negatives for a
+context-level sufficiency gate.
+
+This amendment is frozen **before any Phase B classifier output exists**. It
+does not alter the retrieval/context policy and does not use DEV.
+
+Phase B targets are now:
 
 ```text
-evidence_sufficient = at least one label=2 answer-bearing chunk is present in Flat Top14
+SUFFICIENT_PROXY:
+    at least one label=2 answer-bearing chunk is present in Flat Top14
+
+INSUFFICIENT_PROXY:
+    no label=2 chunk is present in Flat Top14,
+    but the frozen annotation set contains at least one label=2 chunk elsewhere
+
+AMBIGUOUS_MULTI_CHUNK:
+    the usable frozen annotation set contains no label=2 chunk at all
 ```
 
-Known class counts before classifier execution:
+Known counts before classifier execution:
 
-- sufficient: 35
-- insufficient: 19
+- `SUFFICIENT_PROXY`: 35
+- `INSUFFICIENT_PROXY`: 16
+- `AMBIGUOUS_MULTI_CHUNK`: 3
+- total: 54
 
-This is not a fresh held-out test. The 54-case audit already influenced context-policy development. The probe answers only whether an explicit evidence-sufficiency classifier is mechanically aligned with the audited evidence labels.
+The three ambiguous rows remain in the paid run and are reported
+descriptively, but they are excluded from the binary promotion gate.
+
+This is still not a fresh held-out test. The 54-case audit already influenced
+context-policy development. The probe asks whether an explicit
+evidence-sufficiency classifier is mechanically aligned with the frozen
+evidence audit on the 51 rows for which the chunk-level labels define a
+defensible binary proxy.
 
 ### Phase B metrics
 
-Report:
+On the 51-row gated subset, report:
 
 - accuracy;
 - balanced accuracy;
@@ -210,12 +254,17 @@ Report:
 - insufficient recall;
 - sufficient -> insufficient count (over-refusal);
 - insufficient -> sufficient count (unsafe-pass proxy);
-- confusion matrix;
+- confusion matrix.
+
+Across all 54 rows, additionally report:
+
+- all classifier decisions;
+- the three `AMBIGUOUS_MULTI_CHUNK` decisions separately;
 - provider calls / tokens / latency.
 
 ### Phase B preregistered gate
 
-All conditions must pass:
+All conditions must pass on the 51-row gated subset:
 
 ```text
 balanced_accuracy >= 0.80
@@ -227,16 +276,22 @@ sufficient_to_insufficient <= 5
 Rationale:
 
 - over-refusal must remain bounded because 35 cases already contain audited answer-bearing evidence;
+- the negative gate should not count rows whose own frozen annotations say the answer is distributed across multiple chunks;
 - insufficient recall must be materially better than chance before paying to extend the policy;
 - this is a portfolio engineering gate, not a statistical theorem.
 
-If any condition fails:
+Any `INSUFFICIENT_PROXY -> SUFFICIENT` disagreement must be retained for
+post-run evidence review. It must not trigger prompt tuning within this
+experiment.
+
+If any gate condition fails:
 
 ```text
 DECISION=REJECT_EVIDENCE_SUFFICIENCY_V1
 ```
 
-Stop. Do not tune the prompt on these 54 labels and rerun under the same experiment label.
+Stop. Do not tune the prompt on these labels and rerun under the same
+experiment label.
 
 If all conditions pass:
 
