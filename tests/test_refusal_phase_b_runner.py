@@ -331,7 +331,11 @@ def test_resolve_classifier_auth_rejects_generic_cross_region_key(
     monkeypatch.delenv("DASHSCOPE_PHASE_B_API_KEY", raising=False)
     monkeypatch.delenv("DASHSCOPE_PHASE_B_BASE_URL", raising=False)
     monkeypatch.delenv("DASHSCOPE_RERANK_API_KEY", raising=False)
+    monkeypatch.delenv("DASHSCOPE_RERANK_BASE_URL", raising=False)
     monkeypatch.setenv("DASHSCOPE_API_KEY", "generic-key")
 
-    with pytest.raises(RuntimeError, match="must not be reused across regions"):
+    with pytest.raises(
+        RuntimeError,
+        match="must not be reused against a Singapore endpoint",
+    ):
         runner.resolve_classifier_auth()
