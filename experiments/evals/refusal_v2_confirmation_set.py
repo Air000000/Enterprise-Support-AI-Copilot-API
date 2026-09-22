@@ -25,6 +25,14 @@ DEFAULT_SELECTION_PATH = Path(
     "experiments/evals/reports/refusal_evidence_sufficiency/"
     "v2_confirmation_selection.json"
 )
+DEFAULT_TARGETS_PATH = Path(
+    "experiments/evals/reports/refusal_evidence_sufficiency/"
+    "v2_confirmation_targets.jsonl"
+)
+DEFAULT_ANNOTATION_FREEZE_PATH = Path(
+    "experiments/evals/reports/refusal_evidence_sufficiency/"
+    "v2_confirmation_annotation_freeze.json"
+)
 
 EXPECTED_METADATA_SHA256 = (
     "69d97231509482ed6bd5ec1c4bc0607acb82a88d11169eb8383592d0ca8b93c7"
@@ -37,6 +45,9 @@ EXPECTED_RESULTS_SHA256 = (
 )
 EXPECTED_PRIOR_LABELS_SHA256 = (
     "d522eff8daba8435d34ee0e51ad8c56fbbbb759b3f71dbf3a253cd9a1b506013"
+)
+EXPECTED_ANNOTATION_PACKET_SHA256 = (
+    "3029acd916bfff10def1448b28181e1d5341513232f6edcb4fafa8dc578092f4"
 )
 SELECTION_SEED = "refusal-v2-confirmation-set-v1"
 PER_STRATUM = 40
@@ -214,6 +225,138 @@ def write_jsonl(path: Path, rows: Sequence[Mapping[str, Any]]) -> None:
             file.write(json.dumps(dict(row), ensure_ascii=False) + "\n")
 
 
+def _jsonl_sha256(rows: Sequence[Mapping[str, Any]]) -> str:
+    digest = hashlib.sha256()
+    for row in rows:
+        digest.update(
+            (json.dumps(dict(row), ensure_ascii=False) + "\n").encode()
+        )
+    return digest.hexdigest()
+
+
+def validate_and_freeze_annotations(
+    expected_packets: Sequence[Mapping[str, Any]],
+    annotated_packets: Sequence[Mapping[str, Any]],
+    *,
+    targets_path: Path,
+    freeze_path: Path,
+    minimum_per_class: int = 25,
+) -> dict[str, Any]:
+    if targets_path.resolve() == freeze_path.resolve():
+        raise RuntimeError("targets and freeze report paths must differ")
+    existing_outputs = [
+        str(path) for path in (targets_path, freeze_path) if path.exists()
+    ]
+    if existing_outputs:
+        raise RuntimeError(
+            "refusing to overwrite frozen annotation output: "
+            + ", ".join(existing_outputs)
+        )
+
+    expected_ids = [str(row["question_id"]) for row in expected_packets]
+    annotated_ids = [str(row["question_id"]) for row in annotated_packets]
+    if annotated_ids != expected_ids:
+        raise RuntimeError("annotated packet IDs or order changed")
+
+    allowed_targets = {"SUFFICIENT", "INSUFFICIENT", "QUESTIONABLE"}
+    targets: list[dict[str, Any]] = []
+    counts = {target: 0 for target in sorted(allowed_targets)}
+    for expected, annotated in zip(
+        expected_packets,
+        annotated_packets,
+        strict=True,
+    ):
+        question_id = str(expected["question_id"])
+        expected_payload = {
+            key: value for key, value in expected.items() if key != "annotation"
+        }
+        annotated_payload = {
+            key: value
+            for key, value in annotated.items()
+            if key != "annotation"
+        }
+        if annotated_payload != expected_payload:
+            raise RuntimeError(f"frozen packet content changed: {question_id}")
+
+        annotation = annotated.get("annotation")
+        if not isinstance(annotation, Mapping) or set(annotation) != {
+            "target_class",
+            "supporting_source_ids",
+            "notes",
+        }:
+            raise RuntimeError(f"invalid annotation schema: {question_id}")
+
+        target_class = annotation["target_class"]
+        supporting_source_ids = annotation["supporting_source_ids"]
+        notes = annotation["notes"]
+        if target_class not in allowed_targets:
+            raise RuntimeError(f"invalid target class: {question_id}")
+        if not isinstance(supporting_source_ids, list) or not all(
+            isinstance(value, str) for value in supporting_source_ids
+        ):
+            raise RuntimeError(f"invalid supporting sources: {question_id}")
+        valid_source_ids = {
+            str(source["source_id"]) for source in expected["sources"]
+        }
+        if (
+            len(set(supporting_source_ids)) != len(supporting_source_ids)
+            or not set(supporting_source_ids).issubset(valid_source_ids)
+        ):
+            raise RuntimeError(f"unknown or duplicate source ID: {question_id}")
+        if target_class == "SUFFICIENT" and not supporting_source_ids:
+            raise RuntimeError(f"SUFFICIENT needs supporting sources: {question_id}")
+        if not isinstance(notes, str) or not notes.strip():
+            raise RuntimeError(f"annotation rationale missing: {question_id}")
+
+        counts[target_class] += 1
+        targets.append(
+            {
+                "question_id": question_id,
+                "target_class": target_class,
+                "supporting_source_ids": supporting_source_ids,
+                "notes": notes.strip(),
+            }
+        )
+
+    write_jsonl(targets_path, targets)
+    usable_per_class = {
+        "SUFFICIENT": counts["SUFFICIENT"],
+        "INSUFFICIENT": counts["INSUFFICIENT"],
+    }
+    decision = (
+        "TARGETS_FROZEN"
+        if min(usable_per_class.values()) >= minimum_per_class
+        else "CANCEL_INSUFFICIENT_CLASS_SUPPORT"
+    )
+    report = {
+        "schema_version": 1,
+        "run": "refusal_v2_confirmation_annotation_v1",
+        "status": decision,
+        "rows": len(targets),
+        "counts": counts,
+        "minimum_usable_per_class": minimum_per_class,
+        "usable_per_class": usable_per_class,
+        "canonical_annotated_packet_sha256": _jsonl_sha256(
+            annotated_packets
+        ),
+        "targets": {
+            "path": str(targets_path).replace("\\", "/"),
+            "sha256": _sha256(targets_path),
+        },
+        "controls": {
+            "provider_calls": 0,
+            "dev_artifact_opened": False,
+            "classifier_predictions_created_by_this_command": False,
+        },
+    }
+    freeze_path.parent.mkdir(parents=True, exist_ok=True)
+    freeze_path.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return report
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Build the fresh TRAIN-only refusal v2 confirmation pool."
@@ -227,6 +370,15 @@ def main() -> None:
     )
     parser.add_argument("--packet-path", default=str(DEFAULT_PACKET_PATH))
     parser.add_argument("--selection-path", default=str(DEFAULT_SELECTION_PATH))
+    parser.add_argument(
+        "--freeze-annotated-packet",
+        help="Validate a completed local packet and freeze compact targets.",
+    )
+    parser.add_argument("--targets-path", default=str(DEFAULT_TARGETS_PATH))
+    parser.add_argument(
+        "--annotation-freeze-path",
+        default=str(DEFAULT_ANNOTATION_FREEZE_PATH),
+    )
     args = parser.parse_args()
 
     expected_hashes = {
@@ -259,6 +411,26 @@ def main() -> None:
             str(row["question_id"]) for row in prior_label_rows
         },
     )
+    if _jsonl_sha256(packets) != EXPECTED_ANNOTATION_PACKET_SHA256:
+        raise RuntimeError("regenerated annotation packet SHA mismatch")
+
+    if args.freeze_annotated_packet:
+        report = validate_and_freeze_annotations(
+            packets,
+            _read_jsonl(args.freeze_annotated_packet),
+            targets_path=Path(args.targets_path),
+            freeze_path=Path(args.annotation_freeze_path),
+        )
+        print(f"REFUSAL_V2_ANNOTATION_FREEZE={report['status']}")
+        print(f"ANNOTATED_CASES={report['rows']}")
+        print(f"SUFFICIENT_CASES={report['counts']['SUFFICIENT']}")
+        print(f"INSUFFICIENT_CASES={report['counts']['INSUFFICIENT']}")
+        print(f"QUESTIONABLE_CASES={report['counts']['QUESTIONABLE']}")
+        print(f"TARGETS_SHA256={report['targets']['sha256']}")
+        print("PROVIDER_CALLS=0")
+        print("DEV_ARTIFACT_OPENED=NO")
+        return
+
     packet_path = Path(args.packet_path)
     write_jsonl(packet_path, packets)
 

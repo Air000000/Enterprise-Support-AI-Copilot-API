@@ -1,5 +1,12 @@
+import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+import pytest
+
 from experiments.evals.refusal_v2_confirmation_set import (
     build_confirmation_pool,
+    validate_and_freeze_annotations,
 )
 
 
@@ -89,3 +96,72 @@ def test_build_confirmation_pool_is_deterministic_and_fresh() -> None:
         == ["Source 1", "Source 2"]
         for packet in packets
     )
+
+
+def test_validate_and_freeze_annotations_rejects_input_changes() -> None:
+    rows = [
+        _case(f"TRAIN_Q{index:03d}", gold_in_top_k=index < 2)
+        for index in range(4)
+    ]
+    metadata, snapshots, results = map(list, zip(*rows, strict=True))
+    packets, _, _ = build_confirmation_pool(
+        metadata,
+        snapshots,
+        results,
+        excluded_question_ids=set(),
+        per_stratum=2,
+        top_k=2,
+    )
+    annotated = json.loads(json.dumps(packets))
+    for index, packet in enumerate(annotated):
+        sufficient = index < 2
+        packet["annotation"] = {
+            "target_class": "SUFFICIENT" if sufficient else "INSUFFICIENT",
+            "supporting_source_ids": ["Source 1"] if sufficient else [],
+            "notes": "Direct support." if sufficient else "Material support missing.",
+        }
+
+    with TemporaryDirectory(prefix=".test-refusal-v2-", dir=".") as directory:
+        output_dir = Path(directory)
+        report = validate_and_freeze_annotations(
+            packets,
+            annotated,
+            targets_path=output_dir / "targets.jsonl",
+            freeze_path=output_dir / "freeze.json",
+            minimum_per_class=2,
+        )
+        assert report["status"] == "TARGETS_FROZEN"
+        assert report["counts"] == {
+            "INSUFFICIENT": 2,
+            "QUESTIONABLE": 0,
+            "SUFFICIENT": 2,
+        }
+        targets = [
+            json.loads(line)
+            for line in (output_dir / "targets.jsonl").read_text().splitlines()
+        ]
+        assert set(targets[0]) == {
+            "question_id",
+            "target_class",
+            "supporting_source_ids",
+            "notes",
+        }
+
+        with pytest.raises(RuntimeError, match="refusing to overwrite"):
+            validate_and_freeze_annotations(
+                packets,
+                annotated,
+                targets_path=output_dir / "targets.jsonl",
+                freeze_path=output_dir / "freeze.json",
+                minimum_per_class=2,
+            )
+
+        annotated[0]["question"] = "Changed question"
+        with pytest.raises(RuntimeError, match="frozen packet content changed"):
+            validate_and_freeze_annotations(
+                packets,
+                annotated,
+                targets_path=output_dir / "changed-targets.jsonl",
+                freeze_path=output_dir / "changed-freeze.json",
+                minimum_per_class=2,
+            )
