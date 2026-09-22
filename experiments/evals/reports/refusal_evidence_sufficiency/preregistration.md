@@ -442,6 +442,22 @@ Not allowed:
 
 Implement **Phase A only** first.
 
+Phase A implementation entry point:
+
+```bash
+python -m experiments.evals.refusal_evidence_sufficiency
+```
+
+It intentionally consumes the frozen local R4 C1 artifacts identified by
+`artifact_hashes.json`. Those large artifacts remain local by repository
+policy, so CI validates the deterministic contract/unit logic while the real
+54-case preflight is executed in the local closure environment that owns the
+frozen artifacts.
+
+Generated Phase A inputs/targets are written below `data/`, which is already
+git-ignored. They separate classifier-visible payloads from evaluation targets
+so the paid classifier path cannot read evidence labels by construction.
+
 Do not call any provider during implementation/preflight.
 
 Expected stop point:
