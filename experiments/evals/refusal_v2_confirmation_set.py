@@ -238,10 +238,13 @@ def validate_and_freeze_annotations(
     expected_packets: Sequence[Mapping[str, Any]],
     annotated_packets: Sequence[Mapping[str, Any]],
     *,
+    annotation_source: str,
     targets_path: Path,
     freeze_path: Path,
     minimum_per_class: int = 25,
 ) -> dict[str, Any]:
+    if annotation_source not in {"human", "ai-draft"}:
+        raise RuntimeError("annotation source must be human or ai-draft")
     if targets_path.resolve() == freeze_path.resolve():
         raise RuntimeError("targets and freeze report paths must differ")
     existing_outputs = [
@@ -323,15 +326,29 @@ def validate_and_freeze_annotations(
         "SUFFICIENT": counts["SUFFICIENT"],
         "INSUFFICIENT": counts["INSUFFICIENT"],
     }
-    decision = (
-        "TARGETS_FROZEN"
-        if min(usable_per_class.values()) >= minimum_per_class
-        else "CANCEL_INSUFFICIENT_CLASS_SUPPORT"
+    class_support_met = (
+        min(usable_per_class.values()) >= minimum_per_class
     )
+    if annotation_source == "human":
+        decision = (
+            "TARGETS_FROZEN"
+            if class_support_met
+            else "CANCEL_INSUFFICIENT_CLASS_SUPPORT"
+        )
+    else:
+        decision = (
+            "AI_DRAFT_TARGETS_FROZEN_FOR_DEVELOPMENT"
+            if class_support_met
+            else "AI_DRAFT_TARGETS_FROZEN_WITH_CLASS_SHORTFALL"
+        )
     report = {
         "schema_version": 1,
         "run": "refusal_v2_confirmation_annotation_v1",
         "status": decision,
+        "annotation_source": annotation_source,
+        "human_confirmation_population_eligible": (
+            annotation_source == "human" and class_support_met
+        ),
         "rows": len(targets),
         "counts": counts,
         "minimum_usable_per_class": minimum_per_class,
@@ -374,6 +391,11 @@ def main() -> None:
         "--freeze-annotated-packet",
         help="Validate a completed local packet and freeze compact targets.",
     )
+    parser.add_argument(
+        "--annotation-source",
+        choices=("human", "ai-draft"),
+        help="Required provenance for a completed annotation packet.",
+    )
     parser.add_argument("--targets-path", default=str(DEFAULT_TARGETS_PATH))
     parser.add_argument(
         "--annotation-freeze-path",
@@ -415,13 +437,17 @@ def main() -> None:
         raise RuntimeError("regenerated annotation packet SHA mismatch")
 
     if args.freeze_annotated_packet:
+        if args.annotation_source is None:
+            parser.error("--annotation-source is required when freezing")
         report = validate_and_freeze_annotations(
             packets,
             _read_jsonl(args.freeze_annotated_packet),
+            annotation_source=args.annotation_source,
             targets_path=Path(args.targets_path),
             freeze_path=Path(args.annotation_freeze_path),
         )
         print(f"REFUSAL_V2_ANNOTATION_FREEZE={report['status']}")
+        print(f"ANNOTATION_SOURCE={report['annotation_source']}")
         print(f"ANNOTATED_CASES={report['rows']}")
         print(f"SUFFICIENT_CASES={report['counts']['SUFFICIENT']}")
         print(f"INSUFFICIENT_CASES={report['counts']['INSUFFICIENT']}")
