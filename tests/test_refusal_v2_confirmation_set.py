@@ -126,11 +126,13 @@ def test_validate_and_freeze_annotations_rejects_input_changes() -> None:
         report = validate_and_freeze_annotations(
             packets,
             annotated,
+            annotation_source="human",
             targets_path=output_dir / "targets.jsonl",
             freeze_path=output_dir / "freeze.json",
             minimum_per_class=2,
         )
         assert report["status"] == "TARGETS_FROZEN"
+        assert report["human_confirmation_population_eligible"] is True
         assert report["counts"] == {
             "INSUFFICIENT": 2,
             "QUESTIONABLE": 0,
@@ -151,16 +153,31 @@ def test_validate_and_freeze_annotations_rejects_input_changes() -> None:
             validate_and_freeze_annotations(
                 packets,
                 annotated,
+                annotation_source="human",
                 targets_path=output_dir / "targets.jsonl",
                 freeze_path=output_dir / "freeze.json",
                 minimum_per_class=2,
             )
+
+        ai_report = validate_and_freeze_annotations(
+            packets,
+            annotated,
+            annotation_source="ai-draft",
+            targets_path=output_dir / "ai-targets.jsonl",
+            freeze_path=output_dir / "ai-freeze.json",
+            minimum_per_class=2,
+        )
+        assert ai_report["status"] == (
+            "AI_DRAFT_TARGETS_FROZEN_FOR_DEVELOPMENT"
+        )
+        assert ai_report["human_confirmation_population_eligible"] is False
 
         annotated[0]["question"] = "Changed question"
         with pytest.raises(RuntimeError, match="frozen packet content changed"):
             validate_and_freeze_annotations(
                 packets,
                 annotated,
+                annotation_source="human",
                 targets_path=output_dir / "changed-targets.jsonl",
                 freeze_path=output_dir / "changed-freeze.json",
                 minimum_per_class=2,
