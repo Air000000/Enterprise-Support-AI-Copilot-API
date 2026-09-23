@@ -1,142 +1,158 @@
-# TechQA Evaluation
+# TechQA 评测总览
 
-This directory is the primary long-term TechQA evaluation harness for Enterprise Support AI Copilot. It records frozen evidence and decisions; it is not an online-runtime configuration file.
+本目录是 Enterprise Support AI Copilot 的长期主评测入口，用于保存冻结实验、评测契约、失败归因与工程决策。这里记录的是离线证据，不是在线运行时配置。
 
-## Portfolio-v1 Frozen Decision
+## 当前冻结结论
 
-### Current online runtime
+### 当前在线运行时
 
-The current online/API serving path is **Dense Chroma Retrieval**. BM25, RRF, Hybrid, reranking, and Flat Top14 are not described as deployed serving behavior.
+当前在线 API 仍使用 **Dense Chroma Retrieval**。BM25、RRF、Hybrid、rerank 和直接 Top14 目前都属于离线评测与冻结工程候选，不描述为已上线能力。
 
-### Held-out validation evidence
+### 冻结 DEV 对比
 
-The frozen DEV comparison for Dense Top100 plus `qwen3-rerank` is:
+Dense Top100 + `qwen3-rerank` 的 frozen DEV 结果：
 
-| Metric | Dense | Dense + rerank |
+| 指标 | Dense | Dense + rerank |
 | --- | ---: | ---: |
 | Recall@5 | 0.643750 | 0.725000 |
 | Recall@20 | 0.818750 | 0.843750 |
 | MRR@10 | 0.518931 | 0.560841 |
 
-This is a held-out retrieval result, not an online-serving claim.
+这是冻结验证集上的检索提升，不是线上效果声明。
 
-### Portfolio-v1 frozen engineering candidate
+### 冻结工程候选
 
 ```text
 Dense chunk Top100 + BM25 chunk Top100
-    -> equal-weight chunk RRF (k=60)
-    -> fused Top100
-    -> qwen3-rerank
-    -> flat_rerank_top14_v1
+    → 等权 chunk RRF (k=60)
+    → 融合 Top100
+    → qwen3-rerank
+    → 直接 Top14
 ```
 
-R4 C1 Hybrid+Rerank's formal historical status remains **FAIL** because its preregistered MRR promotion gate failed. All three TRAIN aggregate metrics improved and Dense/BM25 lexical complementarity was demonstrated, but the later retention of this fixed Hybrid route is a portfolio-v1 engineering decision—not a rewrite of that formal experiment outcome. No additional fusion tuning is admitted.
+R4 C1 Hybrid + rerank 的正式历史结论仍然是 **FAIL**：三项 TRAIN 聚合指标都上涨，但预注册的 MRR 门槛没有通过。后来保留这条固定 Hybrid 路线，是基于整体证据做出的工程冻结，不改写原实验结论，也不意味着已经上线。
 
-### Unresolved items
+### 尚未冻结的部分
 
-- refusal / evidence-sufficiency policy;
-- final generation acceptance;
-- final DEV generation validation;
-- runtime integration;
-- Ticket Agent shared retrieval integration.
+- 证据充分性拒答策略；
+- 最终生成验收协议；
+- 最终 DEV 生成验证；
+- 在线运行时集成；
+- Ticket Agent 复用同一检索链。
 
-Historical `dense_top1_distance > 0.9` does not automatically become the portfolio-v1 refusal contract: Dense Top1 distance is only one first-stage signal while the frozen candidate is Hybrid+rereank.
-
-The next refusal stage is preregistered as an explicit evidence-sufficiency classifier over frozen Flat Top14 context: [refusal_evidence_sufficiency/preregistration.md](reports/refusal_evidence_sufficiency/preregistration.md). DEV remains closed during this design stage.
-
-The published freeze bundle is in [reports/portfolio_v1_rag_freeze/](reports/portfolio_v1_rag_freeze/). Historical reports remain the auditable sources for the individual experiments.
+历史 `dense_top1_distance > 0.9` 不自动成为最终拒答契约，因为冻结工程候选已经不再只有 Dense Top1 这一种检索信号。
 
 ---
 
-## Dataset and Split Contract
+## 数据与划分契约
 
-TechQA supplies 28,481 Technote documents, 610 answerable retrieval queries with deterministic document-level qrels, and 910 generation/abstention QA records (610 answerable, 300 impossible). Each answerable retrieval query has one relevant document.
+TechQA 提供：
 
-| Split | Answerable | Impossible | Usage |
+- 28,481 篇 Technote；
+- 610 条可回答检索问题；
+- 910 条生成 / 拒答问答记录，其中 610 条可回答、300 条不可回答；
+- 每条可回答检索问题只有 1 个 relevant document。
+
+| 数据划分 | 可回答 | 不可回答 | 用途 |
 | --- | ---: | ---: | --- |
-| `TRAIN_*` | 450 | 150 | development, failure analysis, parameter selection |
-| `DEV_*` | 160 | 150 | frozen held-out comparison |
+| `TRAIN_*` | 450 | 150 | 开发、失败归因、方案选择 |
+| `DEV_*` | 160 | 150 | 冻结验证 |
 
-TRAIN is the development surface and DEV is held out. Do not inspect individual DEV failures to tune a frozen comparison, remove difficult cases, or turn TRAIN tuning into a DEV claim. Dataset identities and SHA256 values are in `datasets/techqa/manifest.json` and `datasets/techqa/corpus_manifest.json`.
+TRAIN 是开发面，DEV 是冻结验证面。正式对比冻结后，不通过查看 individual DEV failure 来继续调参，也不把 TRAIN 调优结果包装成 DEV 提升。
 
-## Retrieval Metric Contract
+数据身份和 SHA256 见：
 
-The runtime retrieves chunks while TechQA qrels are document-level. For formal IR metrics, preserve the raw chunk ranking, collapse to unique `document_id` values at the first occurrence, then evaluate that document ranking. The primary metrics are Document Recall@5, Document Recall@20, and MRR@10. On single-relevant-document TechQA, Recall@K and Hit@K are numerically equivalent.
+- `datasets/techqa/manifest.json`
+- `datasets/techqa/corpus_manifest.json`
 
-## Experiment Decision Table
+## 检索指标契约
 
-| Stage | Question | Key evidence | Formal status | Portfolio decision |
-| --- | --- | --- | --- | --- |
-| E0 Dense | Establish a baseline? | Frozen Dense route. | Baseline | Historical comparator. |
-| E1 Dense+rereank | Does reranking improve held-out retrieval? | DEV R@5 .643750 -> .725000; R@20 .818750 -> .843750; MRR .518931 -> .560841. | PASS | Held-out evidence retained. |
-| R4 C1 Hybrid+rereank | Does Hybrid+rereank clear the preregistered promotion gates? | TRAIN E1 .691111/.815556/.567206; Hybrid .702222/.831111/.570929. | **FAIL** | Fixed Hybrid route retained later as a portfolio-v1 engineering candidate; no fusion tuning. |
-| R1 evidence audit | Are document hits answer evidence? | 60 labels; 54 usable cases. | Diagnostic | Use evidence-hit accounting. |
-| G1 document-local | Does this Stage2 context hypothesis promote? | Aggregate gain with catastrophic regression. | NO_GO | Historical experimental branch. |
-| G2-A rerank-informed admission | Does rerank-informed admission promote? | 2 wins / 25 ties / 3 losses; 2 catastrophic regressions. | NO_GO | Historical experimental branch. |
-| Retrieval frontier freeze | Are more retrieval parameters justified? | Post-hoc frontier audit closed without admitting another retrieval parameter-search cycle. | CLOSED | Retrieval parameter research closed; no RRF-k, candidate-depth, source-weight, quota, or per-doc-cap tuning. |
-| Final context budget | What K reaches the audited ceiling? | K14 and K20: answer 35/54; useful 43/54. | Selected | Flat Top14. |
-| Final locality recovery | Can second locality rerank recover residuals? | Answer 35 -> 35; useful 43 -> 43; 0/7 actionable recovery. | Rejected | No locality second rerank. |
-| TechQA structure forensic | Is structure observable for diagnosis? | 28,481 docs; 0.994347 allowlist coverage, not parser accuracy. | Diagnostic | Bounded synthesis only. |
-| Structure-preserving synthesis | Does static parent expansion help net hits? | Answer 35 -> 32; useful 43 -> 38; 2 miss->hit, 5 hit->miss. | Rejected | No parent expansion. |
-| Failure attribution | What caused the regressions? | 5/5 budget crowd-out; 2/2 whole-document recovery; median docs 12 -> 4.5. | Established for audited cases | Retain Flat Top14. |
-| Portfolio-v1 freeze | What is the contract? | Fixed retrieval route and `flat_rerank_top14_v1`. | CLOSED | Stop retrieval/context research. |
-
-Static parent expansion traded cross-document breadth for within-document depth under a fixed context budget. This supports the audited Flat Top14 decision; it does **not** establish that breadth is always better than depth, Parent-Child is bad, or document structure is generally ineffective.
-
-## Historical Generation Harness
-
-`document_aware_forward_expansion_v1` remains the real **historical generation harness context policy** and its artifacts are retained. It is **not** the frozen portfolio-v1 final context policy.
-
-The frozen portfolio-v1 context is `flat_rerank_top14_v1`. Final refusal and generation contracts remain unresolved. G1 and G2-A are historical TRAIN experiments with formal NO_GO outcomes; see their reports for their detailed evidence rather than treating them as current design.
-
-## Evaluation Lineage
+运行时检索 chunk，但 TechQA qrel 是文档级。因此正式 IR 评测会：
 
 ```text
-Frozen TechQA contract
-  -> E0 Dense
-  -> E1 Dense+rereank held-out improvement
-  -> BM25/RRF complementarity
-  -> R4 C1 formal FAIL
-  -> evidence-level audit
-  -> G1/G2 NO_GO
-  -> retrieval frontier closure
-  -> Flat context budget analysis
-  -> Top14 selected
-  -> locality second-rerank rejected
-  -> TechQA structure forensic
-  -> structure-preserving synthesis rejected
-  -> budget-crowd-out attribution
-  -> portfolio-v1 retrieval/context freeze
+保留原始 chunk 排序
+→ 按 document_id 首次出现位置去重
+→ 得到文档排序
+→ 计算 Recall@5 / Recall@20 / MRR@10
 ```
 
-`retrieval_parameter_research = CLOSED` and `context_assembly_research = CLOSED`. Reopen only for a new failure mode outside portfolio-v1 finalization, not to tune current artifacts.
+TechQA 每条问题只有 1 个 relevant document，因此这里 Recall@K 与 Hit@K 数值相同。
 
-## Artifact Map
+---
 
-Published decision and report entry points:
+## 实验决策表
 
-- Portfolio-v1 architecture freeze: `reports/portfolio_v1_rag_freeze/architecture_freeze.md`
-- Machine-readable freeze contract: `reports/portfolio_v1_rag_freeze/freeze.json`
-- Evidence timeline: `reports/portfolio_v1_rag_freeze/evidence_timeline.md`
-- Held-out E1: `reports/e1_rerank/comparison.md`
-- Hybrid R4 C1: `reports/r4_c1_hybrid_rerank/`
-- Evidence audit: `reports/r1_evidence_audit/`
-- Historical G1/G2: `reports/g1_document_local/`, `reports/g2_rerank_informed_admission/`
-- Retrieval frontier audit: `reports/retrieval_frontier_freeze/`
+| 阶段 | 核心问题 | 关键证据 | 正式结论 | 当前工程决策 |
+| --- | --- | --- | --- | --- |
+| E0 Dense | 基线有多强？ | 建立冻结 Dense 基线 | Baseline | 作为历史对照 |
+| E1 Dense + rerank | 重排能否带来 held-out 提升？ | DEV R@5 .643750→.725000；R@20 .818750→.843750；MRR .518931→.560841 | **PASS** | 保留为最重要的冻结验证证据 |
+| R4 C1 Hybrid + rerank | Hybrid + rerank 能否通过预注册门槛？ | TRAIN E1 .691111/.815556/.567206；Hybrid .702222/.831111/.570929 | **FAIL** | 固定 Hybrid 路线后来作为工程候选保留，但不继续调融合参数 |
+| R1 证据审计 | 命中文档是否等于命中答案证据？ | 60 条人工标注，54 条有效 | Diagnostic | 增加证据级指标 |
+| G1 文档内扩展 | 文档内展开能否改善最终上下文？ | 聚合指标上涨，但出现灾难性退化 | **NO_GO** | 不采用 |
+| G2-A 重排后准入 | 把文档准入放到全局 rerank 之后是否更稳？ | 2 改善 / 25 持平 / 3 退化，其中 2 个灾难性退化 | **NO_GO** | 不采用 |
+| 检索前沿冻结 | 是否还值得继续调检索参数？ | 只做 post-hoc 反事实分析，不再开启新的参数搜索 | **CLOSED** | 关闭 RRF-k、候选深度、权重、配额、每文档上限等调参 |
+| 最终上下文预算 | 多大的直接 TopK 能达到当前证据命中上限？ | Top14 与 Top20 都是 answer 35/54、useful 43/54 | Selected | 选择直接 Top14 |
+| 局部二次 rerank | 局部恢复能否救回残留证据？ | answer 35→35；useful 43→43；0/7 可恢复 case 被救回 | Rejected | 不加第二次 rerank |
+| 结构保持扩展 | 静态 parent / 文档结构扩展是否有净收益？ | answer 35→32；useful 43→38；2 miss→hit，5 hit→miss | Rejected | 不采用 parent expansion |
+| 失败归因 | 结构扩展为什么退化？ | 5/5 answer regression = budget crowd-out；2/2 gain = whole-document recovery；文档数中位数 12→4.5 | Established | 保留直接 Top14 |
+| 检索 / Context 冻结 | 当前工程候选是什么？ | 固定 retrieval route + `flat_rerank_top14_v1` | **CLOSED** | 停止当前检索与上下文研究线 |
 
-The final Flat Top14, locality, structure-forensic, structure-preserving-synthesis, and failure-attribution runs were completed in the local closure lineage. Their audited results are published in the freeze bundle above; the original local run artifacts are not represented as GitHub paths unless they are actually published.
+结构扩展的负结果只说明：在当前固定上下文预算和这套静态 parent expansion 下，增加同文档深度会挤占跨文档覆盖。它不证明 Parent-Child、small-to-big 或文档结构方法普遍无效。
 
-## Leakage, Reproducibility, and Scope
+---
 
-Do not use gold answers or contexts for retrieval, hard-code question-to-document mappings, retune from individual frozen DEV failures, or present TRAIN tuning as held-out gains. Formal runs record commit, dataset identity, file SHA256, split, model/configuration, latency, dependency, and checkpoint/manifest identities.
+## 历史生成 Context
 
-Current non-claims:
+`document_aware_forward_expansion_v1` 是真实存在过的历史 generation harness Context 策略，相关产物仍保留；它不是当前冻结的最终 Context。
 
-- online runtime remains Dense Chroma;
-- the Hybrid+rereank route is an evaluated/frozen candidate, not serving;
-- R4 C1 remains formal FAIL;
-- Flat Top14 is a TRAIN-development selection, not a universal optimum;
-- locality and structure-expansion negatives do not generalize to Parent-Child or document structure generally;
-- refusal policy and final generation validation are not frozen.
+当前冻结 Context 是 `flat_rerank_top14_v1`。G1 / G2-A 都是历史 TRAIN 实验，正式结论为 NO_GO。
 
-For application architecture and the Agent workflow, see the repository [README](../../README.md).
+---
+
+## 评测演进链
+
+```text
+冻结 TechQA 契约
+  → E0 Dense
+  → E1 Dense + rerank：DEV 明显提升
+  → BM25 / RRF 互补性验证
+  → R4 C1：正式 FAIL
+  → 证据级人工审计
+  → G1 / G2：NO_GO
+  → 检索前沿关闭
+  → 直接 TopK 上下文预算分析
+  → 选择 Top14
+  → 局部二次 rerank：拒绝
+  → 结构保持扩展：拒绝
+  → 归因为上下文预算挤占
+  → 检索 / Context 冻结
+```
+
+`retrieval_parameter_research = CLOSED`，`context_assembly_research = CLOSED`。只有出现当前冻结范围之外的新失败模式，才重新开启这一研究线。
+
+---
+
+## 关键产物索引
+
+- 当前冻结架构：[`reports/portfolio_v1_rag_freeze/architecture_freeze.md`](reports/portfolio_v1_rag_freeze/architecture_freeze.md)
+- 机器可读冻结契约：`reports/portfolio_v1_rag_freeze/freeze.json`
+- 证据演进时间线：[`reports/portfolio_v1_rag_freeze/evidence_timeline.md`](reports/portfolio_v1_rag_freeze/evidence_timeline.md)
+- E1 frozen DEV：[`reports/e1_rerank/comparison.md`](reports/e1_rerank/comparison.md)
+- R4 C1：[`reports/r4_c1_hybrid_rerank/`](reports/r4_c1_hybrid_rerank/)
+- 证据审计：[`reports/r1_evidence_audit/`](reports/r1_evidence_audit/)
+- G1 / G2：[`reports/g1_document_local/`](reports/g1_document_local/) / [`reports/g2_rerank_informed_admission/`](reports/g2_rerank_informed_admission/)
+- 检索前沿审计：[`reports/retrieval_frontier_freeze/`](reports/retrieval_frontier_freeze/)
+
+---
+
+## 评测边界
+
+当前明确不做以下声明：
+
+- 不把离线 Hybrid + rerank 描述为已经上线；
+- 不改写 R4 C1 的正式 FAIL；
+- 直接 Top14 是 TRAIN 开发阶段选择，不是通用最优值；
+- 局部 / 结构扩展的负结果不等于这些方法普遍无效；
+- 拒答策略和最终生成验证尚未冻结。
+
+应用架构与 Agent 工作流见仓库根目录 [README](../../README.md)。
