@@ -485,11 +485,15 @@ def classify_one(
     model: str,
     input_rate_cny_per_1m: float,
     output_rate_cny_per_1m: float,
+    messages_builder: Callable[
+        [ClassifierInput], list[dict[str, str]]
+    ]
+    | None = None,
     failed_attempt_recorder: Callable[[Mapping[str, Any]], None] | None = None,
     clock: Callable[[], float] = time.perf_counter,
 ) -> PhaseBPrediction:
     classifier_input = _classifier_input_from_row(row)
-    messages = build_classifier_messages(classifier_input)
+    messages = (messages_builder or build_classifier_messages)(classifier_input)
     question_id = str(row["question_id"])
 
     prompt_text = "\n".join(
@@ -648,11 +652,19 @@ def run_paid_phase_b(
     checkpoint_path: str | Path = DEFAULT_CHECKPOINT_PATH,
     failed_attempts_path: str | Path = DEFAULT_FAILED_ATTEMPTS_PATH,
     client: Any | None = None,
+    contract_validator: Callable[[Mapping[str, Any]], None] | None = None,
+    inputs_loader: Callable[[str | Path], list[dict[str, Any]]] | None = None,
+    messages_builder: Callable[
+        [ClassifierInput], list[dict[str, str]]
+    ]
+    | None = None,
+    expected_cases: int | None = None,
 ) -> tuple[PhaseBPrediction, ...]:
     contract = _read_json(contract_path)
-    validate_contract(contract)
+    (contract_validator or validate_contract)(contract)
 
-    rows = load_classifier_inputs(inputs_path)
+    rows = (inputs_loader or load_classifier_inputs)(inputs_path)
+    required_cases = expected_cases or EXPECTED_CASES
     classifier = contract["classifier"]
     pricing = contract["pricing_snapshot"]
 
@@ -709,6 +721,7 @@ def run_paid_phase_b(
             model=model,
             input_rate_cny_per_1m=input_rate,
             output_rate_cny_per_1m=output_rate,
+            messages_builder=messages_builder,
             failed_attempt_recorder=lambda payload: _append_jsonl(
                 Path(failed_attempts_path), payload
             ),
@@ -747,9 +760,9 @@ def run_paid_phase_b(
         by_question_id[question_id] = prediction
         spent_cny = projected_spend
 
-    if len(by_question_id) != EXPECTED_CASES:
+    if len(by_question_id) != required_cases:
         raise RuntimeError(
-            "Phase B did not complete all 54 classifier calls"
+            f"classifier run did not complete all {required_cases} calls"
         )
 
     return tuple(

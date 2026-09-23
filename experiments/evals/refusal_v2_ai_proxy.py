@@ -7,6 +7,8 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
+from experiments.evals.refusal_evidence_sufficiency import ClassifierInput
+
 DEFAULT_PACKET_PATH = Path(
     "data/refusal_v2_confirmation_set/annotation_packets.jsonl"
 )
@@ -54,6 +56,29 @@ inference. When uncertain, return INSUFFICIENT.
 
 Do not answer the Question. Return only the required structured decision.
 """.strip()
+
+
+def build_classifier_messages_v2(
+    classifier_input: ClassifierInput,
+) -> list[dict[str, str]]:
+    context = "\n\n---\n\n".join(
+        f"[{source.source_id}]\n{source.content}"
+        for source in classifier_input.sources
+    )
+    user_prompt = (
+        "Question:\n"
+        f"{classifier_input.question}\n\n"
+        "Context:\n"
+        f"{context}\n\n"
+        "Return a JSON object with exactly these fields:\n"
+        '- decision: "SUFFICIENT" or "INSUFFICIENT"\n'
+        "- reason: a short evidence-based explanation\n"
+        "- supporting_source_ids: a JSON array using Source N identifiers only"
+    )
+    return [
+        {"role": "system", "content": CLASSIFIER_SYSTEM_PROMPT_V2},
+        {"role": "user", "content": user_prompt},
+    ]
 
 
 def _sha256(path: str | Path) -> str:
