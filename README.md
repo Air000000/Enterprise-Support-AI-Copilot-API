@@ -1,4 +1,4 @@
-# Enterprise Support AI Copilot
+# Enterprise Support AI Copilot（企业技术支持 AI Copilot）
 
 [![Tests](https://github.com/Air000000/enterprise-support-ai-copilot-api/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/Air000000/enterprise-support-ai-copilot-api/actions/workflows/tests.yml)
 
@@ -82,9 +82,9 @@
 | 受控工单 Agent | `search_kb` / `classify_ticket` / `create_ticket`，预览-确认 + 人工审批 |
 | 核心技术支持数据 | TechQA 28,481 Technotes、610 条可回答检索问题、910 条生成 / 拒答问答记录 |
 | RAG 评测 | 冻结 TRAIN / DEV、文档级 Recall@K / MRR、生成 / 拒答评测框架 |
-| 重排 / Hybrid 实验 | Dense Top-100 + `qwen3-rerank` 正式冻结验证集对照；BM25 / RRF / Hybrid 为离线受控实验 |
+| 重排 / Hybrid 实验 | Dense Top-100 + `qwen3-rerank` 正式冻结验证集对比；BM25 / RRF / Hybrid 为离线受控实验 |
 | 失败归因 | 候选覆盖、chunk 拥挤、证据级审计、路线准入门槛 |
-| AgentOps | Agent 运行记录 / 工具调用 / 审批 / Retrieval Trace 与聚合指标 |
+| AgentOps | Agent 运行记录 / 工具调用 / 审批 / 检索轨迹与聚合指标 |
 | 工程化 | Alembic、Pytest、Ruff、GitHub Actions、Docker Compose、冒烟测试 |
 
 ---
@@ -248,11 +248,11 @@ TechQA 的 qrel 是文档级，而检索器返回 chunk。正式 IR 评测会保
 
 | 阶段 | 为什么做 / 本次改动 | 评测口径 | 核心结果 | 失败归因与决策 | 详情 |
 | --- | --- | --- | --- | --- | --- |
-| **E0：Dense 基线** | `Query → Dense Top100 chunks → 文档去重排序`，先建立统一基线 | TRAIN + 冻结 DEV | **TRAIN**：R@5 61.3%，R@20 74.0%，MRR 0.510；**DEV**：R@5 64.4%，R@20 81.9%，MRR 0.519 | 总指标只能说明效果不足，不能区分“候选没召回”和“候选已召回但排序靠后”，因此先做失败归因 | [E0 失败分析](experiments/evals/reports/e0_dense/failure_analysis.md) |
+| **E0：Dense 基线** | `问题 → Dense Top100 chunks → 文档去重排序`，先建立统一基线 | TRAIN + 冻结 DEV | **TRAIN**：R@5 61.3%，R@20 74.0%，MRR 0.510；**DEV**：R@5 64.4%，R@20 81.9%，MRR 0.519 | 总指标只能说明效果不足，不能区分“候选没召回”和“候选已召回但排序靠后”，因此先做失败归因 | [E0 失败分析](experiments/evals/reports/e0_dense/failure_analysis.md) |
 | **E0：失败归因** | 对失败按 标准相关文档排名分桶，再抽固定样本人工审计 | TRAIN 450 条 answerable | 排除 5 条仅由查询文本尾部空白差异造成的跨运行漂移后：排名 4–5 有 **20** 条，排名 6–20 有 **57** 条，共 **77/450** 个明确排序问题；另有 117 个 Top20 未命中 | 30/117 个 miss 中：17 个 qrel / 问题歧义、7 个明显词法未命中、6 个语义未命中。另抽 30 个低正确率 样本：14 个评测 / 参考答案问题、12 个证据覆盖问题，仅 4 个明显生成问题。**排序问题是当时最强、最确定的可操作失败类，因此 E1 先做 rerank** | [完整归因与样本审计](experiments/evals/reports/e0_dense/failure_analysis.md) |
-| **E1：Dense + rerank** | `Dense Top100 → qwen3-rerank → 文档去重排序`；**只加 reranker** | 冻结 DEV 正式对比 | R@5 **64.4% → 72.5%**；R@20 **81.9% → 84.4%**；MRR **0.519 → 0.561** | DEV Top5：21 个改善、8 个退化；Top20：5 个改善、1 个退化。重排有明显净收益，但不是单调改善。冻结 DEV 不用于逐样本反向调参，因此没有针对这 8 个 DEV 退化继续做正式根因拟合 | [E0 / E1 对比](experiments/evals/reports/e1_rerank/comparison.md) |
+| **E1：Dense + 重排** | `Dense Top100 → qwen3-rerank → 文档去重排序`；**只加重排器** | 冻结 DEV 正式对比 | R@5 **64.4% → 72.5%**；R@20 **81.9% → 84.4%**；MRR **0.519 → 0.561** | DEV Top5：21 个改善、8 个退化；Top20：5 个改善、1 个退化。重排有明显净收益，但不是单调改善。冻结 DEV 不用于逐样本反向调参，因此没有针对这 8 个 DEV 退化继续做正式根因拟合 | [E0 / E1 对比](experiments/evals/reports/e1_rerank/comparison.md) |
 | **R3：BM25 互补性验证** | 剩余失败里出现 错误码、版本号、CVE、固定技术词等精确词法查询，因此加入 BM25，用 RRF 验证候选互补性 | TRAIN，文档级互补性验证 | Dense 命中@100 **387**，BM25 **375**，融合 **402**；救回 Dense 未命中 **19** 个，净增 **15** 个 | BM25 单独不优于 Dense，但确实补回一批 Dense 漏掉的精确词法候选，因此允许进入正式 Hybrid + rerank 实验 | [R3 准入结果](experiments/evals/reports/r3_hybrid/admission_decision.md) |
-| **R4 C1：Hybrid + 重排** | `Dense100 + BM25100 → RRF60 → 融合 Top100 → qwen3-rerank`；与 **E1 TRAIN** 对比 | TRAIN 450 条 | E1：R@5 / R@20 / MRR = **.691 / .816 / .567**；C1：**.702 / .831 / .571** | 三项都上涨，但预注册 MRR 门槛为 **.577**，实际只有 .571。最终 Top20 未命中 中 **56 个候选缺失、20 个排序不足**；固定 Top100 融合预算既会救回候选，也会压掉部分单源尾部候选。**正式结论 FAIL，不继续调 RRF k、权重、深度等参数** | [正式对比](experiments/evals/reports/r4_c1_hybrid_rerank/comparison.md) · [失败案例与归因](experiments/evals/reports/r4_c1_hybrid_rerank/postmortem_decision.md) |
+| **R4 C1：Hybrid + 重排** | `Dense100 + BM25100 → RRF60 → 融合 Top100 → qwen3-rerank`；与 **E1 TRAIN** 对比 | TRAIN 450 条 | E1：R@5 / R@20 / MRR = **.691 / .816 / .567**；C1：**.702 / .831 / .571** | 三项都上涨，但预注册 MRR 门槛为 **.577**，实际只有 .571。最终 Top20 未命中中 **56 个候选缺失、20 个排序不足**；固定 Top100 融合预算既会救回候选，也会压掉部分单源尾部候选。**正式结论 FAIL，不继续调 RRF k、权重、深度等参数** | [正式对比](experiments/evals/reports/r4_c1_hybrid_rerank/comparison.md) · [失败案例与归因](experiments/evals/reports/r4_c1_hybrid_rerank/postmortem_decision.md) |
 
 > **查询文本尾部空白漂移：** 历史 retrieval 与 generation 数据中，有些问题语义完全相同，只在末尾多了空格或换行。250/450 条 可回答问题 存在这种差异，其中 74 条 Top3 排序发生变化、5 条 标准相关文档准入 发生变化。由于这不是语义变化，这 5 条不用于因果失败计数；后续 模型服务调用前统一对 query 做 `rstrip()`。
 
@@ -344,7 +344,7 @@ Dense Top100
 | **检索前沿审计** | G1/G2 都说明不同排序存在互补，但继续在已看过的 TRAIN 样本 上调 K、RRF、权重容易过拟合，因此只对冻结结果做零模型服务调用 的反事实分析 | 观察到 Dense 与全局 rerank 确实存在互补，文档级 RRF 是未来可能方向 | 这些 30 条已经是设计/诊断数据，不能继续拿来证明新方案有效。**关闭当前检索参数搜索** | [前沿审计](experiments/evals/reports/retrieval_frontier_freeze/final_offline_frontier_audit.md) |
 | **最终上下文预算** | 比较不同 直接 TopK，找达到当前证据命中上限的最小 K | 54 条证据样本：**Top14 = 答案证据 35/54、有用证据 43/54；Top20 完全相同** | 从14增加到20没有新增 证据命中，只增加上下文。**选择 直接 Top14**；这是当前 TRAIN 开发集选择，不是通用最佳 K | [架构冻结](experiments/evals/reports/portfolio_v1_rag_freeze/architecture_freeze.md) |
 | **局部二次 rerank** | 尝试对 Top14 未覆盖、且具备局部恢复条件的残留 样本 再做局部候选恢复与第二次 rerank | 答案证据 **35→35**；有用证据 **43→43**；**7 个具备局部恢复条件的 残留样本，0/7 被救回** | 没有新增 证据命中，还增加一次 rerank；p50 约 661 ms。**拒绝** | [架构冻结 §4.1](experiments/evals/reports/portfolio_v1_rag_freeze/architecture_freeze.md) |
-| **结构保持扩展** | 尝试通过同文档 / 结构扩展恢复被固定 chunk 切分打散的信息 | answer **35→32**；useful **43→38**；2 个 miss→hit，但 5 个 hit→miss | 5/5 退化都来自**上下文预算挤占**：同一文档放入更多内容后，跨文档证据 被挤掉；上下文 中文档数中位数 **12→4.5**。**拒绝，保留 直接 Top14** | [架构冻结 §4.2–5](experiments/evals/reports/portfolio_v1_rag_freeze/architecture_freeze.md) |
+| **结构保持扩展** | 尝试通过同文档 / 结构扩展恢复被固定 chunk 切分打散的信息 | 答案证据 **35→32**；有用证据 **43→38**；2 个未命中→命中，但 5 个命中→未命中 | 5/5 退化都来自**上下文预算挤占**：同一文档放入更多内容后，跨文档证据 被挤掉；上下文 中文档数中位数 **12→4.5**。**拒绝，保留 直接 Top14** | [架构冻结 §4.2–5](experiments/evals/reports/portfolio_v1_rag_freeze/architecture_freeze.md) |
 
 最终冻结的检索 / 上下文 工程候选：
 
@@ -365,7 +365,7 @@ qwen3-rerank
 - 检索参数研究：**CLOSED**
 - 上下文 组装研究：**CLOSED**
 - 当前在线运行时：仍是 **Dense Chroma 检索**
-- Hybrid + rerank + 直接 Top14：**冻结工程候选，尚未推广到在线 runtime**
+- Hybrid + 重排 + 直接 Top14：**冻结工程候选，尚未推广到在线 runtime**
 
 ---
 
@@ -375,11 +375,11 @@ qwen3-rerank
 
 | 阶段 | 本次方案 | 结果 | 失败归因 | 结论 | 详情 |
 | --- | --- | --- | --- | --- | --- |
-| **拒答 v1.1** | `直接 Top14 → qwen3.5-plus 证据充分性分类` | 平衡准确率 **0.736**；充分证据召回率 97.1%；不足证据召回率仅 **50.0%** | 16 个不足证据 样本 中有 8 个被错误放行为“充分” | **FAIL**，不进入生成与 运行时集成 | [v1.1 正式结果](experiments/evals/reports/refusal_evidence_sufficiency/phase_b_v1_1_result.md) |
+| **拒答 v1.1** | `直接 Top14 → qwen3.5-plus 证据充分性分类` | 平衡准确率 **0.736**；充分证据召回率 97.1%；不足证据召回率仅 **50.0%** | 16 个不足证据样本 中有 8 个被错误放行为“充分” | **FAIL**，不进入生成与 运行时集成 | [v1.1 正式结果](experiments/evals/reports/refusal_evidence_sufficiency/phase_b_v1_1_result.md) |
 | **拒答 v2.1** | 新分类契约 + 新的 AI 草稿代理标签 | 平衡准确率 **0.775**，门槛 0.80；充分召回 .85，不足召回 .70 | 只差 1 个 样本 即可过门槛，但后验检查发现部分 分歧 来自**标注契约与问题实际要求不一致**，不能简单继续调 提示词 | **FAIL**，不修改门槛后重跑 | [v2.1 结果](experiments/evals/reports/refusal_evidence_sufficiency/v2_ai_proxy_v2_1_result.md) |
 | **拒答 v3：当前阶段** | 新选 80 条盲样本，只给 问题 + Top14，按 充分 / 不充分 / 存疑 重新标注 | 已冻结 AI 草稿：**44 充分 / 27 不充分 / 9 存疑** | 当前仍是开发用 AI 草稿标签，不是独立人工金标；尚无新的 v3 分类器 正式结果 | **拒答策略尚未冻结，也未接入 runtime** | [v3 当前冻结状态](experiments/evals/reports/refusal_evidence_sufficiency/v3_ai_draft_freeze.md) |
 
-完整实验契约、索引与冻结 产物 见 [experiments/evals/README.md](experiments/evals/README.md)。
+完整实验契约、索引与冻结产物见 [experiments/evals/README.md](experiments/evals/README.md)。
 
 ---
 
@@ -469,7 +469,7 @@ GET /agent-ops/metrics/retrieval/failures
 - `support` / `admin` 角色检查；
 - 按租户隔离的 Document / AgentOps / RAG 访问。
 
-> 这里验证的是认证上下文和 tenant scope 在应用链路中的传递，不把它描述为完整生产级 IAM / RBAC 或数据库级多租户隔离方案。
+> 这里验证的是认证上下文和 租户范围 在应用链路中的传递，不把它描述为完整生产级 IAM / RBAC 或数据库级多租户隔离方案。
 
 安全边界见 [docs/security.md](docs/security.md)。
 
@@ -503,7 +503,7 @@ enterprise-support-ai-copilot-api/
 其中：
 
 - `rag_runtime/`：正式在线 RAG 运行时；
-- `experiments/evals/`：TechQA 主评测、受控实验与 产物s；
+- `experiments/evals/`：TechQA 主评测、受控实验与产物；
 - `experiments/rag_local/`：早期兼容入口；
 - Todo / AI Todo 路径保留为历史兼容，不作为当前项目定位。
 
@@ -593,7 +593,7 @@ Workflow：
 4. [docs/architecture.md](docs/architecture.md) — 系统结构与边界；
 5. [docs/agent_workflow.md](docs/agent_workflow.md) — 工单 Agent 预览 / 确认；
 6. [docs/security.md](docs/security.md) — 当前认证与权限边界；
-7. `experiments/evals/reports/` — retrieval / hybrid / evidence / generation 产物s。
+7. `experiments/evals/reports/` — 检索 / Hybrid / 证据 / 生成实验产物。
 
 `docs/*_report.md` 与 `docs/superpowers/` 中保留历史阶段报告、设计与实验计划，用于追溯项目演进；历史路线图 不自动代表当前产品方向。
 
@@ -606,11 +606,11 @@ Workflow：
 - TechQA 是长期主技术支持语料与主评测基准，不再计划迁移到另一套 primary corpus；
 - 不把离线 BM25 / RRF / Hybrid 实验写成线上 Hybrid 在线检索；
 - portfolio-v1 的 Hybrid + 重排已评测并冻结为工程候选，但尚未上线；R4 C1 的正式结论仍为 FAIL；
-- 直接 Top14 is a TRAIN-development selection, not a universal optimum；
+- 直接 Top14 是 TRAIN 开发阶段的选择，不是通用最优值；
 - 局部扩展 / 结构扩展的负结果不能证明 Parent-Child 或文档结构方法普遍无效；
 - 拒答策略和最终生成验证尚未冻结；
 - 不把规则化 Ticket 分类写成自主 ReAct / 自主规划；
-- 不把 Demo JWT + tenant scope 写成完整生产级 IAM / 多租户隔离；
+- 不把 Demo JWT + 租户范围 写成完整生产级 IAM / 多租户隔离；
 - 不把 Docker Compose 写成生产部署；
 - 不把 approval `pending` 校验写成并发恰好一次保证；
 - 不把 G1 的条件性证据充分性改善写成生产生成效果提升，也不声称 G1 已替代 E1；
