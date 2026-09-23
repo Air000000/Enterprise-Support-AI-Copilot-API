@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "run": "refusal_v3_confirmation_annotation_v1",
+  "status": "AI_DRAFT_TARGETS_FROZEN_FOR_DEVELOPMENT",
+  "annotation_source": "ai-draft",
+  "human_confirmation_population_eligible": false,
+  "rows": 80,
+  "counts": {
+    "INSUFFICIENT": 27,
+    "QUESTIONABLE": 9,
+    "SUFFICIENT": 44
+  },
+  "minimum_usable_per_class": 25,
+  "usable_per_class": {
+    "SUFFICIENT": 44,
+    "INSUFFICIENT": 27
+  },
+  "canonical_annotated_packet_sha256": "a3a1226343f5facd51b1fe714974aa66ade947a52710198effcaba867c142218",
+  "targets": {
+    "path": "experiments/evals/reports/refusal_evidence_sufficiency/v3_confirmation_targets.jsonl",
+    "sha256": "5b0d8b5b167e8ae742210c2deb8ff91c711143bf8da10451bc15f835d9ca8d68"
+  },
+  "controls": {
+    "provider_calls": 0,
+    "dev_artifact_opened": false,
+    "classifier_predictions_created_by_this_command": false
+  }
+}
