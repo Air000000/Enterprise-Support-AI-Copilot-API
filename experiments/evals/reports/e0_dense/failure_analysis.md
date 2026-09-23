@@ -1,187 +1,107 @@
-# Task 7 — TechQA TRAIN Failure Analysis v1
+# E0 Dense：TRAIN 失败归因
 
-**Scope:** TRAIN only  
-**Baseline:** E0 Dense Retrieval + E0 Generation  
-**Date:** 2026-08-24  
-**Purpose:** Use measured failures to select exactly one E1 optimization. DEV remains frozen.
+范围：仅 TRAIN  
+基线：E0 Dense Retrieval + E0 Generation  
+日期：2026-08-24  
+目的：用可测量的失败证据选择一个 E1 优化方向；DEV 保持冻结。
 
-## 1. Evidence used
+## 1. 基线结果
 
-This report joins the frozen E0 retrieval and generation artifacts and separates deterministic retrieval evidence from diagnostic judge/manual evidence.
+450 条可回答 TRAIN 检索问题：
 
-E0 retrieval on 450 answerable TRAIN queries:
-
-| Metric | Value |
+| 指标 | 数值 |
 | --- | ---: |
 | Document Recall@5 | 0.613333 |
 | Document Recall@20 | 0.740000 |
 | MRR@10 | 0.510477 |
-| p50 retrieval latency | 991.995 ms |
-| p95 retrieval latency | 1819.083 ms |
+| p50 检索延迟 | 991.995 ms |
+| p95 检索延迟 | 1819.083 ms |
 
-E0 generation on 600 TRAIN cases produced a mean automatic correctness score of 0.312. That score is used only as a screening signal because fixed-sample manual calibration showed coarse correctness agreement of 14/20 (70%). Faithfulness is auxiliary only because its coarse agreement was 10/20 (50%).
+E0 generation 在 600 条 TRAIN 上的自动 correctness 均值为 0.312，但这个分数只作为筛选信号使用，因为人工校准显示自动 judge 与人工判断并非完全一致。Faithfulness 也只作为辅助指标。
 
-The original exact-string abstention metric is also not treated as a factual hallucination rate. A separate manual audit of all 150 impossible cases found 70 semantic abstentions, 58 corpus-supported answers despite the benchmark impossible label, 21 exact correct abstentions, and 1 confirmed unsafe answer.
+## 2. 查询尾部空白漂移
 
-## 2. Observable failure buckets
+历史 retrieval 和 generation 数据中，同一个问题有时只是在末尾多了空格或换行。
 
-The offline join materialized one observable bucket for every answerable query.
+- 250 / 450 条可回答问题存在这种尾部差异；
+- 74 条 Top3 排序因此发生变化；
+- 5 条 gold admission 因此发生变化。
 
-| Observable bucket | Count | Rate |
-| --- | ---: | ---: |
-| gold_in_context_low_correctness | 132 | 29.33% |
-| retrieval_miss_top20 | 117 | 26.00% |
-| gold_in_context_high_correctness | 68 | 15.11% |
-| retrieval_rank_6_20 | 57 | 12.67% |
-| gold_in_context_mid_correctness | 44 | 9.78% |
-| retrieval_rank_4_5 | 22 | 4.89% |
-| top3_chunk_admission_gap | 6 | 1.33% |
-| gold_in_context_model_abstain | 4 | 0.89% |
+这不是语义变化，所以这 5 条不用于后续因果失败计数。之后 provider 调用前统一对 query 做 `rstrip()`。
 
-Totals:
+## 3. 检索失败分桶
 
-- answerable cases: 450
-- gold present in actual generation Top-3 document context: 250 (55.56%)
-- gold absent from actual generation Top-3 document context: 200 (44.44%)
+在排除上述 5 条漂移 case 后，确定性排名证据为：
 
-These buckets are observable pipeline states. They are not automatically equivalent to causal taxonomy codes such as R2, R4, or G1.
+- relevant document rank 4–5：20 条
+- relevant document rank 6–20：57 条
+- 因此 candidate 已在较大池中、但排序不足的明确 case：**77 / 450**
+- Top20 miss：117 条
 
-## 3. Cross-run query-normalization drift
+这 77 条直接满足“候选已经召回，只是排得不够前”的条件，因此是非常干净的 rerank 假设来源。
 
-The retrieval and generation datasets contain the same question IDs and same substantive question text, but 250/450 answerable questions differ only in trailing whitespace.
+## 4. Top20 miss 人工审计
 
-Cross-run diagnostic:
+对 117 个 Top20 miss 固定抽样 30 条人工检查：
 
-- exact question text: 200 cases; Top-3 sequence changed in 0; gold admission changed in 0
-- trailing-whitespace-only difference: 250 cases; Top-3 sequence changed in 74 (29.60%); gold admission changed in 5 (2.00%)
+- qrel / 问题本身歧义：17
+- 明显词法型 miss：7
+- 语义间接匹配型 miss：6
 
-The five gold-admission changes were:
+结论：
 
-- TRAIN_Q091: retrieval Top-3 hit -> generation Top-3 miss
-- TRAIN_Q212: retrieval Top-3 miss -> generation Top-3 hit
-- TRAIN_Q358: retrieval Top-3 miss -> generation Top-3 hit
-- TRAIN_Q500: retrieval Top-3 hit -> generation Top-3 miss
-- TRAIN_Q572: retrieval Top-3 hit -> generation Top-3 miss
+- error code、版本号、CVE、产品标识等精确 token 的确构成一类真实失败；
+- 但在这批诊断样本里，词法失败不是主导问题；
+- 很多表面上的 Dense miss 受到 qrel 不完整或 gold 本身可疑的影响；
+- 因此不能仅凭 117 个 Top20 miss 就直接把 BM25 / Hybrid 作为 E1。
 
-These five cases are treated as `cross_run_query_normalization_drift`, not as evidence for R2/R3/R4/G1/G2.
+## 5. gold 已进入 Context 但 correctness 低
 
-After excluding those five cases from causal counting, the stable observable counts are:
+另抽取 30 条“gold 已在 Context，但自动 correctness 较低”的 case：
 
-| Observable bucket | Stable count |
+| 主要归因 | 数量 |
 | --- | ---: |
-| retrieval_miss_top20 | 117 |
-| retrieval_rank_6_20 | 57 |
-| retrieval_rank_4_5 | 20 |
-| top3_chunk_admission_gap | 3 |
-| gold_in_context_low_correctness | 132 |
-| gold_in_context_mid_correctness | 44 |
-| gold_in_context_high_correctness | 68 |
-| gold_in_context_model_abstain | 4 |
-| **Total** | **445** |
+| 评测 / 参考答案不匹配 | 14 |
+| Context 证据覆盖不足 | 12 |
+| 生成模型明显误用证据 | 2 |
+| 生成不完整 | 2 |
 
-Future evaluation calls must use one canonical query string per question. Trailing whitespace is normalized with `rstrip()` before embedding/rerank provider calls; substantive text differences remain errors.
+这说明：
 
-## 4. Manual causal audit
+- 单纯 prompt / model 优化不是当时最强问题；
+- 很多“生成错”其实来自证据没覆盖完整；
+- 评测 reference 本身也需要审计。
 
-A fixed random diagnostic sample was drawn after excluding the five drift cases:
+## 6. Impossible case 审计
 
-- 30 / 117 `retrieval_miss_top20`
-- 30 / 132 `gold_in_context_low_correctness`
+150 条 impossible case 的人工复核发现：
 
-These sample proportions are diagnostic signals for experiment selection. They are not population-level failure rates and must not be used as resume metrics.
+- 70 条语义上确实拒答；
+- 58 条其实语料中存在可支持答案，虽然 benchmark 标成 impossible；
+- 21 条完全匹配预期拒答；
+- 1 条确认是不安全回答。
 
-### 4.1 Dense Top-20 miss sample
+因此 benchmark 的 impossible 标签不能直接等同于“回答即幻觉”。
 
-| Manual diagnosis | Count | Sample rate |
-| --- | ---: | ---: |
-| benchmark qrel / query ambiguity | 17 | 56.7% |
-| clear R2 lexical candidate | 7 | 23.3% |
-| semantic / indirect miss | 6 | 20.0% |
+## 7. E1 选择
 
-Interpretation:
+候选优化方向包括：
 
-- Some exact-token cases are credible R2 failures, especially distinctive error-code/version/CVE queries.
-- R2 is not dominant in this diagnostic sample.
-- Many apparent Dense misses are contaminated by incomplete/ambiguous qrels or queries where retrieved documents are at least as directly relevant as the single labeled gold document.
-- Therefore `retrieval_miss_top20 = 117` is not sufficient evidence to admit Hybrid/BM25 as E1.
+- rerank
+- Hybrid / BM25
+- prompt / generation
+- chunk / Context 策略
+- refusal / grounding
 
-### 4.2 Gold-in-context low-correctness sample
+最终选择 **rerank** 作为 E1，原因不是它“看起来先进”，而是：
 
-| Manual diagnosis | Count | Sample rate |
-| --- | ---: | ---: |
-| evaluation reference / judge mismatch | 14 | 46.7% |
-| R4 context coverage / chunk evidence missing | 12 | 40.0% |
-| G1 generation misuse | 2 | 6.7% |
-| G2 incomplete answer | 2 | 6.7% |
+1. 有 **77/450** 个明确 candidate-in-pool ranking case；
+2. 这是可确定、可复现、最容易做单变量验证的失败类；
+3. Top20 miss 人工审计并不支持立即把 BM25 作为首个正式优化；
+4. generation 低分里大量问题实际来自评测 reference 或 Context coverage，而不是单纯生成模型。
 
-Interpretation:
+因此 E1 假设为：
 
-- Automatic low correctness substantially overstates clear model-generation failure.
-- R4/context coverage is a real issue: in multiple cases the relevant document is present but the decisive evidence chunk is outside actual generation Top-3.
-- Clear G1/G2 cases are a minority in the diagnostic sample, so prompt/model changes are not admitted as E1.
-- Chunk optimization remains a later candidate, but current evidence is not stronger than the deterministic ranking-error evidence below.
+> 在固定 Dense Top100 候选池上增加 reranker，应提升早期文档排序，尤其是 Recall@5 与 MRR@10，同时保留 Recall@20 作为安全边界。
 
-## 5. Actionable failure decision
-
-The strongest deterministic actionable class is R3 Ranking Error.
-
-After excluding cross-run drift:
-
-- relevant document rank 4-5: 20 cases
-- relevant document rank 6-20: 57 cases
-- deterministic candidate-in-pool ranking cases: **77 / 450**
-
-These cases satisfy the R3 condition directly: the relevant document is already in the larger Dense candidate pool but is not ranked high enough for the final small context window.
-
-Other candidate actions are not admitted now:
-
-- **Hybrid / BM25:** credible R2 cases exist, but the fixed manual miss sample is dominated by qrel/query ambiguity rather than clear lexical misses.
-- **Chunk optimization:** R4/context-coverage cases are real, but the evidence currently comes from a 30-case diagnostic sample and is mixed with reference/judge mismatch.
-- **Prompt/model optimization:** only 4/30 low-correctness audit cases were clear G1/G2.
-- **Grounding/abstention:** the full 150-case impossible audit found only 1 confirmed unsafe answer, so N1/G3 is not the dominant actionable class.
-
-## 6. Approved E1 — qwen3-rerank
-
-Exactly one experiment is admitted:
-
-> **E1 = frozen E0 Dense Top-100 raw chunk candidates + DashScope `qwen3-rerank`.**
-
-The E1 retrieval runner will:
-
-1. reuse the saved E0 raw Top-100 chunk candidate IDs for each TRAIN query;
-2. read candidate text from the existing isolated TechQA Chroma collection;
-3. normalize only trailing query whitespace before the rerank provider call;
-4. rerank the same 100 candidates with `qwen3-rerank`;
-5. preserve chunk IDs and document IDs;
-6. collapse reranked chunks to document ranking using the existing first-occurrence rule;
-7. evaluate with the same qrels/ranx metric definitions;
-8. record provider failures and p50/p95 rerank latency.
-
-Fair-ablation constants:
-
-- corpus revision unchanged
-- TRAIN query IDs unchanged
-- qrels unchanged
-- chunk strategy unchanged (`800 / 120 / 150`, paragraph-aware)
-- embedding model unchanged
-- saved Dense candidate pool unchanged
-- generation model/prompt unchanged
-- judge contract unchanged
-- no BM25/RRF in E1
-- no chunk-strategy change in E1
-- no DEV failure-driven tuning
-
-E1 is considered useful only if the reranking stage improves the ranking-oriented retrieval metrics (especially Document Recall@5 and MRR@10) while Recall@20, rerank latency, and provider reliability are reported transparently. The frozen DEV ablation remains the final evidence gate.
-
-## 7. Task 7 exit gate
-
-Task 7 exit condition is satisfied:
-
-- weak retrieval/generation cases were materialized;
-- observable failure classes were counted;
-- cross-run evaluation noise was isolated;
-- representative causal samples were manually reviewed;
-- competing optimization hypotheses were rejected or deferred with evidence;
-- exactly one E1 was selected.
-
-**Next task:** Task 8 Branch B — implement and validate the isolated `qwen3-rerank` E1 runner before any frozen DEV run.
+最终是否成立，由 frozen DEV 对比决定。
