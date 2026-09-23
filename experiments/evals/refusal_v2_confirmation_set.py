@@ -242,6 +242,7 @@ def validate_and_freeze_annotations(
     targets_path: Path,
     freeze_path: Path,
     minimum_per_class: int = 25,
+    run: str = "refusal_v2_confirmation_annotation_v1",
 ) -> dict[str, Any]:
     if annotation_source not in {"human", "ai-draft"}:
         raise RuntimeError("annotation source must be human or ai-draft")
@@ -343,7 +344,7 @@ def validate_and_freeze_annotations(
         )
     report = {
         "schema_version": 1,
-        "run": "refusal_v2_confirmation_annotation_v1",
+        "run": run,
         "status": decision,
         "annotation_source": annotation_source,
         "human_confirmation_population_eligible": (
