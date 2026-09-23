@@ -444,7 +444,12 @@ def print_preflight(
     print(f"FAILED_ATTEMPTS={len(failures)}")
     print(f"PROVIDER_CALLS={len(predictions) + len(failures)}")
     print("DEV_ARTIFACT_OPENED=NO")
-    print("NEXT_ACTION=RUN_FROZEN_V2_1_TWO_CALL_RESUME")
+    next_action = (
+        "RUN_SEPARATE_V2_PROXY_EVALUATION"
+        if len(predictions) == EXPECTED_CASES
+        else "RUN_FROZEN_V2_1_TWO_CALL_RESUME"
+    )
+    print(f"NEXT_ACTION={next_action}")
 
 
 def _print_evaluation(summary: shared.PhaseBEvaluation) -> None:
