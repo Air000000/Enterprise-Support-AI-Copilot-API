@@ -139,9 +139,11 @@ def test_shared_paid_call_uses_frozen_v2_prompt_without_question_id() -> None:
         model="qwen3.5-plus-2026-04-20",
         input_rate_cny_per_1m=2.936,
         output_rate_cny_per_1m=17.614,
+        max_output_tokens=512,
         messages_builder=build_classifier_messages_v2,
         clock=lambda: 1.0,
     )
 
     assert captured["messages"][0]["content"] == CLASSIFIER_SYSTEM_PROMPT_V2
     assert "TRAIN_SECRET_ID" not in json.dumps(captured["messages"])
+    assert captured["max_tokens"] == 512
