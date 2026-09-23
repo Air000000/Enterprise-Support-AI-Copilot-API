@@ -1,40 +1,40 @@
-# R4 C1 Hybrid + Rerank vs E1
+# R4 C1：Hybrid + rerank 正式对比
 
-## Frozen E1 TRAIN baseline
+## 对比口径
 
-- Recall@5: 0.691111111111
-- Recall@20: 0.815555555556
-- MRR@10: 0.567206349206
+本实验在 **TRAIN 450 条可回答问题**上比较：
+
+```text
+E1：
+Dense Top100
+→ qwen3-rerank
+
+R4 C1：
+Dense100 + BM25100
+→ 等权 RRF(k=60)
+→ fused Top100
+→ 同一个 qwen3-rerank
+```
+
+## E1 TRAIN
+
+- Recall@5：0.691111
+- Recall@20：0.815556
+- MRR@10：0.567206
 
 ## R4 C1 TRAIN
 
-- completed queries: 450
-- Recall@5: 0.702222222222
-- Recall@20: 0.831111111111
-- MRR@10: 0.570929453263
-- provider tokens: 12080467
-- stopped reason: None
+- Recall@5：0.702222
+- Recall@20：0.831111
+- MRR@10：0.570929
 
-## Pre-registered executable gate
+## 预注册门槛
 
-- MRR@10 >= 0.5772063492063492
-- Recall@20 >= 0.8111111111111111
-- C1 PASS: False
+- Recall@20 >= 0.811111：**PASS**
+- MRR@10 >= 0.577206：**FAIL**
 
-Complete historical E1 per-query evidence is not preserved,
-so C1 does not rerun E1 solely to recreate paired diagnostics.
+## 正式结论
 
-## Decision
+**R4 C1 = FAIL**
 
-C1 improved aggregate retrieval effectiveness over E1 on TRAIN:
-
-- Recall@5: 0.691111111111 -> 0.702222222222
-- Recall@20: 0.815555555556 -> 0.831111111111
-- MRR@10: 0.567206349206 -> 0.570929453263
-
-However, C1 failed the pre-registered MRR@10 threshold
-of 0.5772063492063492.
-
-Therefore the pre-registered C1 gate is FAIL.
-Paid R4 stops here and no C2 paid optimization is admitted.
-
+C1 的三项聚合指标都比 E1 TRAIN 高，但早期排序提升不足以通过预注册 MRR 门槛。因此不进入原计划中的进一步融合参数搜索。

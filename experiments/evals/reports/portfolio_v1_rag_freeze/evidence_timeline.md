@@ -1,174 +1,149 @@
-# Portfolio-v1 RAG Evidence Timeline
+# RAG 冻结证据时间线
 
-This timeline is a compact index of the retrieval/context decisions that led to the portfolio-v1 freeze. Each stage records the engineering question, the evidence, and the resulting decision.
+本文件按“问题 → 证据 → 决策”记录从 Dense 基线到当前冻结工程候选的关键节点。
 
-## E0 — Dense baseline
+## E0：Dense 基线
 
-**Question:** What is the starting retrieval quality on the frozen TechQA contract?
+**问题：** TechQA 冻结契约上的起点是什么？
 
-**Evidence:** Dense retrieval established the baseline for later comparisons.
+**证据：** 建立 Dense 基线。
 
-**Decision:** Retain as the historical comparator.
-
----
-
-## E1 — Dense + rerank
-
-**Question:** Does reranking improve held-out retrieval?
-
-**Evidence:** On frozen DEV:
-
-- Recall@5: 0.643750 -> 0.725000
-- Recall@20: 0.818750 -> 0.843750
-- MRR@10: 0.518931 -> 0.560841
-
-**Decision:** Reranking is retained as the strongest held-out-confirmed retrieval improvement in the lineage.
+**决策：** 保留为历史对照。
 
 ---
 
-## R4 C1 — Hybrid + rerank
+## E1：Dense + rerank
 
-**Question:** Does Hybrid+rerank clear the preregistered promotion gates?
+**问题：** rerank 能否带来 frozen DEV 提升？
 
-**Evidence:** On TRAIN:
+**证据：**
 
-- E1 Dense+rerank: Recall@5 0.691111, Recall@20 0.815556, MRR@10 0.567206
-- Hybrid+rerank: Recall@5 0.702222, Recall@20 0.831111, MRR@10 0.570929
-- Recall@20 gate: PASS
-- MRR@10 gate: FAIL
+- Recall@5：0.643750 → 0.725000
+- Recall@20：0.818750 → 0.843750
+- MRR@10：0.518931 → 0.560841
 
-**Decision:** Formal experiment status remains **FAIL**. The route is later retained only as a fixed portfolio-v1 engineering candidate; no further fusion tuning is admitted.
-
----
-
-## R1 — Evidence-level audit
-
-**Question:** Does retrieving the correct document guarantee that answer-bearing evidence reaches the final context?
-
-**Evidence:** A manually audited TRAIN subset separated useful and answer-bearing chunks from simple document hits.
-
-**Decision:** Keep evidence-level accounting as a diagnostic layer because document hit and answer-evidence hit are not equivalent.
+**决策：** 保留为当前最强的 held-out 检索提升证据。
 
 ---
 
-## G1 / G2 — Document-local and admission experiments
+## R4 C1：Hybrid + rerank
 
-**Question:** Can broader document-local reconstruction or rerank-informed admission improve Stage2 evidence quality?
+**问题：** Hybrid + rerank 能否通过预注册晋级门槛？
 
-**Evidence:** Both routes produced aggregate movement but also preregistered regressions / NO_GO outcomes.
+**TRAIN 证据：**
 
-**Decision:** Do not promote either route.
+- E1：R@5 0.691111，R@20 0.815556，MRR 0.567206
+- C1：R@5 0.702222，R@20 0.831111，MRR 0.570929
+- Recall@20 门槛：PASS
+- MRR@10 门槛：FAIL
 
----
-
-## Retrieval frontier closure
-
-**Question:** Is another retrieval-parameter search cycle justified?
-
-**Evidence:** The post-hoc frontier audit showed genuine Dense/other-ranking complementarity but was exploratory and diagnostic only.
-
-**Decision:** Close retrieval parameter research for portfolio-v1. No further RRF-k, depth, source-weight, quota, or per-document-cap tuning.
+**决策：** 正式实验仍为 **FAIL**。固定 Hybrid 路线后来被保留为工程候选，但不继续调融合参数。
 
 ---
 
-## Final context budget
+## R1：证据级人工审计
 
-**Question:** What is the smallest flat rerank K that reaches the audited Top20 evidence-hit ceiling?
+**问题：** 命中正确文档是否等于答案证据真的进入高位 Context？
 
-**Evidence:** On 54 usable TRAIN evidence-audit cases:
+**证据：** 对 TRAIN 子集人工标注 weak / useful / answer-bearing chunk。
 
-- Top14: answer 35/54, useful 43/54
-- Top20: answer 35/54, useful 43/54
-
-**Decision:** Select `flat_rerank_top14_v1`.
+**决策：** 文档 Recall/MRR 继续保留用于 benchmark 对比，同时增加证据级命中指标。
 
 ---
 
-## Locality second-rerank challenger
+## G1 / G2：文档内扩展与文档准入
 
-**Question:** Can rerank-first local recovery rescue residual answer-bearing chunks?
+**问题：** 更大范围的文档内重建或 rerank 后准入能否改善最终证据？
 
-**Evidence:**
+**证据：** 两条路线都出现聚合指标变化，但也都出现预注册不可接受退化。
 
-- answer: 35 -> 35
-- useful: 43 -> 43
-- actionable residual recovery: 0/7
-- added second-rerank latency and provider cost
-
-**Decision:** Reject. Keep Flat Top14.
+**决策：** G1、G2-A 均为 **NO_GO**。
 
 ---
 
-## TechQA structure forensic
+## 检索前沿关闭
 
-**Question:** Is there enough document structure to justify a structure-preserving synthesis test?
+**问题：** 是否值得继续搜索 RRF k、候选深度、来源权重等参数？
 
-**Evidence:**
+**证据：** post-hoc 审计显示 Dense / 其他排序存在互补，但当前设计样本已被用于诊断。
 
-- 28,481 documents
-- recognized-structure allowlist coverage: 0.994347
-- this coverage is not parser accuracy
-- six-case forensic did not reveal a simple universal QUESTION/PROBLEM -> ANSWER/RESOLUTION pattern
-
-**Decision:** Permit one bounded synthesis counterfactual; do not reopen splitter or retrieval chunking.
+**决策：** 当前检索参数研究关闭，不继续在已见 TRAIN case 上调参。
 
 ---
 
-## Structure-preserving synthesis
+## 最终上下文预算
 
-**Question:** Under the same per-query character budget, does static whole-document / section recovery improve net evidence coverage?
+**问题：** 多大的直接 TopK 能达到当前人工证据审计中的 Top20 上限？
 
-**Evidence:**
+**证据：**
 
-- answer: 35 -> 32
-- useful: 43 -> 38
-- miss -> hit: 2
-- hit -> miss: 5
-- all context budgets respected
+- Top14：answer 35/54，useful 43/54
+- Top20：answer 35/54，useful 43/54
 
-**Decision:** Reject with net regression.
+**决策：** 选择 `flat_rerank_top14_v1`。
 
 ---
 
-## Failure attribution
+## 局部二次 rerank
 
-**Question:** Why did the structure-preserving challenger regress?
+**问题：** rerank 后的局部恢复能否救回残留 answer-bearing evidence？
 
-**Evidence:**
+**证据：**
 
-- 5/5 answer regressions = `BUDGET_CROWD_OUT`
-- 2/2 gains = `WHOLE_DOCUMENT_RECOVERY`
-- baseline median unique documents in context = 12
-- challenger median unique documents in context = 4.5
-- implementation invariants passed
+- answer：35 → 35
+- useful：43 → 43
+- 可操作 residual：0/7 被救回
+- 增加额外 rerank 延迟和模型调用成本
 
-**Decision:** The observed trade-off is breadth versus within-document depth under a fixed context budget. On the audited TRAIN set, the regressions outweighed the recoveries.
+**决策：** 拒绝，保留直接 Top14。
 
 ---
 
-## Portfolio-v1 freeze
+## 结构保持扩展
 
-**Question:** What retrieval/context contract should be carried into integration?
+**问题：** 在同等上下文字符预算下，静态整文档 / 结构恢复是否有净收益？
 
-**Decision:**
+**证据：**
+
+- answer：35 → 32
+- useful：43 → 38
+- miss→hit：2
+- hit→miss：5
+
+**决策：** 净退化，拒绝。
+
+---
+
+## 失败归因
+
+**问题：** 结构保持方案为什么退化？
+
+**证据：**
+
+- 5/5 answer regression = `BUDGET_CROWD_OUT`
+- 2/2 gain = `WHOLE_DOCUMENT_RECOVERY`
+- 基线 Context 中 unique documents 中位数：12
+- challenger：4.5
+
+**结论：** 在当前固定预算下，增加同文档深度会减少跨文档广度；本次审计中损失大于收益。
+
+---
+
+## 当前冻结工程候选
 
 ```text
 Dense Top100 + BM25 Top100
-    -> equal-weight chunk RRF (k=60)
-    -> fused Top100
-    -> qwen3-rerank
-    -> Flat Top14
+    → 等权 chunk RRF (k=60)
+    → fused Top100
+    → qwen3-rerank
+    → 直接 Top14
 ```
 
-Research state:
+当前状态：
 
-- retrieval parameter research: **CLOSED**
-- context assembly research: **CLOSED**
-
-Still unresolved:
-
-- refusal / evidence-sufficiency policy
-- final generation acceptance
-- final DEV generation validation
-- online runtime integration
-- Ticket Agent shared retrieval integration
+- 检索参数研究：**CLOSED**
+- Context 组装研究：**CLOSED**
+- 拒答 / 证据充分性：尚未冻结
+- 最终生成验收：尚未完成
+- 在线运行时集成：尚未完成
+- Ticket Agent 共享检索：尚未完成

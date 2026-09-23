@@ -1,79 +1,101 @@
-# G2 Rerank-Informed Admission Post-Hoc Forensic Analysis
+# G2-A：重排后文档准入复盘
 
-## 1. Frozen confirmatory result
+## 1. 冻结正式结果
 
-The frozen Task 8 result is unchanged and remains the confirmatory record:
-
-| Metric | G1 | G2-A |
+| 指标 | G1 | G2-A |
 | --- | ---: | ---: |
 | COMPLETE | 19 | 19 |
 | PARTIAL | 2 | 1 |
 | INSUFFICIENT | 9 | 10 |
 | UNRESOLVED | 0 | 0 |
-| Macro claim coverage | 0.666667 | 0.650000 |
+| 宏平均关键事实覆盖率 | 0.666667 | 0.650000 |
 
-Pairwise result is **2 wins / 25 ties / 3 losses**, including **2 catastrophic regressions**. The final decision is **NO_GO**. The Task 8 result artifact SHA-256 is `8e6e51ca0bc2200987e473058c77fa58293e62be45e5964f94b79eddfe904145`; the canonical SHA-256 is `94c45247dd7399f882ca1cd8bad1c9b5702d7420183b35fbc547531877a886e9`.
+逐 case：
 
-This report does not rewrite that result. It is a post-hoc diagnostic over already-frozen local artifacts and is not preregistered confirmatory evidence. No rerank, embedding, generation, or judge calls were made during this analysis.
+- 改善：2
+- 持平：25
+- 退化：3
+- 其中灾难性退化：2
 
-## 2. Method and causal boundary
+正式结论：**NO_GO**
 
-The sealed A/B mapping was used to unblind the frozen outcomes. The five movements were then derived mechanically by comparing the frozen G1 and G2 outcome arrays:
+这份文档是解盲后的 post-hoc 机制分析，不改写正式结果，也不作为新的 confirmatory evidence。
 
-- G1 INSUFFICIENT -> G2 COMPLETE: `TRAIN_Q287`, `TRAIN_Q578`
-- G1 COMPLETE -> G2 INSUFFICIENT: `TRAIN_Q090`, `TRAIN_Q500`
-- G1 PARTIAL -> G2 INSUFFICIENT: `TRAIN_Q367`
+## 2. G1 与 G2 唯一差异
 
-G2 changes only admission order. G1 takes the first five unique documents in Dense Top100; G2 takes the first five unique documents in the shared global rerank over the same Dense Top100. Document-local expansion, the 500-chunk pool cap, merged rerank, and Top16 selection are otherwise frozen.
+G1：
 
-## 3. Five movement cases
+```text
+Dense Top100
+→ 按 Dense 顺序取前5篇去重文档
+→ 文档内展开
+→ merged rerank
+→ Top16
+```
 
-The `Dense relevant positions` and `global relevant positions` columns are 1-based chunk positions. `G1 docs` and `G2 docs` are the exact first-five admitted document IDs reconstructed from the frozen Dense chunk order and paid `shared_global` rerank, respectively. Pool sizes and document IDs are reconstructed from the complete paid `g1_merged` and `g2_merged` permutations. The following invariants all passed: `dense_preflight_equals_E0`, `g1_pool_docs_equals_g1_admitted`, `g2_pool_docs_equals_g2_admitted`, `g1_top16_docs_within_g1_admitted`, and `g2_top16_docs_within_g2_admitted`.
+G2：
 
-| Case | Gold document | Dense relevant positions | Global relevant positions | G1 docs / pool | G2 docs / pool | Outcome |
-| --- | --- | --- | --- | --- | --- | --- |
-| `TRAIN_Q287` (`U023`) | `swg27047895.txt` | 20, 58 | 1, 8 | no; `swg1IO23927.txt`, `swg1IO25547.txt`, `swg1IO25431.txt`, `swg1IO23565.txt`, `swg1IO23514.txt` / 21 | yes; `swg27047895.txt`, `swg21599801.txt`, `swg21959318.txt`, `swg21903282.txt`, `swg21968904.txt` / 35 | INSUFFICIENT -> COMPLETE |
-| `TRAIN_Q578` (`U059`) | `swg21612222.txt` | 14, 67 | 1, 11 | no; `swg21504129.txt`, `swg21260903.txt`, `swg22004447.txt`, `swg22006446.txt`, `swg1IT12043.txt` / 27 | yes; `swg21612222.txt`, `swg22006446.txt`, `swg21260903.txt`, `swg21902484.txt`, `swg1IT09552.txt` / 27 | INSUFFICIENT -> COMPLETE |
-| `TRAIN_Q090` (`U006`) | `swg24044840.txt` | 2, 11 | 11, 14 | yes; `swg24041994.txt`, `swg24044840.txt`, `swg21692150.txt`, `swg21974112.txt`, `swg21687624.txt` / 102 | no; `swg21692150.txt`, `swg21687624.txt`, `swg21616976.txt`, `swg1IZ51168.txt`, `swg21965628.txt` / 16 | COMPLETE -> INSUFFICIENT |
-| `TRAIN_Q500` (`U010`) | `swg21631488.txt` | 3 | 8 | yes; `swg27024104.txt`, `swg21631488.txt`, `swg21594791.txt`, `swg27023623.txt`, `swg21686987.txt` / 16 | no; `swg21594791.txt`, `swg27023623.txt`, `swg21608749.txt`, `swg21607198.txt`, `swg27023851.txt` / 22 | COMPLETE -> INSUFFICIENT |
-| `TRAIN_Q367` (`U055`) | `swg21968549.txt` | 15 | 9 | no; `swg21903444.txt`, `swg21973739.txt`, `swg21976161.txt`, `swg21503678.txt`, `swg21968904.txt` / 25 | no; `swg21503322.txt`, `swg21976161.txt`, `swg21973739.txt`, `swg21503678.txt`, `swg21632650.txt` / 25 | PARTIAL -> INSUFFICIENT |
+```text
+Dense Top100
+→ shared global rerank
+→ 按 rerank 顺序取前5篇去重文档
+→ 文档内展开
+→ merged rerank
+→ Top16
+```
 
-For `TRAIN_Q287` and `TRAIN_Q578`, the relevant document is absent from G1's admitted set and present in G2's. The G2 merged Top16 starts with `swg27047895.txt_chunk_6` and `swg21612222.txt_chunk_1`, respectively; those are the rescued relevant chunks. For `TRAIN_Q090`, G1's Top16 contains `swg24044840.txt_chunk_13` and `swg24044840.txt_chunk_14`, while G2 cannot select either because the relevant document is excluded at admission. For `TRAIN_Q500`, the gold document is `swg21631488.txt`: its Dense rank is 3 and global rerank rank is 8. G1's Top16 includes `swg21631488.txt_chunk_0`, while G2's selected Top16 comes from the changed 22-chunk pool and contains no `swg21631488.txt` chunk.
+也就是说，G2 **只改文档准入顺序**。其余文档展开、500 chunk pool cap、merged rerank 和 Top16 选择保持一致。
 
-`TRAIN_Q367` is the important control against over-attributing every movement to admission rescue or exclusion: both arms exclude the gold document. The first merged selections are still different: G1 starts with `swg21976161.txt_chunk_1`, `swg21973739.txt_chunk_12`, and `swg21503678.txt_chunk_2`; G2 starts with `swg21976161.txt_chunk_1`, `swg21503322.txt_chunk_1`, and `swg21973739.txt_chunk_12`.
+## 3. 五个发生变化的 case
 
-Material claims and blinded-review outcomes were preserved from the frozen artifacts. `TRAIN_Q287` moved from 0/1 to 1/1 covered claims; `TRAIN_Q578` moved from 0/2 to 2/2; `TRAIN_Q090` moved from 1/1 to 0/1; `TRAIN_Q500` moved from 1/1 to 0/1; and `TRAIN_Q367` moved from 1/2 to 0/2.
-
-## 4. First divergence and mechanism findings
-
-| Case | First G1/G2 divergence | Mechanism classification |
+| Case | 结果变化 | 主要机制 |
 | --- | --- | --- |
-| `TRAIN_Q287` | Document admission | Relevant document rescued: global rerank moved its Dense-rank-20/58 chunks to global ranks 1/8, bringing it into G2's five-document budget. |
-| `TRAIN_Q578` | Document admission | Relevant document rescued: its Dense chunks at 14/67 became global ranks 1/11, so G2 admitted the document and G1 did not. |
-| `TRAIN_Q090` | Document admission | Relevant document displaced: despite Dense ranks 2/11, global admission selected five other documents and permanently removed the useful G1 document. |
-| `TRAIN_Q500` | Document admission | Relevant document displaced: G1 admitted the gold document; global admission changed the five-document set, after which the gold document had no downstream opportunity. |
-| `TRAIN_Q367` | Document-admission-set composition | Both arms excluded the gold document, but their admitted document sets differ. That first admission-set divergence changes candidate-pool composition and then downstream merged Top16 selection. |
+| `TRAIN_Q287` | INSUFFICIENT → COMPLETE | global rerank 把 gold 文档从 Dense rank 20/58 提升到 global rank 1/8，成功准入 |
+| `TRAIN_Q578` | INSUFFICIENT → COMPLETE | gold 文档从 Dense 14/67 提升到 global 1/11，成功准入 |
+| `TRAIN_Q090` | COMPLETE → INSUFFICIENT | gold 文档 Dense rank 2/11，但 global Top5 文档预算将其挤出 |
+| `TRAIN_Q500` | COMPLETE → INSUFFICIENT | gold 文档 Dense rank 3、global rank 8，G1 能准入，G2 被挤出 |
+| `TRAIN_Q367` | PARTIAL → INSUFFICIENT | G1/G2 都没准入 gold 文档，但准入集合不同，导致后续候选池和 Top16 不同 |
 
-The two wins are gold-document admission rescues. The two catastrophic regressions are gold-document displacements under the rerank-informed five-document budget. `TRAIN_Q367` also first diverges at admission-set composition: both arms miss the gold document, but their different admitted sets change the downstream candidate pool and selected evidence. There is not enough evidence here to claim independent merged-rerank instability.
+## 4. 机制归因
 
-## 5. Decision questions
+两次改善都来自：
 
-**Q1.** Yes. Both G2 wins are cases where Dense admission excluded the relevant document and global rerank admission rescued it.
+> global rerank 把 Dense 顺序中较靠后的相关文档救进了5篇预算。
 
-**Q2.** Yes. Both catastrophic regressions are cases where G1 admitted the relevant/useful document but the global-rerank five-document budget did not.
+两次灾难性退化都来自：
 
-**Q3.** For `TRAIN_Q367`, both arms miss the gold document. The first divergence is document-admission-set composition; that changes the candidate pool and downstream selected evidence.
+> rerank 后的前5篇预算把原本 Dense 顺序里非常靠前、且实际有用的文档挤掉了。
 
-**Q4.** **A. Admission ranking instability is the dominant mechanism, with the fixed five-document budget acting as an amplifier.** Four of five movements directly involve gold-document rescue or displacement, and `TRAIN_Q367` also first diverges at admission-set composition. These cases do not establish independent merged-rerank instability or evidence continuity as the cause.
+Q367 则说明，即使两边都没 gold，文档准入集合变化也会改变 downstream candidate pool。
 
-**Q5.** **MAYBE — mechanism is suggestive but insufficient; gather broader diagnostic evidence first.** The rescue/displacement pattern is strong enough to motivate diagnostics, but five post-hoc cases are not enough to justify designing or preregistering G3. No G3 is designed or implemented here.
+因此主机制是：
 
-## 6. What this does not establish
+**文档准入排序不稳定，固定5篇预算放大了这种不稳定。**
 
-This was a fresh TRAIN development experiment, not frozen DEV validation. It does not establish generation accuracy uplift, production latency/cost improvement, or that global reranking is generally harmful. It only rejects this specific rerank-informed five-document admission policy. The forensic findings are post-hoc and must not be promoted to confirmatory evidence.
+当前证据不足以把责任归结为 merged-rerank 本身不稳定。
 
-Task 7/8 execution deviations are recorded here for audit completeness: the reviewer child high-level file-read workflow stalled; explicit Python byte I/O was adopted before any judgments were observed; no judgment or rule changed after unblinding; Task 8 required one controlled mapping reread after final-attestation Python boolean literals used `false` instead of `False`; the actual correction was four identical `false -> False` repairs in final-attestation fields; and no analytical or gate logic changed.
+## 5. 能支持和不能支持的结论
 
-## 7. Recommendation
+可以支持：
 
-Keep E1 reference behavior unchanged and record G1 and G2-A as experimental **NO_GO** branches. Before considering another experiment, gather broader offline diagnostics over the frozen traces: admission-miss frequency, relevant-document displacement frequency, candidate-pool overlap, and the rate at which merged Top16 selection changes after admission-set changes. Any future experiment would require a new preregistration and must not use this post-hoc table as confirmatory evidence.
+- global rerank admission 确实能 rescue 一些 Dense admission miss；
+- 同时也会 displacement 一些 Dense 高位有用文档；
+- 固定5篇准入预算会把这种排序差异变成不可逆后果。
+
+不能支持：
+
+- “global rerank 一般是有害的”；
+- “merged rerank 是主要问题”；
+- “只要继续调一个更好的 K 就能解决”；
+- 用这5个 post-hoc case 直接设计并验证 G3。
+
+## 6. 决策
+
+保持 E1 reference，不推广 G1 / G2-A。
+
+如未来继续研究，需要：
+
+- 更广的冻结 trace 诊断；
+- fresh TRAIN confirmation cases；
+- 新的预注册；
+- 不复用当前已用于机制分析的 case 作为 confirmatory evidence。

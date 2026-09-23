@@ -1,4 +1,4 @@
-# Security Design
+# 安全设计
 
 Enterprise Support AI Copilot 安全设计说明。
 
@@ -9,7 +9,7 @@ Enterprise Support AI Copilot 安全设计说明。
 ```text
 Enterprise RAG Core
 Document Backend
-Ticket Agent preview / confirm
+Ticket Agent 预览 / 确认
 AgentOps audit
 Retrieval Logs / Metrics
 Docker Compose local runtime
@@ -19,19 +19,19 @@ Smoke Scripts
 本文档重点说明：
 
 ```text
-1. Ticket Agent 的 preview / confirm 两阶段执行边界
-2. approval_request ownership / pending / draft consistency 校验
+1. Ticket Agent 的 预览 / 确认 两阶段执行边界
+2. approval_request 归属 / pending / 草稿一致性 校验
 3. Document Backend 的上传、索引、删除安全边界
 4. RAG tenant / category filter 的 MVP 边界
 5. AgentOps 审计数据的能力与限制
 6. Docker Compose 本地运行边界
 7. API key / .env 管理边界
-8. 公网暴露、rate limit、成本控制和生产化风险
+8. 公网暴露、限流、成本控制和生产化风险
 ```
 
 ---
 
-## 1. Scope
+## 1. 适用范围
 
 当前安全设计覆盖以下模块：
 
@@ -76,14 +76,14 @@ POST   /agent-ops/approval-requests/{approval_request_id}/cancel
 
 ---
 
-## 2. Current MVP Security Goals
+## 2. 当前 MVP 安全目标
 
 当前 MVP 的安全目标是：
 
 ```text
 1. Agent 不直接执行状态变更动作
 2. 创建真实 ticket 前必须经过人工确认
-3. confirm 阶段不能使用不可信客户端 payload 创建 ticket
+3. 确认阶段不能使用不可信客户端 payload 创建 ticket
 4. approval_request 不能跨 agent_run 使用
 5. rejected / cancelled / approved approval_request 不能再次执行
 6. 每次工具调用都要留下结构化审计记录
@@ -93,28 +93,28 @@ POST   /agent-ops/approval-requests/{approval_request_id}/cancel
 10. API key 通过 .env 管理，不提交到 GitHub
 ```
 
-其中，`create_ticket` 属于状态变更动作，因此不能在 preview 阶段直接执行。
+其中，`create_ticket` 属于状态变更动作，因此不能在 预览阶段直接执行。
 
 ---
 
-## 3. Trust Boundaries
+## 3. 信任边界
 
 当前系统中的信任边界如下：
 
 | 数据来源 | 信任级别 | 当前处理方式 |
 |---|---|---|
-| client request | 不可信 | 需要 Pydantic schema validation 和业务校验 |
-| preview draft in response | 不可信副本 | 仅供用户查看和 confirm 提交 |
-| approval_request.draft_json | 服务端可信记录 | confirm 阶段创建 ticket 的依据 |
+| 客户端请求 | 不可信 | 需要 Pydantic Schema 校验 和业务校验 |
+| 预览响应中的草稿 | 不可信副本 | 仅供用户查看和 confirm 提交 |
+| approval_request.draft_json | 服务端可信记录 | 确认阶段创建 ticket 的依据 |
 | agent_run_id | 不完全可信 | 必须和 approval_request 绑定校验 |
 | approval_request_id | 不完全可信 | 必须校验 tenant_id、agent_run_id 和 status |
-| uploaded file | 不可信 | 当前仅限制 md/txt，后续需要大小限制、内容扫描和权限校验 |
-| RAG query | 不可信 | 当前执行 schema validation 和 category filter，后续需要权限上下文 |
-| RAG retrieved sources | 辅助依据 | 进入 response 和 tool_call audit |
+| 上传文件 | 不可信 | 当前仅限制 md/txt，后续需要大小限制、内容扫描和权限校验 |
+| RAG 查询 | 不可信 | 当前执行 Schema 校验 和 category filter，后续需要权限上下文 |
+| RAG 检索来源 | 辅助依据 | 进入 response 和 tool_call audit |
 | Chroma embeddings | 派生数据 | 删除文档时需要同步删除对应 embeddings |
-| tool_call records | 审计记录 | 用于追踪工具输入、输出、状态和错误 |
+| 工具调用记录 | 审计记录 | 用于追踪工具输入、输出、状态和错误 |
 | `.env` | 本地敏感配置 | 不应提交到 GitHub，不应公开粘贴 |
-| Docker runtime data | 本地运行数据 | 存放于 docker_data / docker_storage / docker_chroma_db，不应提交 |
+| Docker 运行数据 | 本地运行数据 | 存放于 docker_data / docker_storage / docker_chroma_db，不应提交 |
 
 核心原则：
 
@@ -128,24 +128,24 @@ POST   /agent-ops/approval-requests/{approval_request_id}/cancel
 
 ---
 
-## 4. Ticket Agent Preview / Confirm Two-Stage Execution
+## 4. 工单 Agent 预览 / 确认两阶段执行
 
 Ticket Agent 使用两阶段流程：
 
 ```text
-preview 阶段：生成建议，不执行状态变更
-confirm 阶段：人工确认后，执行真实 ticket 创建
+预览阶段：生成建议，不执行状态变更
+确认阶段：人工确认后，执行真实 ticket 创建
 ```
 
-### 4.1 Preview Stage
+### 4.1 预览阶段
 
-Endpoint:
+接口：
 
 ```http
 POST /agent/ticket/preview
 ```
 
-Preview 阶段会：
+预览阶段会：
 
 ```text
 1. 创建 agent_run
@@ -156,9 +156,9 @@ Preview 阶段会：
 6. 返回 preview response
 ```
 
-Preview 阶段不会创建真实 ticket。
+预览阶段不会创建真实 ticket。
 
-Preview 阶段产生的数据：
+预览阶段产生的数据：
 
 ```text
 agent_runs: 1 条
@@ -166,15 +166,15 @@ tool_calls: search_kb + classify_ticket
 approval_requests: 1 条 pending
 ```
 
-### 4.2 Confirm Stage
+### 4.2 确认阶段
 
-Endpoint:
+接口：
 
 ```http
 POST /agent/ticket/confirm
 ```
 
-Confirm 阶段会：
+确认阶段会：
 
 ```text
 1. 读取 approval_request
@@ -188,7 +188,7 @@ Confirm 阶段会：
 9. 更新 agent_run 状态
 ```
 
-Confirm 阶段产生的数据：
+确认阶段产生的数据：
 
 ```text
 ticket: 1 条
@@ -198,9 +198,9 @@ approval_requests: status 从 pending 变为 approved
 
 ---
 
-## 5. Approval Ownership Validation
+## 5. 审批归属校验
 
-Confirm 阶段必须校验：
+确认阶段必须校验：
 
 ```text
 approval_request.agent_run_id == request.agent_run_id
@@ -210,7 +210,7 @@ approval_request.agent_run_id == request.agent_run_id
 
 ### 5.1 风险场景
 
-没有 ownership validation 时，可能出现：
+没有 归属校验 时，可能出现：
 
 ```text
 用户 A 发起 preview，得到 approval_request_id = 10
@@ -238,9 +238,9 @@ agent_run completed update
 
 ---
 
-## 6. Pending Approval Validation
+## 6. 待审批状态校验
 
-Confirm 阶段必须校验：
+确认阶段必须校验：
 
 ```text
 approval_request.status == "pending"
@@ -279,15 +279,15 @@ Approval request is not pending
 
 ---
 
-## 7. Draft Payload Consistency Check
+## 7. 草稿一致性校验
 
-Preview 阶段会把生成的 ticket draft 保存到：
+预览阶段会把生成的 ticket draft 保存到：
 
 ```text
 approval_request.draft_json
 ```
 
-Confirm 阶段会校验：
+确认阶段会校验：
 
 ```text
 request.draft == approval_request.draft_json
@@ -295,11 +295,11 @@ request.draft == approval_request.draft_json
 
 ### 7.1 风险场景
 
-没有 draft consistency check 时，可能出现：
+没有 草稿一致性校验 时，可能出现：
 
 ```text
-1. 用户在 preview 阶段看到的是低风险 ticket draft
-2. 客户端在 confirm 阶段修改 title / description / category / priority
+1. 用户在 预览阶段看到的是低风险 ticket draft
+2. 客户端在 确认阶段修改 title / description / category / priority
 3. 后端直接使用客户端提交的 draft 创建 ticket
 4. 系统创建了用户未真正确认过的内容
 ```
@@ -322,7 +322,7 @@ confirm draft category = security
 
 ### 7.2 当前处理方式
 
-Confirm 阶段会从服务端读取 `approval_request.draft_json`，并与 `request.draft` 做一致性校验。
+确认阶段会从服务端读取 `approval_request.draft_json`，并与 `request.draft` 做一致性校验。
 
 当二者不一致时，系统拒绝 confirm：
 
@@ -340,7 +340,7 @@ ticket creation
 
 ---
 
-## 8. Server-Side Approval Draft
+## 8. 服务端审批草稿
 
 当前系统创建真实 ticket 时，使用的是：
 
@@ -365,13 +365,13 @@ request.draft
 
 `request.draft` 来自客户端，不属于可信输入。
 
-即使客户端提交的 draft 通过了 Pydantic schema validation，也只能证明字段格式合法，不能证明它就是 preview 阶段用户看到并确认的内容。
+即使客户端提交的 draft 通过了 Pydantic Schema 校验，也只能证明字段格式合法，不能证明它就是 预览阶段用户看到并确认的内容。
 
-因此，confirm 阶段的执行 payload 必须来自服务端保存的 approval draft。
+因此，确认阶段的执行 payload 必须来自服务端保存的 approval draft。
 
 ---
 
-## 9. Document Backend Security Boundaries
+## 9. 文档后端安全边界
 
 Document Backend 当前支持：
 
@@ -427,7 +427,7 @@ RAG search no longer returns deleted document
 
 ```text
 1. 尚未接入真实用户认证
-2. tenant_id 仍来自 mock context
+2. tenant_id 仍来自 模拟上下文
 3. 尚未实现真实 tenant 级文档权限校验
 4. 尚未实现上传文件大小限制
 5. 尚未实现病毒扫描或恶意内容检测
@@ -483,7 +483,7 @@ RAG search no longer returns deleted document
 1. index job 队列
 2. indexing 状态机
 3. 幂等索引设计
-4. per-user / per-tenant rate limit
+4. per-user / per-tenant 限流
 5. token / embedding 成本统计
 6. 失败重试和补偿逻辑
 7. 操作日志和管理员可见的 job logs
@@ -499,7 +499,7 @@ Chroma 中对应 embeddings 被删除
 后续 RAG 不再召回已删除文档
 ```
 
-当前 MVP 已覆盖删除后 search miss 的 smoke 验证。
+当前 MVP 已覆盖删除后 检索未命中 的 冒烟 验证。
 
 后续生产化前还需要考虑：
 
@@ -513,7 +513,7 @@ Chroma 中对应 embeddings 被删除
 
 ---
 
-## 10. RAG / Tenant / Category Boundaries
+## 10. RAG / 租户 / 类别边界
 
 当前 RAG API：
 
@@ -535,7 +535,7 @@ retrieval logs / metrics
 
 ### 10.1 当前实现边界
 
-当前 API 层只暴露 `category` filter。`tenant_id` 暂时由系统内部 mock tenant context 提供：
+当前 API 层只暴露 `category` filter。`tenant_id` 暂时由系统内部 模拟租户上下文 提供：
 
 ```text
 tenant_demo
@@ -654,7 +654,7 @@ create_ticket
 
 `create_ticket` 记录真实 ticket 创建动作。
 
-该工具只允许在 confirm 阶段执行。
+该工具只允许在 确认阶段执行。
 
 典型输入：
 
@@ -686,7 +686,7 @@ create_ticket
 
 ---
 
-## 12. Failure Recording
+## 12. 失败记录
 
 工具调用失败时，系统应更新对应 `tool_call`：
 
@@ -705,7 +705,7 @@ result_summary = <failure summary>
 
 当前重点失败路径：
 
-| Failure point | Expected record |
+| 失败点 | 预期记录 |
 |---|---|
 | search_kb failed | search_kb tool_call failed, agent_run failed |
 | classify_ticket failed | classify_ticket tool_call failed, agent_run failed |
@@ -771,7 +771,7 @@ Cancelled approval_request 不允许再次 confirm。
 
 AgentOps metrics summary 用于查看当前系统运行统计。
 
-Endpoint:
+接口：
 
 ```http
 GET /agent-ops/metrics/summary
@@ -847,12 +847,12 @@ approval_request 是否仍有 pending
 ```text
 1. 尚未接入真实 authentication
 2. 尚未接入真实 authorization
-3. tenant_id / user_id 仍是 mock context
+3. tenant_id / user_id 仍是 模拟上下文
 4. Document upload 缺少生产级文件安全控制
 5. RAG / ask / index 可能消耗真实模型 API 成本
 6. AgentOps API 暂未做管理员权限隔离
 7. SQLite 不适合作为公网生产数据库
-8. 缺少 rate limit、WAF、TLS、reverse proxy 和审计告警
+8. 缺少 限流、WAF、TLS、reverse proxy 和审计告警
 ```
 
 如果需要部署到共享环境或公网，必须先补齐生产化安全控制。
@@ -917,7 +917,7 @@ IDE / terminal injected environment
 
 ```text
 .env 是项目本地运行的唯一配置源。
-Docker、本地 uvicorn、smoke scripts 都应以 .env 为准。
+Docker、本地 uvicorn、冒烟 scripts 都应以 .env 为准。
 不要长期依赖 shell_env 里偶然存在的 key。
 ```
 
@@ -935,21 +935,21 @@ Smoke scripts
 可能的 Agent preview 检索链路
 ```
 
-当前 MVP 尚未实现生产级 rate limit 和成本控制，因此存在：
+当前 MVP 尚未实现生产级 限流 和成本控制，因此存在：
 
 ```text
 1. 高频请求导致 API 费用增加
 2. 大文档索引导致 embedding 成本增加
 3. 恶意用户反复调用 /documents/{document_id}/index
 4. 恶意用户反复调用 /rag/ask
-5. smoke scripts 在错误环境中反复运行导致额外成本
+5. 冒烟 scripts 在错误环境中反复运行导致额外成本
 ```
 
 生产化前需要补齐：
 
 ```text
-1. per-user rate limit
-2. per-tenant rate limit
+1. per-user 限流
+2. per-tenant 限流
 3. daily budget limit
 4. embedding token / cost accounting
 5. LLM token / cost accounting
@@ -966,8 +966,8 @@ Smoke scripts
 当前项目提供：
 
 ```text
-scripts/smoke_agentops_flow.py
-scripts/smoke_document_backend_flow.py
+scripts/冒烟_agentops_flow.py
+scripts/冒烟_document_backend_flow.py
 ```
 
 Smoke scripts 的定位：
@@ -984,16 +984,16 @@ Smoke scripts 与 pytest 的区别：
 pytest:
 验证 model / service / API 的单元或集成行为，通常使用 monkeypatch 隔离外部依赖。
 
-smoke scripts:
+冒烟 scripts:
 调用真实运行中的 API 服务，可能触发真实 embedding / LLM 调用。
 ```
 
 因此：
 
 ```text
-1. smoke scripts 不进入默认 GitHub Actions CI
-2. smoke scripts 运行前需要有效 .env
-3. Document Backend smoke 会触发真实 embedding
+1. 冒烟 scripts 不进入默认 GitHub Actions CI
+2. 冒烟 scripts 运行前需要有效 .env
+3. Document Backend 冒烟 会触发真实 embedding
 4. 运行失败时需要清理临时上传文档
 5. 不应在无成本控制的公网环境中开放给任意用户触发
 ```
@@ -1005,15 +1005,15 @@ smoke scripts:
 当前 MVP 不能直接用于生产环境，主要限制如下：
 
 ```text
-1. tenant_id / user_id 仍使用 mock context
+1. tenant_id / user_id 仍使用 模拟上下文
 2. 尚未接入真实 authentication
 3. 尚未接入真实 authorization
 4. AgentOps API 暂未区分管理员权限
 5. Document Backend 缺少生产级上传安全控制
 6. Document Backend 缺少文件大小限制、病毒扫描和敏感内容检测
 7. RAG sources 暂未做生产级权限过滤
-8. /documents/{document_id}/index 缺少 rate limit 和成本控制
-9. /rag/ask 缺少 rate limit 和成本控制
+8. /documents/{document_id}/index 缺少 限流 和成本控制
+9. /rag/ask 缺少 限流 和成本控制
 10. SQLite 仅用于本地开发和 MVP 演示
 11. 数据库 schema 变更尚未接入 Alembic migration
 12. Docker Compose 当前是本地运行版，不是生产部署版
@@ -1061,7 +1061,7 @@ smoke scripts:
 2. sources 字段权限过滤
 3. prompt injection 检测
 4. no-context 拒答策略继续强化
-5. per-user / per-tenant rate limit
+5. per-user / per-tenant 限流
 6. embedding / LLM 成本统计
 7. daily budget limit
 8. timeout / retry / circuit breaker
@@ -1106,7 +1106,7 @@ Ticket creation requires approval.
 Approval must belong to the same agent_run.
 Approval must still be pending.
 Confirm draft must match the server-side approval draft.
-Ticket creation uses server-side draft_json, not untrusted client payload.
+Ticket creation uses 服务端草稿_json, not untrusted client payload.
 Every major tool action is recorded in tool_calls.
 Document upload does not automatically enter RAG until indexed.
 Document deletion removes corresponding Chroma embeddings.

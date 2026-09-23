@@ -1,69 +1,58 @@
-# Phase B v1.1 Formal Result
+# 拒答 v1.1 正式结果
 
-Status: `COMPLETE_FORMAL_FAIL`
+状态：`COMPLETE_FORMAL_FAIL`
 
-Date: `2026-09-22`
+日期：2026-09-22
 
-Formal decision: `REJECT_EVIDENCE_SUFFICIENCY_V1`
+正式结论：`REJECT_EVIDENCE_SUFFICIENCY_V1`
 
-## Execution controls
+## 执行条件
 
-- Run ID: `refusal_evidence_sufficiency_phase_b_v1_1`
-- TRAIN classifier inputs: 54
-- Input SHA256: `bf0164d096758bf0c4cdda3ea0e106a3914e6e43aa1b627f13e8d6cd7efb9fa9`
-- Model: `qwen3.5-plus-2026-04-20`
-- Region: Singapore / International
-- Temperature: `0.0`
-- Thinking: disabled
-- Context: `flat_rerank_top14_v1`
-- Provider calls: 54
-- Failed attempts: 0
-- Checkpointed predictions: 54
-- Targets opened only by the separate evaluation command: yes
-- DEV opened: no
-- Retrieval, rerank, generation, and judge calls: 0
+- Run ID：`refusal_evidence_sufficiency_phase_b_v1_1`
+- TRAIN 分类输入：54
+- 模型：`qwen3.5-plus-2026-04-20`
+- Region：Singapore / International
+- Temperature：0.0
+- Thinking：关闭
+- Context：`flat_rerank_top14_v1`
+- provider 调用：54
+- 失败调用：0
+- DEV：未打开
+- 本阶段 retrieval / rerank / generation / judge 调用：0
 
-## Formal gate
+## 正式门槛
 
-| Metric | Actual | Gate | Result |
-|---|---:|---:|---|
-| Balanced accuracy | 0.735714 | >= 0.80 | FAIL |
-| Sufficient recall | 0.971429 | >= 0.85 | PASS |
-| Insufficient recall | 0.500000 | >= 0.70 | FAIL |
-| Sufficient to insufficient | 1 | <= 5 | PASS |
+| 指标 | 实际 | 门槛 | 结果 |
+| --- | ---: | ---: | --- |
+| 平衡准确率 | 0.735714 | >= 0.80 | FAIL |
+| 充分证据召回率 | 0.971429 | >= 0.85 | PASS |
+| 不足证据召回率 | 0.500000 | >= 0.70 | FAIL |
+| 充分→不充分误拒 | 1 | <= 5 | PASS |
 
-Accuracy was `0.823529` on the 51 gated cases.
+51 条正式计分样本上的 Accuracy 为 0.823529。
 
-Confusion matrix:
+混淆矩阵：
 
-| Target | Predicted sufficient | Predicted insufficient |
-|---|---:|---:|
-| Sufficient proxy | 34 | 1 |
-| Insufficient proxy | 8 | 8 |
+| 真实标签 | 预测充分 | 预测不充分 |
+| --- | ---: | ---: |
+| 充分代理 | 34 | 1 |
+| 不充分代理 | 8 | 8 |
 
-All 3 descriptive ambiguous multi-chunk cases were classified `SUFFICIENT`; they were excluded from the gate.
+另有 3 条描述性 ambiguous multi-chunk case，全部被预测为 `SUFFICIENT`，不进入正式门槛。
 
-## Usage and latency
+## 成本与延迟
 
-- Prompt tokens: 147,090
-- Completion tokens: 8,923
-- Total tokens: 156,013
-- Estimated cost: CNY 0.589026
-- Latency p50: 3,668.418 ms
-- Latency p95: 4,885.734 ms
+- Prompt tokens：147,090
+- Completion tokens：8,923
+- 总 tokens：156,013
+- 估算成本：CNY 0.589026
+- p50：3668.418 ms
+- p95：4885.734 ms
 
-## Artifact manifest
+## 结论
 
-Large run artifacts remain local under `data/refusal_evidence_sufficiency_phase_b_v1_1/`.
+v1.1 的核心问题是**过度放行不足证据**：16 个 insufficient proxy 中有 8 个被判为 `SUFFICIENT`。
 
-| Artifact | SHA256 | Size |
-|---|---|---:|
-| `predictions.jsonl` | `d7ad10221b563d250de1927cc2406dd73cafa4c9cbd87429280567491dc962d6` | 49,286 bytes |
-| `summary.json` | `bf5c37d6e8327073e70fe28692f7bd927185c2f5e992253612f99b9dd37d1978` | compact local result |
-| `phase_b_v1_1_run_contract.json` | `af258ee3a81ddaf0753f1a45e1fa6fb649befd04fb4fd9895c29128a1d6fe8d0` | tracked contract |
+因此不足证据召回率和平衡准确率都没有达到预注册门槛，不能进入 Phase C，也不能接入 runtime。
 
-## Consequence
-
-The v1 classifier over-admits insufficient evidence: 8 of 16 insufficient proxies were classified `SUFFICIENT`. The preregistered insufficient-recall and balanced-accuracy gates failed.
-
-Phase C is not admitted. The refusal policy remains unresolved, and this result must not be followed by prompt tuning or a rerun presented as the same formal experiment.
+失败后不得直接调 prompt 或改门槛后把新结果继续包装成同一个正式实验。
