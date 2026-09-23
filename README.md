@@ -229,106 +229,161 @@ request.draft == server-side approval_request.draft_json
 
 ---
 
-# 4. RAG Evaluation：Frozen TechQA Benchmark
+# 4. RAG 评测与迭代：从 Dense 基线到当前状态
 
-`experiments/evals/` 是正式离线评测入口。
+`experiments/evals/` 是正式离线评测入口。当前在线 API 仍使用 **Dense Chroma Retrieval**；下面的 Hybrid、rerank、Flat Top14 属于离线评测与冻结工程候选，不等同于已上线 serving。
 
-## Split contract
+## 4.1 评测契约
 
 | Split | Answerable | Impossible | 用途 |
 | --- | ---: | ---: | --- |
-| TRAIN | 450 | 150 | development / failure analysis / parameter selection |
-| DEV | 160 | 150 | frozen held-out comparison |
+| TRAIN | 450 | 150 | 开发、失败归因、方案选择 |
+| DEV | 160 | 150 | 冻结验证，只用于正式 held-out 对比 |
 
-正式 E0 / E1 对照冻结后，不使用 individual DEV failure 反向调参。
-
-## Dense → Rerank held-out result
-
-正式 DEV retrieval 结果：
-
-| Method | Document Recall@5 | Document Recall@20 | MRR@10 |
-| --- | ---: | ---: | ---: |
-| Dense baseline | 0.643750 | 0.818750 | 0.518931 |
-| Dense Top-100 + `qwen3-rerank` | **0.725000** | **0.843750** | **0.560841** |
-
-即：
-
-- Recall@5：**64.4% → 72.5%（+8.1pp）**；
-- Recall@20：81.9% → 84.4%；
-- MRR@10：**0.519 → 0.561**。
-
-结果文件：
-
-- [experiments/evals/reports/e1_rerank/comparison.md](experiments/evals/reports/e1_rerank/comparison.md)
-
-这里强调的是**同一冻结 Benchmark 上的 held-out improvement**，不跨不同数据集比较孤立绝对分数。
-
-### Context assembly closure
-
-在 54 条冻结 TRAIN evidence audit 上，Flat Top14 保留 **35/54 条 answer-bearing evidence** 和 **43/54 条 useful evidence**。Locality second-rerank 没有新增命中；structure-preserving synthesis 则使 answer evidence 从 **35 降至 32**。后续 paired attribution 表明 **5/5 regression** 均由固定上下文预算下的 budget crowd-out 导致，因此 portfolio-v1 保留 Flat Top14。
+TechQA 的 qrel 是文档级，而检索器返回 chunk。正式 IR 评测会保留原始 chunk 排序，再按 `document_id` 首次出现位置去重成文档排序，计算 Document Recall@5、Recall@20 和 MRR@10。每条 answerable query 只有 1 个 relevant document，因此这里 Recall@K 与 Hit@K 数值相同。
 
 ---
 
-# 5. Failure Diagnosis：从指标到 Evidence
+## 4.2 核心检索迭代
 
-项目没有把“增加更多检索组件”直接等同于“系统一定更好”，而是通过受控实验与 gate 决定路线去留。
+| 阶段 | 为什么做 / 本次改动 | 评测口径 | 核心结果 | 失败归因与决策 | 详情 |
+| --- | --- | --- | --- | --- | --- |
+| **E0：Dense 基线** | `Query → Dense Top100 chunks → 文档去重排序`，先建立统一基线 | TRAIN + frozen DEV | **TRAIN**：R@5 61.3%，R@20 74.0%，MRR 0.510；**DEV**：R@5 64.4%，R@20 81.9%，MRR 0.519 | 总指标只能说明效果不足，不能区分“候选没召回”和“候选已召回但排序靠后”，因此先做失败归因 | [E0 失败分析](experiments/evals/reports/e0_dense/failure_analysis.md) |
+| **E0：失败归因** | 对失败按 gold 文档排名分桶，再抽固定样本人工审计 | TRAIN 450 条 answerable | 排除 5 条仅由查询文本尾部空白差异造成的跨运行漂移后：rank 4–5 有 **20** 条，rank 6–20 有 **57** 条，共 **77/450** 个明确排序问题；另有 117 个 Top20 miss | 30/117 个 miss 中：17 个 qrel / 问题歧义、7 个明显词法 miss、6 个语义 miss。另抽 30 个低正确率 case：14 个评测/reference 问题、12 个证据覆盖问题，仅 4 个明显生成问题。**排序问题是当时最强、最确定的可操作失败类，因此 E1 先做 rerank** | [完整归因与样本审计](experiments/evals/reports/e0_dense/failure_analysis.md) |
+| **E1：Dense + rerank** | `Dense Top100 → qwen3-rerank → 文档去重排序`；**只加 reranker** | frozen DEV 正式对比 | R@5 **64.4% → 72.5%**；R@20 **81.9% → 84.4%**；MRR **0.519 → 0.561** | DEV Top5：21 个改善、8 个退化；Top20：5 个改善、1 个退化。rerank 有明显净收益，但不是单调改善。冻结 DEV 不用于逐 case 反向调参，因此没有针对这 8 个 DEV 退化继续做正式根因拟合 | [E0 / E1 对比](experiments/evals/reports/e1_rerank/comparison.md) |
+| **R3：BM25 互补性验证** | 剩余失败里出现 error code、版本号、CVE、固定技术词等精确词法查询，因此加入 BM25，用 RRF 验证候选互补性 | TRAIN，文档级互补性验证 | Dense hit@100 **387**，BM25 **375**，融合 **402**；救回 Dense miss **19** 个，净增 **15** 个 | BM25 单独不优于 Dense，但确实补回一批 Dense 漏掉的精确词法候选，因此允许进入正式 Hybrid + rerank 实验 | [R3 准入结果](experiments/evals/reports/r3_hybrid/admission_decision.md) |
+| **R4 C1：Hybrid + rerank** | `Dense100 + BM25100 → RRF60 → fused100 → qwen3-rerank`；与 **E1 TRAIN** 对比 | TRAIN 450 条 | E1：R@5 / R@20 / MRR = **.691 / .816 / .567**；C1：**.702 / .831 / .571** | 三项都上涨，但预注册 MRR 门槛为 **.577**，实际只有 .571。最终 Top20 miss 中 **56 个候选缺失、20 个排序不足**；固定 Top100 融合预算既会救回候选，也会压掉部分单源尾部候选。**正式结论 FAIL，不继续调 RRF k、权重、深度等参数** | [正式对比](experiments/evals/reports/r4_c1_hybrid_rerank/comparison.md) · [失败案例与归因](experiments/evals/reports/r4_c1_hybrid_rerank/postmortem_decision.md) |
 
-## BM25 / RRF / Hybrid
+> **查询文本尾部空白漂移：** 历史 retrieval 与 generation 数据中，有些问题语义完全相同，只在末尾多了空格或换行。250/450 条 answerable query 存在这种差异，其中 74 条 Top3 排序发生变化、5 条 gold admission 发生变化。由于这不是语义变化，这 5 条不用于因果失败计数；后续 provider 调用前统一对 query 做 `rstrip()`。
 
-离线实验覆盖：
+R4 C1 的正式历史状态仍是 **FAIL**。后续冻结工程候选保留固定 Hybrid 路线，是基于整体证据做出的工程选择，不改写这次正式实验结论，也不代表当前在线 API 已切换到 Hybrid。
 
-- Dense Retrieval
-- BM25
-- Dense + BM25 / RRF Hybrid
-- Dense / Hybrid candidate pool + `qwen3-rerank`
+---
 
-C1 Hybrid + Rerank 的 TRAIN aggregate metrics 有改善，但**没有达到预注册 early-rank MRR gate**：
+## 4.3 从“命中文档”到“命中答案证据”
+
+Document Recall 只能回答“相关文档是否出现”，但 RAG 真正交给生成模型的是 chunk，因此还需要回答：
+
+> **命中了 gold document，真正能回答问题的 chunk 是否进入了高位 Context？**
+
+### 人工证据标注
+
+从 TRAIN answerable 中确定性抽取 60 条，在 gold document 内定位候选 chunk，共人工标注 187 个 chunk：
+
+| 标签 | 含义 | 评测中的作用 |
+| --- | --- | --- |
+| `0 = weak` | 相关性弱，不能作为有效回答证据 | 不计入 Useful / Answer hit |
+| `1 = useful` | 对解决问题有帮助，但本身不直接承载完整答案 | 计入 UsefulEvidenceHit |
+| `2 = answer-bearing` | 直接承载回答问题所需的关键证据 | 同时计入 UsefulEvidenceHit 与 AnswerEvidenceHit |
+
+60 条中有 6 条被标记为 `questionable_gold=true`：gold 文档与问题主题不匹配、条件冲突，或不足以支撑 gold answer，因此正式证据指标只评 **54 条**。
+
+[人工标签](experiments/evals/reports/r1_evidence_audit/evidence_labels.jsonl) · [证据指标](experiments/evals/reports/r1_evidence_audit/evidence_metrics.json)
+
+### 同一批人工标签上的三条排序链
+
+| 排序链 | AnswerEvidenceHit@5 | AnswerEvidenceHit@20 | UsefulEvidenceHit@5 | UsefulEvidenceHit@20 |
+| --- | ---: | ---: | ---: | ---: |
+| **E0 Dense** | 44.4% | 61.1% | 63.0% | 77.8% |
+| **C1 融合后、rerank 前** | 46.3% | 53.7% | 68.5% | 77.8% |
+| **C1 rerank 后** | **53.7%** | **64.8%** | **72.2%** | **79.6%** |
+
+这里比较的不是三套不同人工标签，而是**用同一批人工 chunk 标签去评三条不同的 chunk ranking**。这也解释了为什么上面不能只写 “Dense 44.4% → C1 rerank 53.7%”：中间的“融合后、rerank 前”本身也是一条被测链路，而且它在 AnswerEvidenceHit@20 上反而从 Dense 的 61.1% 降到 53.7%，随后 reranker 又把它提升到 64.8%。
+
+因此后续实验不再只看文档 Recall/MRR，还单独追踪“真正能回答问题的证据是否进入高位 Context”。
+
+---
+
+## 4.4 上下文策略：G1 / G2
+
+### 历史 E1 Context 对照
+
+G1 并不是拿“Top5 文档”去对比 E1。历史 E1 generation harness 的 Context 策略是：
 
 ```text
-Recall@20 gate: PASS
-MRR@10 gate: FAIL
-Overall C1 decision: FAIL
+Dense Top100
+→ 全局 qwen3-rerank
+→ rerank Top3 chunk 作为 anchor
++ Dense rank1 rescue
+→ 每个 anchor 最多带 3 个向后相邻 chunk
+→ 去重
+→ 最多 16 chunks
 ```
 
-因此没有继续进入针对 RRF、source weight、candidate depth 等 Hybrid fusion 参数的付费调优，而不是把小幅上涨包装成正式成功。
+它的特点是：**先让全局 reranker 看完整个 Dense Top100，再围绕高位 anchor 做局部扩展。**
 
-The fixed Hybrid route is retained as the frozen portfolio-v1 engineering candidate without further fusion tuning. This later retention does not rewrite R4 C1's formal **FAIL** status, and it is not an online-serving claim.
+### G1 / G2 对比
 
-相关报告：
+| 阶段 | 为什么做 / 本次改动 | 核心结果 | 失败案例与归因 | 决策 | 详情 |
+| --- | --- | --- | --- | --- | --- |
+| **G1：文档内证据扩展** | `Dense 排名 → 前5篇 unique docs → 展开文档内 chunks → 合并 rerank → Top16`。目标是解决“关键证据藏在同一文档更远位置”的问题 | 30 条：COMPLETE **24→28**；Macro Claim Coverage **0.825→0.956**；6 wins / 22 ties / 2 losses | **Q346**：关键 chunk 原 Dense rank 72，历史 E1 的全局 reranker 本来能在裁剪前把它救上来；G1 却先按 Dense 只保留5篇文档，关键文档在 rerank 前已被永久裁掉。Q492 另有连续证据丢失 | **NO_GO**：平均提升明显，但出现 COMPLETE→INSUFFICIENT 的灾难性退化 | [G1 结果与 Q346/Q492 分析](experiments/evals/reports/g1_document_local/final_decision.md) |
+| **G2-A：rerank 后再做文档准入** | `Dense Top100 → 全局 rerank → 前5篇 unique docs → 文档内展开 → 合并 rerank → Top16`；**只改文档准入顺序** | fresh TRAIN 30 条：**2 wins / 25 ties / 3 losses**；COMPLETE 19→19；Macro Claim Coverage **.667→.650** | Q287/Q578 被全局 rerank 救回，但 Q090/Q500 又因新的前5篇预算把原本有效文档挤出去。主因是**准入排序不稳定 + 固定5篇预算放大这种不稳定** | **NO_GO**，不根据已经看过的失败 case 继续补规则 | [G2 五个变化 case 逐条归因](experiments/evals/reports/g2_rerank_informed_admission/post_hoc_forensic_analysis.md) |
 
-- [experiments/evals/reports/r4_c1_hybrid_rerank/comparison.md](experiments/evals/reports/r4_c1_hybrid_rerank/comparison.md)
-- [experiments/evals/reports/r4_c1_hybrid_rerank/postmortem_decision.md](experiments/evals/reports/r4_c1_hybrid_rerank/postmortem_decision.md)
-
-## Evidence-level audit
-
-Document Recall 可能掩盖一个更细的失败模式：
-
-> **命中了正确文档，不等于真正包含答案的 evidence chunk 已经进入高位 context。**
-
-因此建立人工 evidence audit：
-
-- 60 条已标注 TRAIN queries；
-- 54 条进入正式 evidence evaluation；
-- 187 个 candidate chunk labels；
-- evidence 区分为 weak / useful / answer-bearing；
-- 计算 AnswerEvidenceHit、Evidence MRR 与 GoldDocHitButEvidenceMiss 等指标。
-
-相关 artifacts：
-
-- [experiments/evals/reports/r1_evidence_audit/evidence_metrics.json](experiments/evals/reports/r1_evidence_audit/evidence_metrics.json)
-- [experiments/evals/reports/r1_evidence_audit/evidence_labels.jsonl](experiments/evals/reports/r1_evidence_audit/evidence_labels.jsonl)
+**Macro Claim Coverage**：先把标准答案拆成若干关键事实点，计算每条问题的事实覆盖率，再对问题等权平均。例如两个问题分别覆盖 100% 和 25%，Macro Claim Coverage 为 62.5%。因此 G1 的 0.956 是**平均关键事实覆盖率**，不是“95.6% 准确率”。
 
 ---
 
-# 6. Historical Generation Harness
+## 4.5 上下文收口：为什么冻结为 Flat Top14
 
-`document_aware_forward_expansion_v1` remains the real **historical generation harness context policy**, implemented in [experiments/evals/eval_techqa_generation.py](experiments/evals/eval_techqa_generation.py). It is not the frozen portfolio-v1 final context policy.
+### Flat TopK 是什么
 
-Portfolio-v1 context is `flat_rerank_top14_v1`; final refusal and generation contracts remain unresolved. G1 document-local and G2-A rerank-informed admission are historical TRAIN branches with formal **NO_GO** outcomes. Their evidence and links remain in [experiments/evals/README.md](experiments/evals/README.md), which is the complete experiment index.
+**Flat TopK** 指：reranker 输出一条全局 chunk 排名后，**直接取前 K 个 chunk 作为最终 Context**。这里的 “Flat” 表示不再做层级式或局部式扩展：不追加 sibling、不展开整篇文档、不做硬性文档准入，也不再进行第二次 rerank。
+
+当前冻结候选使用：
+
+```text
+reranked chunks
+→ 直接取前 14 个
+→ final Context
+```
+
+历史 E1 / G1 实验曾使用最多 16 个 chunk；当前冻结工程候选是 **Flat Top14**，两者不是同一个上下文策略。
+
+| 阶段 | 为什么做 / 本次改动 | 核心结果 | 失败归因与决策 | 详情 |
+| --- | --- | --- | --- | --- |
+| **检索前沿审计** | G1/G2 都说明不同排序存在互补，但继续在已看过的 TRAIN case 上调 K、RRF、权重容易过拟合，因此只对冻结结果做零 provider 的反事实分析 | 观察到 Dense 与全局 rerank 确实存在互补，document-level RRF 是未来可能方向 | 这些 30 条已经是设计/诊断数据，不能继续拿来证明新方案有效。**关闭当前检索参数搜索** | [前沿审计](experiments/evals/reports/retrieval_frontier_freeze/final_offline_frontier_audit.md) |
+| **最终上下文预算** | 比较不同 Flat TopK，找达到当前证据命中上限的最小 K | 54 条证据样本：**Top14 = answer 35/54、useful 43/54；Top20 完全相同** | 从14增加到20没有新增 evidence hit，只增加上下文。**选择 Flat Top14**；这是当前 TRAIN 开发集选择，不是通用最佳 K | [架构冻结](experiments/evals/reports/portfolio_v1_rag_freeze/architecture_freeze.md) |
+| **局部二次 rerank** | 尝试对 Top14 未覆盖、且具备局部恢复条件的残留 case 再做局部候选恢复与第二次 rerank | answer **35→35**；useful **43→43**；**7 个具备局部恢复条件的 residual，0/7 被救回** | 没有新增 evidence hit，还增加一次 rerank；p50 约 661 ms。**拒绝** | [架构冻结 §4.1](experiments/evals/reports/portfolio_v1_rag_freeze/architecture_freeze.md) |
+| **结构保持扩展** | 尝试通过同文档 / 结构扩展恢复被固定 chunk 切分打散的信息 | answer **35→32**；useful **43→38**；2 个 miss→hit，但 5 个 hit→miss | 5/5 退化都来自**上下文预算挤占**：同一文档放入更多内容后，跨文档 evidence 被挤掉；Context 中文档数中位数 **12→4.5**。**拒绝，保留 Flat Top14** | [架构冻结 §4.2–5](experiments/evals/reports/portfolio_v1_rag_freeze/architecture_freeze.md) |
+
+最终冻结的检索 / Context 工程候选：
+
+```text
+Dense Top100
++
+BM25 Top100
+    ↓
+equal-weight RRF (k=60)
+    ↓
+fused Top100
+    ↓
+qwen3-rerank
+    ↓
+Flat Top14
+```
+
+- 检索参数研究：**CLOSED**
+- Context 组装研究：**CLOSED**
+- 当前在线 runtime：仍是 **Dense Chroma Retrieval**
+- Hybrid + rerank + Flat Top14：**冻结工程候选，尚未推广到在线 runtime**
 
 ---
 
-# 7. Document Lifecycle
+## 4.6 当前拒答线：证据充分性
+
+冻结检索 / Context 后，下一步不再沿用历史 `Dense Top1 distance > 0.9` 作为最终拒答契约，而是直接判断 **Flat Top14 是否包含足够证据**。
+
+| 阶段 | 本次方案 | 结果 | 失败归因 | 结论 | 详情 |
+| --- | --- | --- | --- | --- | --- |
+| **拒答 v1.1** | `Flat Top14 → qwen3.5-plus 证据充分性分类` | Balanced Accuracy **0.736**；充分证据召回 97.1%；不足证据召回仅 **50.0%** | 16 个不足证据 case 中有 8 个被错误放行为“充分” | **FAIL**，不进入生成与 runtime 集成 | [v1.1 正式结果](experiments/evals/reports/refusal_evidence_sufficiency/phase_b_v1_1_result.md) |
+| **拒答 v2.1** | 新分类契约 + fresh AI 草稿代理标签 | Balanced Accuracy **0.775**，门槛 0.80；充分召回 .85，不足召回 .70 | 只差 1 个 case 即可过门槛，但后验检查发现部分 disagreement 来自**标注契约与问题实际要求不一致**，不能简单继续调 prompt | **FAIL**，不修改门槛后重跑 | [v2.1 结果](experiments/evals/reports/refusal_evidence_sufficiency/v2_ai_proxy_v2_1_result.md) |
+| **拒答 v3：当前阶段** | 新选 80 条盲样本，只给 Question + Top14，按 sufficient / insufficient / questionable 重新标注 | 已冻结 AI 草稿：**44 sufficient / 27 insufficient / 9 questionable** | 当前仍是开发用 AI 草稿标签，不是独立人工金标；尚无新的 v3 classifier 正式结果 | **拒答策略尚未冻结，也未接入 runtime** | [v3 当前冻结状态](experiments/evals/reports/refusal_evidence_sufficiency/v3_ai_draft_freeze.md) |
+
+完整实验契约、索引与冻结 artifact 见 [experiments/evals/README.md](experiments/evals/README.md)。
+
+---
+
+# 5. Document Lifecycle
 
 Document Backend 提供从知识入库到下架的显式生命周期：
 
@@ -362,7 +417,7 @@ DELETE /documents/{document_id}
 
 ---
 
-# 8. AgentOps / Observability
+# 6. AgentOps / Observability
 
 AgentOps 将关键执行信息持久化，而不是只写控制台日志。
 
@@ -403,7 +458,7 @@ GET /agent-ops/metrics/retrieval/failures
 
 ---
 
-# 9. Authentication / Tenant Scope
+# 7. Authentication / Tenant Scope
 
 项目包含用于工程验证的 Demo JWT Auth：
 
@@ -420,7 +475,7 @@ GET /agent-ops/metrics/retrieval/failures
 
 ---
 
-# 10. Project Structure
+# 8. Project Structure
 
 ```text
 enterprise-support-ai-copilot-api/
@@ -454,7 +509,7 @@ enterprise-support-ai-copilot-api/
 
 ---
 
-# 11. Quick Start
+# 9. Quick Start
 
 ## Environment
 
@@ -498,7 +553,7 @@ Docker Compose 用于本地可复现运行与核心链路验证，不作为生�
 
 ---
 
-# 12. Tests / CI
+# 10. Tests / CI
 
 完整本地测试：
 
@@ -528,7 +583,7 @@ Workflow：
 
 ---
 
-# 13. Documentation
+# 11. Documentation
 
 推荐阅读顺序：
 
@@ -544,7 +599,7 @@ Workflow：
 
 ---
 
-# 14. Current Scope / Non-Claims
+# 12. Current Scope / Non-Claims
 
 当前项目对外表述保持以下边界：
 
