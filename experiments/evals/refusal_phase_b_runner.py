@@ -485,6 +485,7 @@ def classify_one(
     model: str,
     input_rate_cny_per_1m: float,
     output_rate_cny_per_1m: float,
+    max_output_tokens: int = 256,
     messages_builder: Callable[
         [ClassifierInput], list[dict[str, str]]
     ]
@@ -509,7 +510,7 @@ def classify_one(
             model=model,
             messages=messages,
             temperature=0.0,
-            max_tokens=256,
+            max_tokens=max_output_tokens,
             response_format={"type": "json_object"},
             extra_body={"enable_thinking": False},
         )
@@ -721,6 +722,7 @@ def run_paid_phase_b(
             model=model,
             input_rate_cny_per_1m=input_rate,
             output_rate_cny_per_1m=output_rate,
+            max_output_tokens=int(classifier["max_output_tokens"]),
             messages_builder=messages_builder,
             failed_attempt_recorder=lambda payload: _append_jsonl(
                 Path(failed_attempts_path), payload

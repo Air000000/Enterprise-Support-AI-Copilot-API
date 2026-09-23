@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 from collections.abc import Mapping, Sequence
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +15,7 @@ from experiments.evals.refusal_v2_ai_proxy import (
 
 DEFAULT_CONTRACT_PATH = Path(
     "experiments/evals/reports/refusal_evidence_sufficiency/"
-    "v2_ai_proxy_run_contract.json"
+    "v2_ai_proxy_v2_1_run_contract.json"
 )
 DEFAULT_INPUTS_PATH = Path(
     "data/refusal_v2_ai_proxy/holdout_inputs.jsonl"
@@ -23,7 +23,7 @@ DEFAULT_INPUTS_PATH = Path(
 DEFAULT_TARGETS_PATH = Path(
     "data/refusal_v2_ai_proxy/holdout_targets.jsonl"
 )
-DEFAULT_OUTPUT_DIR = Path("data/refusal_v2_ai_proxy/run_v1")
+DEFAULT_OUTPUT_DIR = Path("data/refusal_v2_ai_proxy/run_v2_1")
 DEFAULT_CHECKPOINT_PATH = DEFAULT_OUTPUT_DIR / "predictions.jsonl"
 DEFAULT_FAILED_ATTEMPTS_PATH = DEFAULT_OUTPUT_DIR / "failed_attempts.jsonl"
 DEFAULT_SUMMARY_PATH = DEFAULT_OUTPUT_DIR / "summary.json"
@@ -38,12 +38,18 @@ EXPECTED_PROMPT_SHA256 = (
     "eff5768921067cc04a0686fff0ff50599f4bf295f3ad263e63a143f110fe3c20"
 )
 EXPECTED_CASES = 40
+EXPECTED_PRIOR_CHECKPOINT_SHA256 = (
+    "bbfd3ff87e332b516fae0e78afba588453cde113d9caefbd7bc6c17e26f1c6ca"
+)
+EXPECTED_FAILURES_SHA256 = (
+    "d5ece92619caab15a1129b5c37144021d5166bc94f923aedf84cbd20f7c5dc1a"
+)
 
 
 def validate_contract(contract: Mapping[str, Any]) -> None:
-    if contract.get("run") != "refusal_v2_ai_proxy_holdout_v1":
+    if contract.get("run") != "refusal_v2_ai_proxy_holdout_v2_1":
         raise RuntimeError("unexpected v2 run identifier")
-    if contract.get("status") != "PREREGISTERED_NOT_RUN":
+    if contract.get("status") != "PREREGISTERED_RESUME_NOT_RUN":
         raise RuntimeError("v2 contract status changed")
 
     population = contract.get("population")
@@ -52,9 +58,18 @@ def validate_contract(contract: Mapping[str, Any]) -> None:
     pricing = contract.get("pricing_snapshot")
     gate = contract.get("gate")
     controls = contract.get("controls")
+    amendment = contract.get("amendment")
     if not all(
         isinstance(value, Mapping)
-        for value in (population, frozen, classifier, pricing, gate, controls)
+        for value in (
+            population,
+            frozen,
+            classifier,
+            pricing,
+            gate,
+            controls,
+            amendment,
+        )
     ):
         raise RuntimeError("v2 contract is malformed")
 
@@ -85,8 +100,8 @@ def validate_contract(contract: Mapping[str, Any]) -> None:
         "temperature": 0,
         "enable_thinking": False,
         "response_format": "json_object",
-        "max_output_tokens": 256,
-        "max_calls": 40,
+        "max_output_tokens": 512,
+        "max_calls": 41,
         "prompt_sha256": EXPECTED_PROMPT_SHA256,
     }
     if any(
@@ -142,6 +157,56 @@ def validate_contract(contract: Mapping[str, Any]) -> None:
         raise RuntimeError("v2 unblinding control changed")
     if controls.get("pass_does_not_admit_phase_c") is not True:
         raise RuntimeError("v2 must not admit Phase C")
+    expected_amendment = {
+        "supersedes_run": "refusal_v2_ai_proxy_holdout_v1",
+        "reason": "provider JSON truncated at the 256-token output limit",
+        "prior_successful_predictions": 38,
+        "prior_failed_attempts": 1,
+        "prior_provider_attempts": 39,
+        "additional_calls_max": 2,
+        "carry_forward_successful_predictions": True,
+        "prompt_changed": False,
+        "model_changed": False,
+        "gate_changed": False,
+    }
+    if any(
+        amendment.get(key) != value
+        for key, value in expected_amendment.items()
+    ):
+        raise RuntimeError("v2.1 amendment contract changed")
+
+
+def validate_resume_state(
+    checkpoint_path: str | Path = DEFAULT_CHECKPOINT_PATH,
+    failed_attempts_path: str | Path = DEFAULT_FAILED_ATTEMPTS_PATH,
+) -> tuple[list[shared.PhaseBPrediction], list[dict[str, Any]]]:
+    checkpoint = Path(checkpoint_path)
+    failures_path = Path(failed_attempts_path)
+    predictions = shared.load_predictions(checkpoint)
+    failures = shared.load_failed_attempts(failures_path)
+    if shared._sha256(failures_path) != EXPECTED_FAILURES_SHA256:
+        raise RuntimeError("v2.1 prior failure artifact changed")
+    if len(failures) != 1:
+        raise RuntimeError("v2.1 requires exactly one prior failed attempt")
+    failure = failures[0]
+    if not (
+        failure.get("question_id") == "TRAIN_Q584"
+        and failure.get("stage") == "schema"
+        and failure.get("error_message") == "classifier returned invalid JSON"
+        and int(failure.get("completion_tokens", 0)) == 256
+    ):
+        raise RuntimeError("v2.1 prior failure identity changed")
+    if len(predictions) == 38:
+        if shared._sha256(checkpoint) != EXPECTED_PRIOR_CHECKPOINT_SHA256:
+            raise RuntimeError("v2.1 prior checkpoint artifact changed")
+    elif len(predictions) == EXPECTED_CASES:
+        with checkpoint.open("rb") as handle:
+            prefix = b"".join(handle.readline() for _ in range(38))
+        if hashlib.sha256(prefix).hexdigest() != EXPECTED_PRIOR_CHECKPOINT_SHA256:
+            raise RuntimeError("v2.1 carried-forward checkpoint rows changed")
+    else:
+        raise RuntimeError("v2.1 checkpoint must contain 38 or 40 predictions")
+    return predictions, failures
 
 
 def load_classifier_inputs(
@@ -205,6 +270,7 @@ def run_paid(
     failed_attempts_path: str | Path = DEFAULT_FAILED_ATTEMPTS_PATH,
     client: Any | None = None,
 ) -> tuple[shared.PhaseBPrediction, ...]:
+    validate_resume_state(checkpoint_path, failed_attempts_path)
     return shared.run_paid_phase_b(
         contract_path=contract_path,
         inputs_path=inputs_path,
@@ -311,15 +377,30 @@ def evaluate_checkpoint(
     failed_attempts_path: str | Path = DEFAULT_FAILED_ATTEMPTS_PATH,
 ) -> shared.PhaseBEvaluation:
     contract = shared._read_json(contract_path)
-    predictions = shared.load_predictions(checkpoint_path)
-    if shared.load_failed_attempts(failed_attempts_path):
-        raise RuntimeError("v2 evaluation forbidden after a failed attempt")
+    predictions, failures = validate_resume_state(
+        checkpoint_path,
+        failed_attempts_path,
+    )
     if len(predictions) != EXPECTED_CASES:
         raise RuntimeError("v2 evaluation requires all 40 predictions")
     summary = evaluate_predictions(
         predictions,
         load_targets(targets_path),
         contract=contract,
+    )
+    failed = failures[0]
+    summary = replace(
+        summary,
+        provider_calls=len(predictions) + len(failures),
+        prompt_tokens=summary.prompt_tokens + int(failed["prompt_tokens"]),
+        completion_tokens=(
+            summary.completion_tokens + int(failed["completion_tokens"])
+        ),
+        total_tokens=summary.total_tokens + int(failed["total_tokens"]),
+        estimated_cost_cny=(
+            summary.estimated_cost_cny
+            + float(failed["estimated_cost_cny"])
+        ),
     )
     shared._write_json(Path(summary_path), asdict(summary))
     return summary
@@ -336,19 +417,23 @@ def print_preflight(
     validate_contract(contract)
     rows = load_classifier_inputs(inputs_path)
     _, base_url, key_source = shared.resolve_classifier_auth()
-    predictions = shared.load_predictions(checkpoint_path)
-    failures = shared.load_failed_attempts(failed_attempts_path)
+    predictions, failures = validate_resume_state(
+        checkpoint_path,
+        failed_attempts_path,
+    )
     char_count = sum(
         len(str(row["question"]))
         + sum(len(str(source["content"])) for source in row["sources"])
         for row in rows
     )
 
-    print("REFUSAL_V2_AI_PROXY_RUNNER_PREFLIGHT=PASS")
+    print("REFUSAL_V2_1_AI_PROXY_RUNNER_PREFLIGHT=PASS")
     print(f"INPUT_CASES={len(rows)}")
     print(f"INPUT_SHA256={shared._sha256(inputs_path)}")
     print(f"TOTAL_QUESTION_CONTEXT_CHARS={char_count}")
     print(f"MODEL={contract['classifier']['model']}")
+    print(f"MAX_OUTPUT_TOKENS={contract['classifier']['max_output_tokens']}")
+    print(f"MAX_PROVIDER_CALLS={contract['classifier']['max_calls']}")
     print(f"PROMPT_SHA256={EXPECTED_PROMPT_SHA256}")
     print(f"AUTH_KEY_SOURCE={key_source}")
     print(f"BASE_URL={base_url}")
@@ -359,11 +444,16 @@ def print_preflight(
     print(f"FAILED_ATTEMPTS={len(failures)}")
     print(f"PROVIDER_CALLS={len(predictions) + len(failures)}")
     print("DEV_ARTIFACT_OPENED=NO")
-    print("NEXT_ACTION=RUN_FROZEN_V2_AI_PROXY_PAID_LOOP")
+    next_action = (
+        "RUN_SEPARATE_V2_PROXY_EVALUATION"
+        if len(predictions) == EXPECTED_CASES
+        else "RUN_FROZEN_V2_1_TWO_CALL_RESUME"
+    )
+    print(f"NEXT_ACTION={next_action}")
 
 
 def _print_evaluation(summary: shared.PhaseBEvaluation) -> None:
-    print("REFUSAL_V2_AI_PROXY=COMPLETE")
+    print("REFUSAL_V2_1_AI_PROXY=COMPLETE")
     print(f"TOTAL_PREDICTIONS={summary.total_predictions}")
     print(f"ACCURACY={summary.accuracy:.6f}")
     print(f"BALANCED_ACCURACY={summary.balanced_accuracy:.6f}")
@@ -390,7 +480,7 @@ def main() -> None:
 
     if args.run_paid:
         run_paid()
-        print("REFUSAL_V2_AI_PROXY_PAID_RUN=COMPLETE")
+        print("REFUSAL_V2_1_AI_PROXY_PAID_RUN=COMPLETE")
         print("TARGETS_OPENED=NO")
         print("NEXT_ACTION=RUN_SEPARATE_V2_PROXY_EVALUATION")
     elif args.evaluate:
