@@ -1,30 +1,40 @@
-# R3 Hybrid Admission Decision
+# R3：Hybrid 候选互补性准入
 
-## Committed thresholds
-required_recovered_dense_misses = 10
-required_net_gain_cases = 7
+## 预注册门槛
 
-## Observed results
-recovered_dense_misses = 19
-dense_hit100 = 387
-bm25_hit100 = 375
-hybrid_hit100 = 402
-net_gain_cases = 15
+- 至少救回 Dense miss：10 条
+- 净增命中：至少 7 条
 
-### Dense metrics
-recall@20 = 0.74
-recall@100 = 0.86
-mrr@10 = 0.5104770723104056
+## 实际结果
 
-### BM25 metrics
-recall@20 = 0.6955555555555556
-recall@100 = 0.8333333333333334
-mrr@10 = 0.5134285714285715
+- Dense hit@100：387
+- BM25 hit@100：375
+- Hybrid hit@100：402
+- 救回 Dense miss：19
+- 净增命中：15
 
-### Hybrid metrics
-recall@20 = 0.7777777777777778
-recall@100 = 0.8933333333333333
-mrr@10 = 0.5470899470899471
+### Dense
 
-## Status
-ADMIT_PAID_R4
+- Recall@20：0.740000
+- Recall@100：0.860000
+- MRR@10：0.510477
+
+### BM25
+
+- Recall@20：0.695556
+- Recall@100：0.833333
+- MRR@10：0.513429
+
+### Hybrid
+
+- Recall@20：0.777778
+- Recall@100：0.893333
+- MRR@10：0.547090
+
+## 结论
+
+BM25 单独并不优于 Dense，但对错误码、版本号、CVE、命令路径和固定技术短语等词法型问题存在真实互补。
+
+**状态：ADMIT_PAID_R4**
+
+因此允许进入下一阶段 Hybrid + rerank 的正式受控实验。
