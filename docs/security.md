@@ -9,7 +9,7 @@ Enterprise Support AI Copilot 安全设计说明。
 ```text
 Enterprise RAG Core
 Document Backend
-Ticket Agent preview / confirm
+Ticket Agent 预览 / 确认
 AgentOps audit
 Retrieval Logs / Metrics
 Docker Compose local runtime
@@ -19,14 +19,14 @@ Smoke Scripts
 本文档重点说明：
 
 ```text
-1. Ticket Agent 的 preview / confirm 两阶段执行边界
-2. approval_request ownership / pending / draft consistency 校验
+1. Ticket Agent 的 预览 / 确认 两阶段执行边界
+2. approval_request 归属 / pending / 草稿一致性 校验
 3. Document Backend 的上传、索引、删除安全边界
 4. RAG tenant / category filter 的 MVP 边界
 5. AgentOps 审计数据的能力与限制
 6. Docker Compose 本地运行边界
 7. API key / .env 管理边界
-8. 公网暴露、rate limit、成本控制和生产化风险
+8. 公网暴露、限流、成本控制和生产化风险
 ```
 
 ---
@@ -427,7 +427,7 @@ RAG search no longer returns deleted document
 
 ```text
 1. 尚未接入真实用户认证
-2. tenant_id 仍来自 mock context
+2. tenant_id 仍来自 模拟上下文
 3. 尚未实现真实 tenant 级文档权限校验
 4. 尚未实现上传文件大小限制
 5. 尚未实现病毒扫描或恶意内容检测
@@ -483,7 +483,7 @@ RAG search no longer returns deleted document
 1. index job 队列
 2. indexing 状态机
 3. 幂等索引设计
-4. per-user / per-tenant rate limit
+4. per-user / per-tenant 限流
 5. token / embedding 成本统计
 6. 失败重试和补偿逻辑
 7. 操作日志和管理员可见的 job logs
@@ -499,7 +499,7 @@ Chroma 中对应 embeddings 被删除
 后续 RAG 不再召回已删除文档
 ```
 
-当前 MVP 已覆盖删除后 search miss 的 smoke 验证。
+当前 MVP 已覆盖删除后 检索未命中 的 冒烟 验证。
 
 后续生产化前还需要考虑：
 
@@ -513,7 +513,7 @@ Chroma 中对应 embeddings 被删除
 
 ---
 
-## 10. RAG / Tenant / Category Boundaries
+## 10. RAG / 租户 / 类别边界
 
 当前 RAG API：
 
@@ -535,7 +535,7 @@ retrieval logs / metrics
 
 ### 10.1 当前实现边界
 
-当前 API 层只暴露 `category` filter。`tenant_id` 暂时由系统内部 mock tenant context 提供：
+当前 API 层只暴露 `category` filter。`tenant_id` 暂时由系统内部 模拟租户上下文 提供：
 
 ```text
 tenant_demo
@@ -686,7 +686,7 @@ create_ticket
 
 ---
 
-## 12. Failure Recording
+## 12. 失败记录
 
 工具调用失败时，系统应更新对应 `tool_call`：
 
@@ -705,7 +705,7 @@ result_summary = <failure summary>
 
 当前重点失败路径：
 
-| Failure point | Expected record |
+| 失败点 | 预期记录 |
 |---|---|
 | search_kb failed | search_kb tool_call failed, agent_run failed |
 | classify_ticket failed | classify_ticket tool_call failed, agent_run failed |
@@ -847,12 +847,12 @@ approval_request 是否仍有 pending
 ```text
 1. 尚未接入真实 authentication
 2. 尚未接入真实 authorization
-3. tenant_id / user_id 仍是 mock context
+3. tenant_id / user_id 仍是 模拟上下文
 4. Document upload 缺少生产级文件安全控制
 5. RAG / ask / index 可能消耗真实模型 API 成本
 6. AgentOps API 暂未做管理员权限隔离
 7. SQLite 不适合作为公网生产数据库
-8. 缺少 rate limit、WAF、TLS、reverse proxy 和审计告警
+8. 缺少 限流、WAF、TLS、reverse proxy 和审计告警
 ```
 
 如果需要部署到共享环境或公网，必须先补齐生产化安全控制。
@@ -917,7 +917,7 @@ IDE / terminal injected environment
 
 ```text
 .env 是项目本地运行的唯一配置源。
-Docker、本地 uvicorn、smoke scripts 都应以 .env 为准。
+Docker、本地 uvicorn、冒烟 scripts 都应以 .env 为准。
 不要长期依赖 shell_env 里偶然存在的 key。
 ```
 
@@ -935,21 +935,21 @@ Smoke scripts
 可能的 Agent preview 检索链路
 ```
 
-当前 MVP 尚未实现生产级 rate limit 和成本控制，因此存在：
+当前 MVP 尚未实现生产级 限流 和成本控制，因此存在：
 
 ```text
 1. 高频请求导致 API 费用增加
 2. 大文档索引导致 embedding 成本增加
 3. 恶意用户反复调用 /documents/{document_id}/index
 4. 恶意用户反复调用 /rag/ask
-5. smoke scripts 在错误环境中反复运行导致额外成本
+5. 冒烟 scripts 在错误环境中反复运行导致额外成本
 ```
 
 生产化前需要补齐：
 
 ```text
-1. per-user rate limit
-2. per-tenant rate limit
+1. per-user 限流
+2. per-tenant 限流
 3. daily budget limit
 4. embedding token / cost accounting
 5. LLM token / cost accounting
@@ -966,8 +966,8 @@ Smoke scripts
 当前项目提供：
 
 ```text
-scripts/smoke_agentops_flow.py
-scripts/smoke_document_backend_flow.py
+scripts/冒烟_agentops_flow.py
+scripts/冒烟_document_backend_flow.py
 ```
 
 Smoke scripts 的定位：
@@ -984,16 +984,16 @@ Smoke scripts 与 pytest 的区别：
 pytest:
 验证 model / service / API 的单元或集成行为，通常使用 monkeypatch 隔离外部依赖。
 
-smoke scripts:
+冒烟 scripts:
 调用真实运行中的 API 服务，可能触发真实 embedding / LLM 调用。
 ```
 
 因此：
 
 ```text
-1. smoke scripts 不进入默认 GitHub Actions CI
-2. smoke scripts 运行前需要有效 .env
-3. Document Backend smoke 会触发真实 embedding
+1. 冒烟 scripts 不进入默认 GitHub Actions CI
+2. 冒烟 scripts 运行前需要有效 .env
+3. Document Backend 冒烟 会触发真实 embedding
 4. 运行失败时需要清理临时上传文档
 5. 不应在无成本控制的公网环境中开放给任意用户触发
 ```
@@ -1005,15 +1005,15 @@ smoke scripts:
 当前 MVP 不能直接用于生产环境，主要限制如下：
 
 ```text
-1. tenant_id / user_id 仍使用 mock context
+1. tenant_id / user_id 仍使用 模拟上下文
 2. 尚未接入真实 authentication
 3. 尚未接入真实 authorization
 4. AgentOps API 暂未区分管理员权限
 5. Document Backend 缺少生产级上传安全控制
 6. Document Backend 缺少文件大小限制、病毒扫描和敏感内容检测
 7. RAG sources 暂未做生产级权限过滤
-8. /documents/{document_id}/index 缺少 rate limit 和成本控制
-9. /rag/ask 缺少 rate limit 和成本控制
+8. /documents/{document_id}/index 缺少 限流 和成本控制
+9. /rag/ask 缺少 限流 和成本控制
 10. SQLite 仅用于本地开发和 MVP 演示
 11. 数据库 schema 变更尚未接入 Alembic migration
 12. Docker Compose 当前是本地运行版，不是生产部署版
@@ -1061,7 +1061,7 @@ smoke scripts:
 2. sources 字段权限过滤
 3. prompt injection 检测
 4. no-context 拒答策略继续强化
-5. per-user / per-tenant rate limit
+5. per-user / per-tenant 限流
 6. embedding / LLM 成本统计
 7. daily budget limit
 8. timeout / retry / circuit breaker
