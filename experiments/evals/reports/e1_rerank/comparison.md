@@ -1,33 +1,32 @@
-# E0 Dense vs E1 Rerank Evidence
-
-- Reranker: `qwen3-rerank`
-- Provider region: `ap-southeast-1`
-- DEV evidence is aggregate-only; individual DEV failure IDs are intentionally omitted.
+# E1：Dense + rerank 对比
 
 ## TRAIN
 
-| Metric | E0 Dense | E1 Rerank |
+| 指标 | E0 Dense | E1 Dense + rerank |
 | --- | ---: | ---: |
 | Recall@5 | 0.613333 | 0.691111 |
 | Recall@20 | 0.740000 | 0.815556 |
 | MRR@10 | 0.510477 | 0.567206 |
 
-- Top-5 fixed/regressed: 51/16
-- Top-20 fixed/regressed: 37/3
-- E1 full retrieval p50: 4114.488 ms
-- E1 full retrieval p95: 4959.818 ms
-- Provider total tokens: 11972838
+- Top5 改善 / 退化：51 / 16
+- Top20 改善 / 退化：37 / 3
+- E1 完整检索 p50：4114.488 ms
+- E1 完整检索 p95：4959.818 ms
 
-## DEV
+## 冻结 DEV
 
-| Metric | E0 Dense | E1 Rerank |
+| 指标 | E0 Dense | E1 Dense + rerank |
 | --- | ---: | ---: |
-| Recall@5 | 0.643750 | 0.725000 |
-| Recall@20 | 0.818750 | 0.843750 |
-| MRR@10 | 0.518931 | 0.560841 |
+| Recall@5 | 0.643750 | **0.725000** |
+| Recall@20 | 0.818750 | **0.843750** |
+| MRR@10 | 0.518931 | **0.560841** |
 
-- Top-5 fixed/regressed: 21/8
-- Top-20 fixed/regressed: 5/1
-- E1 full retrieval p50: 4111.483 ms
-- E1 full retrieval p95: 4657.189 ms
-- Provider total tokens: 4163611
+- Top5 改善 / 退化：21 / 8
+- Top20 改善 / 退化：5 / 1
+- E1 完整检索 p95 约 4657 ms
+
+## 结论
+
+E1 只在 Dense Top100 后增加 `qwen3-rerank`。冻结 DEV 上三项核心指标均提升，其中 Recall@5 从 64.4% 提升到 72.5%。
+
+rerank 并非对每条问题都单调改善：DEV Top5 有 8 条退化。但冻结 DEV 不用于逐 case 反向调参，因此不针对这些个例继续做方案拟合。
