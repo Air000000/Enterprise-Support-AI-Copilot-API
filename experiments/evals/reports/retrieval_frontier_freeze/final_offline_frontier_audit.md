@@ -1,98 +1,100 @@
-# Retrieval Frontier Freeze: Final Offline Frontier Audit
+# 检索前沿冻结：最终离线审计
 
-Date: 2026-09-10
+日期：2026-09-10
 
-This is a zero-provider, post-hoc counterfactual audit over the frozen G2 30-case TRAIN design/diagnostic set. It is exploratory only. The cases are not a future confirmation sample.
+这是对冻结 G2 30 条 TRAIN 设计 / 诊断样本的**零 provider、post-hoc 反事实分析**。它只用于理解检索前沿，不是新的 confirmatory benchmark。
 
-## 1. Confirmatory results
+## 1. 正式结果保持不变
 
-The frozen confirmatory lineage is unchanged:
+- E1 仍是参考策略；
+- G1 仍为 NO_GO；
+- G2-A 仍为 NO_GO；
+- 本审计不产生新的正式 GO / NO_GO。
 
-- E1 remains the reference policy and its held-out retrieval result is unchanged.
-- G1 remains formal `NO_GO`.
-- G2-A remains formal `NO_GO`.
-- This audit makes no new formal GO/NO_GO decision.
+provider 调用：
 
-The existing G1 and G2-A reports remain the sources for those decisions. This report does not re-review their claims.
+- reranker：0
+- embedding：0
+- generation：0
+- judge：0
 
-Provider calls during this audit: reranker=0, embedding=0, generation=0, judge=0.
+## 2. 已知诊断
 
-## 2. Post-hoc diagnostics
+冻结30条中：
 
-The prior diagnostics remain bounded as post-hoc evidence:
+- BOTH：20
+- G1_ONLY_DISPLACED：2
+- G2_ONLY_RESCUED：2
+- NEITHER：6
 
-- G1's failure mechanism is documented in `reports/g1_document_local/final_decision.md`.
-- G2-A's five-case forensic is documented in `reports/g2_rerank_informed_admission/post_hoc_forensic_analysis.md`.
-- The broader frozen 30-case diagnostic found 20 `BOTH`, 2 `G1_ONLY_DISPLACED`, 2 `G2_ONLY_RESCUED`, and 6 `NEITHER`.
-- Admission overlap had mean 1.83 and median 2; all 30 admission sets changed.
-- The five known movements were preserved: two rescues, two displacements, and one `NEITHER` loss.
+G1 / G2 的5个已知 movement 保持不变：
 
-These observations are diagnostic only. They are not a new benchmark result, generation uplift claim, production claim, or confirmation sample.
+- 2 个 rescue
+- 2 个 displacement
+- 1 个 NEITHER loss
 
-## 3. Counterfactual frontier result
+## 3. 反事实策略
 
-The counterfactuals use the frozen Dense Top100, frozen shared-global rerank, frozen corpus and splitter, and uncapped document-local chunk expansion. Policies are Dense K=5..10, Global K=5..10, document-level RRF K=5..10 with fixed RRF constant 60, and Dense5 UNION Global5. The RRF tie-break is symmetric and deterministic: min rank, max rank, then lexical document ID.
+使用同一份冻结 Dense Top100、shared global rerank、corpus 和 splitter，对以下策略做离线重放：
 
-All values below are design-set-only diagnostics. `raw chunks` means a merged-rerank workload proxy, not latency, token cost, or production cost.
+- Dense K=5..10
+- Global K=5..10
+- document-level RRF K=5..10，RRF 常数固定60
+- Dense5 UNION Global5
 
-| Point | Gold / 30 | Rescue | Displacement | Mean chunks | P50 | P95 | Max | Total raw chunks | >=450 | >=500 |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Dense5 | 22 | 0 | 0 | 30.5 | 27 | 49 | 102 | 916 | 0 | 0 |
-| Dense6 | 22 | 0 | 0 | 36.2 | 32 | 55 | 121 | 1086 | 0 | 0 |
-| Dense7 | 22 | 0 | 0 | 43.9 | 39 | 61 | 142 | 1316 | 0 | 0 |
-| Dense8 | 22 | 0 | 0 | 49.4 | 45 | 74 | 161 | 1481 | 0 | 0 |
-| Dense9 | 22 | 0 | 0 | 55.6 | 51 | 80 | 180 | 1667 | 0 | 0 |
-| Dense10 | 22 | 0 | 0 | 61.6 | 56 | 85 | 198 | 1847 | 0 | 0 |
-| Global5 | 22 | 2 | 2 | 29.6 | 27 | 43 | 102 | 889 | 0 | 0 |
-| Global6 | 22 | 2 | 2 | 36.1 | 32 | 55 | 121 | 1082 | 0 | 0 |
-| Global7 | 23 | 3 | 2 | 43.7 | 39 | 64 | 142 | 1312 | 0 | 0 |
-| Global8 | 27 | 5 | 0 | 51.6 | 47 | 92 | 161 | 1548 | 0 | 0 |
-| Global9 | 27 | 5 | 0 | 59.0 | 54 | 106 | 180 | 1770 | 0 | 0 |
-| Global10 | 27 | 5 | 0 | 65.8 | 60 | 121 | 198 | 1975 | 0 | 0 |
-| RRF5 | 24 | 2 | 0 | 31.9 | 28 | 45 | 102 | 956 | 0 | 0 |
-| RRF6 | 25 | 3 | 0 | 37.6 | 34 | 60 | 121 | 1127 | 0 | 0 |
-| RRF7 | 25 | 3 | 0 | 44.3 | 40 | 71 | 142 | 1329 | 0 | 0 |
-| RRF8 | 25 | 3 | 0 | 49.7 | 46 | 77 | 161 | 1492 | 0 | 0 |
-| RRF9 | 25 | 3 | 0 | 55.4 | 51 | 93 | 180 | 1662 | 0 | 0 |
-| RRF10 | 25 | 3 | 0 | 61.0 | 56 | 100 | 198 | 1831 | 0 | 0 |
-| Dense5 UNION Global5 | 24 | 2 | 0 | 50.2 | 46 | 94 | 204 | 1505 | 0 | 0 |
+这里的 raw chunks 只是 merged-rerank 工作量代理，不等于真实延迟、token 成本或生产成本。
 
-Relative to Dense5, the RRF exploratory points have total workload ratios of 1.04, 1.23, 1.45, 1.63, 1.81, and 2.00 for K=5..10. The Union diagnostic has ratio 1.64. These are workload-proxy ratios only.
+关键结果：
 
-### Pareto and near-cost findings
+| 策略 | Gold / 30 | Rescue | Displacement | Mean chunks |
+| --- | ---: | ---: | ---: | ---: |
+| Dense5 | 22 | 0 | 0 | 30.5 |
+| Global5 | 22 | 2 | 2 | 29.6 |
+| Global8 | 27 | 5 | 0 | 51.6 |
+| RRF5 | 24 | 2 | 0 | 31.9 |
+| RRF6 | 25 | 3 | 0 | 37.6 |
+| RRF7 | 25 | 3 | 0 | 44.3 |
+| Dense5 UNION Global5 | 24 | 2 | 0 | 50.2 |
 
-Using the specified exploratory non-dominated rule, the points are:
+观察到：
 
-`Dense5`, `Global5`, `Global8`, `RRF5`, `RRF6`.
+- Dense5 与 Global5 总 gold 数相同，但 Global5 有 rescue 也有 displacement；
+- RRF5 / RRF6 在接近 Dense 的 workload 下增加了 rescue，同时这30条中没有观察到 displacement；
+- Global8 达到 27/30，但依赖单一 global ranking，并没有显式保留 Dense / Global 两种方向；
+- Union 能保留互补性，但 workload 比 RRF5..8 更大。
 
-Representative approximately comparable workload pairs include:
+这些都只是**设计集上的描述性结果**，不称为最优、已验证或生产可用。
 
-- Dense5 vs Global5: 916 vs 889 chunks, 22 vs 22 gold, 0 vs 2 rescue, 0 vs 2 displacement.
-- Dense5 vs RRF5: 916 vs 956 chunks, 22 vs 24 gold, 0 vs 2 rescue, 0 vs 0 displacement.
-- Dense6 vs RRF6: 1086 vs 1127 chunks, 22 vs 25 gold, 0 vs 3 rescue, 0 vs 0 displacement.
-- Dense7 vs RRF7: 1316 vs 1329 chunks, 22 vs 25 gold, 0 vs 3 rescue, 0 vs 0 displacement.
-- Dense8 vs Global8: 1481 vs 1548 chunks, 22 vs 27 gold, 0 vs 5 rescue, 0 vs 0 displacement.
-- Dense8 vs RRF8: 1481 vs 1492 chunks, 22 vs 25 gold, 0 vs 3 rescue, 0 vs 0 displacement.
-- RRF8 vs Union5: 1492 vs 1505 chunks, 25 vs 24 gold, 3 vs 2 rescue, 0 vs 0 displacement.
+## 4. 未来假设
 
-The near-cost pattern is descriptive: RRF preserves Dense5's 22/30 baseline hits, adds rescues, and shows zero displacement in this design set. Global K=8..10 reaches 27/30, but does so by replacing the Dense admission direction rather than preserving both rankings. Union preserves complementarity but expands the document and chunk pool more than RRF5..8 at similar coverage.
+当前数据支持：
 
-No point is called optimal, best, validated, or production-ready.
+> Dense 与 global rerank 存在真实互补，而固定 admission budget 会把排序差异放大。
 
-## 4. Future hypothesis
+在允许的策略族中，document-level RRF 是一个值得未来重新验证的方向，因为它在这批设计 case 上表现出“保留 Dense 覆盖 + 增加 rescue”的特征。
 
-**Q1. MAIN BOTTLENECK = BOTH.** The data show a fixed admission budget boundary and genuine Dense/Global complementarity: increasing K in one ranking does not recover the other ranking's direction, while Global and Dense each retain unique gold admissions in the frozen design set.
+但这只是**未来假设**：
 
-**Q2. POLICY FAMILY = RRF_K.** Among the allowed families, document-level RRF is the clearest exploratory design direction because RRF5/RRF6/RRF7 add 2/3/3 rescues with zero displacement at workloads close to Dense K points. This is a policy-family diagnostic, not a validated configuration.
+> document-level RRF admission 可能比单纯增大某一个 ranking 的 cutoff，更稳定地保留 Dense / Global 的互补覆盖。
 
-**Q3. FUTURE DIRECTION = FUTURE_G3_CANDIDATE_IDENTIFIED.**
+本文件不：
 
-Future hypothesis: “document-level RRF admission may preserve complementary Dense/Global coverage at lower expanded-chunk workload than simply increasing a single-ranking cutoff.”
+- 冻结新的 K；
+- 设计 G3；
+- 授权付费 rerank；
+- 打开 DEV；
+- 把这30条再次当作 confirmation sample。
 
-This does not design G3, freeze a K, preregister an experiment, or authorize a paid/DEV run. Any future G3 would require new authorization, new preregistration, and fresh TRAIN confirmation cases; these 30 cases remain design/diagnostic cases and cannot be reused as confirmation evidence.
+## 5. 研究关闭
 
-## Scope and reproducibility
+当前检索研究线关闭。
 
-The complete structured result is in `frontier_metrics.json`. The reproduction gate passed for all 30 cases: reconstructed G1/G2 raw expanded pool sizes exactly matched the frozen full `g1_merged`/`g2_merged` permutations. The corpus was read from the local frozen TechQA cache matching the manifest revision and SHA256. No provider was called.
+不再对当前 artifacts 继续搜索：
 
-This final offline frontier audit closes the retrieval research line. No further retrieval optimization, context-policy tuning, G3 implementation, confirmation sampling, paid rerank, DEV run, or provider call is authorized by this artifact.
+- RRF k
+- candidate depth
+- source weight
+- quota
+- per-document cap
+
+未来如果重新开启，必须使用新问题、新预注册和 fresh TRAIN confirmation cases。
