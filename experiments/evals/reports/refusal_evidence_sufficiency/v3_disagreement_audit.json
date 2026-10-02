@@ -1,0 +1,187 @@
+{
+  "schema_version": 1,
+  "run": "refusal_v3_ai_proxy_holdout_v1",
+  "status": "POST_HOC_DIAGNOSTIC_NOT_RESCORING",
+  "date": "2026-10-02",
+  "reviewer_provenance": "CODEX_AI_POST_HOC_NOT_INDEPENDENT_HUMAN",
+  "scope": "12 disagreements only; all 14 visible sources inspected per case",
+  "frozen_artifacts": {
+    "annotated_packet_sha256": "a3a1226343f5facd51b1fe714974aa66ade947a52710198effcaba867c142218",
+    "inputs_sha256": "87f91ba55b78bfc16db2c018b092212e39cf9d171b52e62853a5e536b6fd344d",
+    "targets_sha256": "a1965b36786b96d956a63b2af6533d14c1182fb3b42155ab8cd15879b7823c83",
+    "predictions_sha256": "22df1dfdfe2947bde07adcaf29b6b6106eecef7892b9f4c49b567ff5d2485cf4"
+  },
+  "attribution_counts": {
+    "LIKELY_CLASSIFIER_ERROR": 3,
+    "LIKELY_ANNOTATION_ERROR": 2,
+    "MIXED_REASONING_ERRORS": 2,
+    "ANSWER_SCOPE_UNRESOLVED": 5
+  },
+  "controls": {
+    "provider_calls": 0,
+    "estimated_cost_cny": 0,
+    "dev_artifact_opened": false,
+    "gold_answer_opened": false,
+    "external_links_opened": false,
+    "targets_changed": false,
+    "predictions_changed": false,
+    "rescored": false,
+    "human_verified": false,
+    "phase_c_admitted": false
+  },
+  "cases": [
+    {
+      "question_id": "TRAIN_Q040",
+      "frozen_target": "SUFFICIENT",
+      "prediction": "INSUFFICIENT",
+      "primary_attribution": "ANSWER_SCOPE_UNRESOLVED",
+      "confidence": "medium",
+      "evidence": [
+        {"source_id": "Source 1", "anchor": "it's better to create a symbolic link to the newer module."},
+        {"source_id": "Source 1", "anchor": "Tivoli Netcool/OMNIbus Ping AIX All Versions"}
+      ],
+      "finding": "Source 1 给出 AIX Ping 库链接及更新后重建链接的条件化建议，不是所有 OMNIbus 8.1 fixpack 安装的一般规则。标注扩大适用范围，分类器又未讨论该有限建议能否回答宽泛问题。不能仅凭此确定二元真值。"
+    },
+    {
+      "question_id": "TRAIN_Q092",
+      "frozen_target": "SUFFICIENT",
+      "prediction": "INSUFFICIENT",
+      "primary_attribution": "LIKELY_ANNOTATION_ERROR",
+      "confidence": "high",
+      "evidence": [
+        {"source_id": "Source 1", "anchor": "WARNING: Feature 'model' not found."},
+        {"source_id": "Source 1", "anchor": "This error usually occurs if you deploy the Rule Team Server EAR or WAR file meant for another application server."}
+      ],
+      "finding": "标注把 Feature model 警告的部署修复套到 SerializedENamedElement/EStructuralFeature ClassCastException；可见 Top14 没有建立这条报错到该原因的桥接。分类器拒绝该推断有依据。"
+    },
+    {
+      "question_id": "TRAIN_Q112",
+      "frozen_target": "INSUFFICIENT",
+      "prediction": "SUFFICIENT",
+      "primary_attribution": "LIKELY_CLASSIFIER_ERROR",
+      "confidence": "high",
+      "evidence": [
+        {"source_id": "Source 1", "anchor": "the WLM waits for a longer period of time before returning an error"},
+        {"source_id": "Source 4", "anchor": "consider increasing the value of sib.trm.linger from three"}
+      ],
+      "finding": "问题要消除远程 JMS 写入的三秒等待，分类理由却把增加 linger 等待、避免查找超时的建议当成降低该延迟的修复；调参方向与所求目标不同。"
+    },
+    {
+      "question_id": "TRAIN_Q207",
+      "frozen_target": "SUFFICIENT",
+      "prediction": "INSUFFICIENT",
+      "primary_attribution": "LIKELY_CLASSIFIER_ERROR",
+      "confidence": "medium",
+      "evidence": [
+        {"source_id": "Source 1", "anchor": "Yes, TLSv1.2 is supported by using the same fix."},
+        {"source_id": "Source 1", "anchor": "manually modify the value of KBN_SOMA_PROTOCOL to TLSv1.2"}
+      ],
+      "finding": "上下文针对 DataPower 仅启用 TLS1.2 的情况给出命名参数和值；分类器主要因没有文件名/操作界面而拒绝，疑似额外要求。可给限定于该 hotfix 的配置建议，但不能补造文件路径或适用版本。"
+    },
+    {
+      "question_id": "TRAIN_Q252",
+      "frozen_target": "SUFFICIENT",
+      "prediction": "INSUFFICIENT",
+      "primary_attribution": "ANSWER_SCOPE_UNRESOLVED",
+      "confidence": "medium",
+      "evidence": [
+        {"source_id": "Source 1", "anchor": "turn off the asynchronous mode"},
+        {"source_id": "Source 4", "anchor": "Use a single classloader for the application"},
+        {"source_id": "Source 3", "anchor": "Possible causes for unexpected versions to be executed are:"}
+      ],
+      "finding": "标注突出已被用户尝试且无效的异步开关，忽略否定条件；但 Source 4 仍提供相关 classloader 排查/修复路径。上下文支持有条件的排查，不证明该实例唯一根因；需明确这种回答是否算完整。"
+    },
+    {
+      "question_id": "TRAIN_Q298",
+      "frozen_target": "SUFFICIENT",
+      "prediction": "INSUFFICIENT",
+      "primary_attribution": "ANSWER_SCOPE_UNRESOLVED",
+      "confidence": "medium",
+      "evidence": [
+        {"source_id": "Source 6", "anchor": "PVU Subcapacity Limit on the second level of the report"},
+        {"source_id": "Source 12", "anchor": "The goal is to calculate values for physical machines (servers), not virtual machines/LPARs/zones/etc."}
+      ],
+      "finding": "分类器称没有查看入口不准确，Source 6 已给出报表层级和字段；但用户所求可能是单 VM 的确切许可用量，Source 12 明确限制为物理服务器统计。不能把统计口径解释等同于算出该 VM 数值。"
+    },
+    {
+      "question_id": "TRAIN_Q448",
+      "frozen_target": "INSUFFICIENT",
+      "prediction": "SUFFICIENT",
+      "primary_attribution": "ANSWER_SCOPE_UNRESOLVED",
+      "confidence": "medium",
+      "evidence": [
+        {"source_id": "Source 5", "anchor": "The answer to the question is 'no'."},
+        {"source_id": "Source 5", "anchor": "there is no function Export detailed Security issues to XML."}
+      ],
+      "finding": "确有 AppScan Enterprise 详细安全问题 XML 导出的否定 FAQ，并非完全无匹配信息；但正文未标明 9.0.3.5 或说明与 ASD Legacy XML 的格式等价范围。泛型产品 FAQ 是否覆盖指定版本需复核，不能自动作任一方向的替换标签。"
+    },
+    {
+      "question_id": "TRAIN_Q452",
+      "frozen_target": "INSUFFICIENT",
+      "prediction": "SUFFICIENT",
+      "primary_attribution": "ANSWER_SCOPE_UNRESOLVED",
+      "confidence": "medium",
+      "evidence": [
+        {"source_id": "Source 1", "anchor": "due to database corruption."},
+        {"source_id": "Source 2", "anchor": "Copy the solid.db file from the primary to the secondary."},
+        {"source_id": "Source 9", "anchor": "SolidDBInstallHelp.exe install"},
+        {"source_id": "Source 9", "anchor": "Start the IBM Content Collector Configuration Access service"}
+      ],
+      "finding": "Source 3/9 组合给出卸载、保留配置、重装和启动相关服务；Source 2 是主从复制的另一恢复路径。标注未充分承认这些步骤，分类器则把多个条件路径混成最常见原因的通用修复。须先明确数据库损坏与部署形态，不能直接执行混合步骤。"
+    },
+    {
+      "question_id": "TRAIN_Q465",
+      "frozen_target": "INSUFFICIENT",
+      "prediction": "SUFFICIENT",
+      "primary_attribution": "LIKELY_CLASSIFIER_ERROR",
+      "confidence": "high",
+      "evidence": [
+        {"source_id": "Source 2", "anchor": "For this particular case"},
+        {"source_id": "Source 2", "anchor": "the Oracle driver problem"},
+        {"source_id": "Source 11", "anchor": "com.ibm.portal.resolver.helper.Parameters.getParameter"}
+      ],
+      "finding": "分类器把某个 theme 文件缺失/Oracle 驱动案例当成提问中 co:head 与 ExtensionTracker/BlackWhiteListFactory 栈的确切原因。相同顶层 EJCBD0021E 不足以建立根因桥接，其他片段的内部栈也不同。"
+    },
+    {
+      "question_id": "TRAIN_Q543",
+      "frozen_target": "SUFFICIENT",
+      "prediction": "INSUFFICIENT",
+      "primary_attribution": "LIKELY_ANNOTATION_ERROR",
+      "confidence": "medium",
+      "evidence": [
+        {"source_id": "Source 6", "anchor": "Received sqlcode 1490 for request 8000001e"},
+        {"source_id": "Source 6", "anchor": "Set the 'TZ' environment variable to a valid value"}
+      ],
+      "finding": "Source 6 的 TZ 修复对应相同命令及时区日志问题，但可见正文不把它连到题目的 CF crash、0x80090030、DB2 11.1/RHEL7.2。标注以命令匹配推定为该故障的充分修复；分类器要求缺失桥接有依据。"
+    },
+    {
+      "question_id": "TRAIN_Q549",
+      "frozen_target": "INSUFFICIENT",
+      "prediction": "SUFFICIENT",
+      "primary_attribution": "MIXED_REASONING_ERRORS",
+      "confidence": "high",
+      "evidence": [
+        {"source_id": "Source 1", "anchor": "Using the DC or MS 'launchpad.sh' script"},
+        {"source_id": "Source 1", "anchor": "./setup_MS_lin.bin: line 1926"},
+        {"source_id": "Source 2", "anchor": "Shell security enhancements in AIX Version 6.1"},
+        {"source_id": "Source 12", "anchor": "MS install launchpad.sh"}
+      ],
+      "finding": "标注无依据把 MS 扩展为 Microsoft，冻结正文反而出现 Linux/MS 安装；分类器再把 AIX/WAS 的 shell 问题接到 ITCAM/Linux 的 end-of-file 症状，缺少平台、产品和因果桥接。标注理由有错不等于二元标签一定有错。"
+    },
+    {
+      "question_id": "TRAIN_Q560",
+      "frozen_target": "INSUFFICIENT",
+      "prediction": "SUFFICIENT",
+      "primary_attribution": "MIXED_REASONING_ERRORS",
+      "confidence": "high",
+      "evidence": [
+        {"source_id": "Source 3", "anchor": "Problems with Wily Introscope when exploiting the MQ JMS client from WebSphere Application Server"},
+        {"source_id": "Source 6", "anchor": "This occurs only with Computer Associates (CA) Wily Introscope installed and enabled"},
+        {"source_id": "Source 7", "anchor": "Profile creation in Business Process"}
+      ],
+      "finding": "标注只承认一个 Wily 问题，遗漏 Source 6 的 CWPMI0010W；分类器又把未出现 Wily 因果关联的通用 WAS plugin/BPM OOM 纳入已知 Wily 问题。可支持有限 WAS 例子，不支持其全面清单声明；二元答案范围仍需复核。"
+    }
+  ],
+  "unchanged_decision": "REJECT_EVIDENCE_SUFFICIENCY_V3_AI_PROXY",
+  "next_action": "CLARIFY_BOUNDED_ANSWER_SCOPE_AND_OBTAIN_INDEPENDENT_REVIEW_WITH_AGREEMENT_CONTROLS"
+}
