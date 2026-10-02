@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "run": "refusal_v3_ai_proxy_holdout_v1",
+  "status": "PREREGISTERED_NOT_RUN",
+  "split": "train_blind_ai_draft_proxy_holdout",
+  "purpose": "development evidence for the corrected visible-question annotation contract",
+  "population": {
+    "total_cases": 50,
+    "sufficient": 25,
+    "insufficient": 25,
+    "questionable_excluded": 9,
+    "selection_seed": "refusal-v3-ai-proxy-holdout-v1"
+  },
+  "frozen_inputs": {
+    "classifier_inputs_path": "data/refusal_v3_ai_proxy/holdout_inputs.jsonl",
+    "classifier_inputs_sha256": "87f91ba55b78bfc16db2c018b092212e39cf9d171b52e62853a5e536b6fd344d",
+    "targets_path": "data/refusal_v3_ai_proxy/holdout_targets.jsonl",
+    "targets_sha256": "a1965b36786b96d956a63b2af6533d14c1182fb3b42155ab8cd15879b7823c83",
+    "source_targets_sha256": "5b0d8b5b167e8ae742210c2deb8ff91c711143bf8da10451bc15f835d9ca8d68",
+    "context_policy": "flat_rerank_top14_v1",
+    "top_k": 14,
+    "total_question_context_chars": 467515
+  },
+  "classifier": {
+    "provider": "Alibaba Cloud Model Studio",
+    "region": "Singapore",
+    "model": "qwen3.5-plus-2026-04-20",
+    "temperature": 0,
+    "enable_thinking": false,
+    "response_format": "json_object",
+    "max_output_tokens": 512,
+    "required_predictions": 50,
+    "max_calls": 55,
+    "prompt_contract": "CLASSIFIER_SYSTEM_PROMPT_V2 in experiments/evals/refusal_v2_ai_proxy.py",
+    "prompt_sha256": "eff5768921067cc04a0686fff0ff50599f4bf295f3ad263e63a143f110fe3c20"
+  },
+  "pricing_snapshot": {
+    "currency": "CNY",
+    "input_cny_per_1m_tokens": 2.936,
+    "output_cny_per_1m_tokens": 17.614,
+    "context_band": "0<Token<=256K",
+    "hard_cost_cap_cny": 1.5,
+    "source": "reused v2 accounting estimate; not a claim about current billing",
+    "checked_date": "2026-09-22"
+  },
+  "gate": {
+    "balanced_accuracy_min": 0.8,
+    "sufficient_recall_min": 0.85,
+    "insufficient_recall_min": 0.7,
+    "sufficient_to_insufficient_max": 3,
+    "pass_decision": "ADMIT_TO_INDEPENDENT_HUMAN_CONFIRMATION",
+    "fail_decision": "REJECT_EVIDENCE_SUFFICIENCY_V3_AI_PROXY"
+  },
+  "controls": {
+    "dev_artifact_opened": false,
+    "retrieval_calls": 0,
+    "rerank_calls": 0,
+    "generation_calls": 0,
+    "judge_calls": 0,
+    "target_file_must_not_be_loaded_by_paid_classifier_loop": true,
+    "checkpoint_each_provider_attempt": true,
+    "all_provider_attempts_count_toward_limits": true,
+    "successful_predictions_are_never_retried": true,
+    "failed_attempt_retry_budget": 5,
+    "no_prompt_tuning_after_unblinding": true,
+    "pass_does_not_admit_phase_c": true
+  }
+}
