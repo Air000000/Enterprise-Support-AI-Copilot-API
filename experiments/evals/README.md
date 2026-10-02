@@ -42,6 +42,11 @@ R4 C1 Hybrid + rerank 的正式历史结论仍然是 **FAIL**：三项 TRAIN 聚
 
 历史 `dense_top1_distance > 0.9` 不自动成为最终拒答契约，因为冻结工程候选已经不再只有 Dense Top1 这一种检索信号。
 
+最新拒答开发探针（2026-10-02）：v3 盲标 AI 代理标签上的 50 条 TRAIN 评测仍为
+**FAIL**，平衡准确率 0.76、充分召回率 0.76、误拒 6 条，不能进入 Phase C。
+这些标签不是独立人工金标；完整指标与证据边界见
+[v3 结果报告](reports/refusal_evidence_sufficiency/v3_ai_proxy_result.md)。
+
 ---
 
 ## 数据与划分契约
