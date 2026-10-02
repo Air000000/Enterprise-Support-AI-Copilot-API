@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any
@@ -211,13 +211,16 @@ def validate_resume_state(
 
 def load_classifier_inputs(
     path: str | Path = DEFAULT_INPUTS_PATH,
+    *,
+    expected_sha256: str = EXPECTED_INPUTS_SHA256,
+    expected_cases: int = EXPECTED_CASES,
 ) -> list[dict[str, Any]]:
     source = Path(path)
-    if shared._sha256(source) != EXPECTED_INPUTS_SHA256:
+    if shared._sha256(source) != expected_sha256:
         raise RuntimeError("v2 classifier input SHA mismatch")
     rows = shared._read_jsonl(source)
-    if len(rows) != EXPECTED_CASES:
-        raise RuntimeError("v2 requires exactly 40 classifier inputs")
+    if len(rows) != expected_cases:
+        raise RuntimeError(f"proxy requires exactly {expected_cases} classifier inputs")
 
     seen: set[str] = set()
     for row in rows:
@@ -289,14 +292,18 @@ def evaluate_predictions(
     targets: Sequence[Mapping[str, Any]],
     *,
     contract: Mapping[str, Any],
+    contract_validator: Callable[[Mapping[str, Any]], None] = validate_contract,
+    expected_cases: int = EXPECTED_CASES,
 ) -> shared.PhaseBEvaluation:
-    validate_contract(contract)
+    contract_validator(contract)
     pred_by_id = {prediction.question_id: prediction for prediction in predictions}
     target_by_id = {str(target["question_id"]): target for target in targets}
     if len(pred_by_id) != len(predictions) or len(target_by_id) != len(targets):
         raise RuntimeError("duplicate v2 prediction or target ID")
     if set(pred_by_id) != set(target_by_id):
         raise RuntimeError("v2 prediction and target IDs differ")
+    if len(predictions) != expected_cases:
+        raise RuntimeError(f"proxy evaluation requires {expected_cases} predictions")
 
     tp = fn = tn = fp = 0
     for question_id, target in target_by_id.items():
@@ -318,7 +325,7 @@ def evaluate_predictions(
     sufficient_recall = tp / (tp + fn)
     insufficient_recall = tn / (tn + fp)
     balanced_accuracy = (sufficient_recall + insufficient_recall) / 2.0
-    accuracy = (tp + tn) / EXPECTED_CASES
+    accuracy = (tp + tn) / expected_cases
     gate = contract["gate"]
     gate_balanced = balanced_accuracy >= float(gate["balanced_accuracy_min"])
     gate_sufficient = sufficient_recall >= float(gate["sufficient_recall_min"])
@@ -333,7 +340,7 @@ def evaluate_predictions(
 
     return shared.PhaseBEvaluation(
         total_predictions=len(predictions),
-        gated_predictions=EXPECTED_CASES,
+        gated_predictions=expected_cases,
         ambiguous_predictions=0,
         accuracy=accuracy,
         balanced_accuracy=balanced_accuracy,
