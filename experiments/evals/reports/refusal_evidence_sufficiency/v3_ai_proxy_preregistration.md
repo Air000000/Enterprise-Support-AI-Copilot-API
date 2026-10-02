@@ -69,8 +69,9 @@ The 50-case holdout is class-balanced by construction:
 - sufficient to insufficient <= 3
 
 The existing three-case false-refusal ceiling is retained, not scaled up.
-With 25 sufficient cases this requires at least 22/25 (0.88) sufficient
-recall, so it is stricter than the standalone 0.85 recall threshold.
+With 25 sufficient cases, recall changes in 0.04 increments. Both the 0.85
+recall threshold and the three-case ceiling therefore require at least
+22/25 (0.88); these constraints are equivalent at this sample size.
 
 Targets remain unopened by the paid loop and are loaded only by a separate
 evaluation command after 50 valid predictions exist. Failed attempts and
