@@ -1,4 +1,5 @@
 import json
+from collections import Counter
 from dataclasses import asdict
 from pathlib import Path
 from types import SimpleNamespace
@@ -204,3 +205,64 @@ def test_v3_gate_retains_false_refusal_ceiling():
     rejected = runner.v2.evaluate_predictions(predictions, targets, **kwargs)
     assert rejected.sufficient_recall == 0.84
     assert rejected.decision == "REJECT_EVIDENCE_SUFFICIENCY_V3_AI_PROXY"
+
+
+def test_v3_diagnostic_audit_keeps_frozen_result_and_targets():
+    report_dir = runner.DEFAULT_CONTRACT_PATH.parent
+    audit = runner.shared._read_json(report_dir / "v3_disagreement_audit.json")
+    result = runner.shared._read_json(report_dir / "v3_ai_proxy_result_freeze.json")
+    annotation = runner.shared._read_json(
+        report_dir / "v3_confirmation_annotation_freeze.json"
+    )
+    targets = {
+        row["question_id"]: row["target_class"]
+        for row in runner.shared._read_jsonl(
+            report_dir / "v3_confirmation_targets.jsonl"
+        )
+    }
+    cases = audit["cases"]
+    assert audit["status"] == "POST_HOC_DIAGNOSTIC_NOT_RESCORING"
+    assert audit["unchanged_decision"] == result["evaluation"]["decision"]
+    assert (
+        audit["frozen_artifacts"]["annotated_packet_sha256"]
+        == annotation["canonical_annotated_packet_sha256"]
+    )
+    for key in ("inputs_sha256", "targets_sha256", "predictions_sha256"):
+        assert audit["frozen_artifacts"][key] == result["artifacts"][key]
+    assert len(cases) == len({case["question_id"] for case in cases}) == 12
+    assert (
+        Counter(case["primary_attribution"] for case in cases)
+        == audit["attribution_counts"]
+    )
+    for case in cases:
+        assert case["frozen_target"] == targets[case["question_id"]]
+        assert {case["frozen_target"], case["prediction"]} == {
+            "SUFFICIENT",
+            "INSUFFICIENT",
+        }
+        assert case["finding"] and case["confidence"] in {"high", "medium"}
+        assert case["evidence"]
+        assert all(
+            evidence["anchor"]
+            and evidence["source_id"] in {f"Source {rank}" for rank in range(1, 15)}
+            for evidence in case["evidence"]
+        )
+    counts = Counter(case["frozen_target"] for case in cases)
+    assert (
+        counts["SUFFICIENT"] == result["evaluation"]["sufficient_false_negative"] == 6
+    )
+    assert (
+        counts["INSUFFICIENT"]
+        == result["evaluation"]["insufficient_false_positive"]
+        == 6
+    )
+    assert (
+        audit["controls"]["provider_calls"]
+        == audit["controls"]["estimated_cost_cny"]
+        == 0
+    )
+    assert all(
+        value is False
+        for key, value in audit["controls"].items()
+        if key not in {"provider_calls", "estimated_cost_cny"}
+    )

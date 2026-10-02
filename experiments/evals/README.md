@@ -46,6 +46,8 @@ R4 C1 Hybrid + rerank 的正式历史结论仍然是 **FAIL**：三项 TRAIN 聚
 **FAIL**，平衡准确率 0.76、充分召回率 0.76、误拒 6 条，不能进入 Phase C。
 这些标签不是独立人工金标；完整指标与证据边界见
 [v3 结果报告](reports/refusal_evidence_sufficiency/v3_ai_proxy_result.md)。
+后验 [12 条分歧审计](reports/refusal_evidence_sufficiency/v3_disagreement_audit.md)
+显示分类器、标注理由及回答范围均存在问题；归因不是人工真值，不改变 FAIL 或分数。
 
 ---
 
