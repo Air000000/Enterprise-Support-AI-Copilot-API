@@ -52,6 +52,8 @@ R4 C1 Hybrid + rerank 的正式历史结论仍然是 **FAIL**：三项 TRAIN 聚
 已完成（充分 17 / 不足 31 / 歧义 2，其中有限排查可用 35），不改变历史结果或线上行为。
 评审者有先验暴露，不是独立盲审、人工金标或新样本确认；
 [原盲复核说明](reports/refusal_evidence_sufficiency/v3_blind_review_guide.md)与准备 manifest 保留作历史记录。
+之后准备了 [v4 最小开发候选](reports/refusal_evidence_sufficiency/v4_development_candidate.md)：
+只澄清回答范围并复用原二分类消息格式，尚未运行模型，也不意味着拒答策略已收口。
 
 ---
 

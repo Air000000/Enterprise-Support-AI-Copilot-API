@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "status": "DEVELOPMENT_PROMPT_CANDIDATE_NOT_EVALUATED",
+  "purpose": "Post-hoc scope repair after the AI-assisted historical review; not independent validation.",
+  "candidate": {
+    "prompt_contract": "CLASSIFIER_SYSTEM_PROMPT_V4_DEV in experiments/evals/refusal_development_policy.py",
+    "prompt_sha256": "7b8ff671d54b929f0877ddb82a41f1adc33558569aa1ce70af25ac2f1c459cd3",
+    "messages_builder": "build_classifier_messages_v4_dev",
+    "response_fields": ["decision", "reason", "supporting_source_ids"],
+    "decisions": ["SUFFICIENT", "INSUFFICIENT"],
+    "context_policy": "flat_rerank_top14_v1",
+    "bounded_guidance_is_complete_answer_permission": false
+  },
+  "development_data": {
+    "inputs_path": "data/refusal_v3_ai_proxy/holdout_inputs.jsonl",
+    "inputs_sha256": "87f91ba55b78bfc16db2c018b092212e39cf9d171b52e62853a5e536b6fd344d",
+    "ai_review_path": "experiments/evals/reports/refusal_evidence_sufficiency/v3_codex_review_annotations.jsonl",
+    "ai_review_sha256": "ff08e9d133e98c194d920bd492bfef98e42c02cc498668d709c0a862875edf96",
+    "cases": 50,
+    "binary_descriptive_cases": 48,
+    "binary_classes": {"SUFFICIENT": 17, "INSUFFICIENT": 31},
+    "ambiguity_descriptive_only": ["TRAIN_Q049", "TRAIN_Q549"],
+    "label_provenance": "AI_ASSISTED_POST_HOC_NOT_INDEPENDENT",
+    "prior_exposure": "The candidate author reviewed these questions and sources, historical aggregate results and the disagreement audit."
+  },
+  "controls": {
+    "provider_calls": 0,
+    "additional_external_eval_cost_cny": 0,
+    "dev_opened": false,
+    "paid_run_ready": false,
+    "new_paid_run_authorized": false,
+    "historical_prompt_or_gate_changed": false,
+    "historical_results_rescored": false,
+    "generation_started": false,
+    "runtime_changed": false,
+    "promotion_allowed": false
+  },
+  "next_action": "Before a single paid development probe, freeze provider/model/decoding/output budget/cost accounting/checkpoint settings separately, reuse existing runner machinery, and obtain authorization for the new run. No formal PASS or promotion gate is defined here."
+}
