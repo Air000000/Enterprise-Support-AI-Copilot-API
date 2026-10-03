@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+from collections import Counter
 from pathlib import Path
 
 from experiments.evals import refusal_v2_ai_proxy as v2
@@ -35,6 +36,89 @@ DEFAULT_REVIEW_MANIFEST_PATH = Path(
     "experiments/evals/reports/refusal_evidence_sufficiency/v3_blind_review_manifest.json"
 )
 REVIEW_ORDER_SEED = "refusal-v3-blind-review-order-v1"
+EXPECTED_REVIEW_PACKET_SHA256 = (
+    "54ce28f647df741128614f3b604265ac430abf2d2033ab04c051592462a2e310"
+)
+DEFAULT_AI_REVIEWS_PATH = Path(
+    "experiments/evals/reports/refusal_evidence_sufficiency/"
+    "v3_codex_review_annotations.jsonl"
+)
+DEFAULT_ANNOTATED_REVIEW_PATH = Path(
+    "data/refusal_v3_blind_review/annotation_packets_annotated_ai_draft.jsonl"
+)
+
+
+def materialize_ai_review(packet_path, reviews_path, output_path) -> dict:
+    """Apply development-only annotations; never import or rescore old targets."""
+    packet_path, reviews_path, output_path = map(
+        Path, (packet_path, reviews_path, output_path)
+    )
+    if v2._sha256(packet_path) != EXPECTED_REVIEW_PACKET_SHA256:
+        raise RuntimeError("frozen review packet SHA mismatch")
+    packets = v2._read_jsonl(packet_path)
+    reviews = v2._read_jsonl(reviews_path)
+    ids = [row["question_id"] for row in packets]
+    by_id = {row["question_id"]: row["annotation"] for row in reviews}
+    if (
+        len(packets) != 50 or len(set(ids)) != 50
+        or len(reviews) != 50 or len(by_id) != 50 or set(by_id) != set(ids)
+        or any(set(row) != {"question_id", "annotation"} for row in reviews)
+    ):
+        raise RuntimeError("expected matching 50 unique review IDs")
+    for row in packets:
+        annotation = by_id[row["question_id"]]
+        blank = row["annotation"]
+        if not isinstance(annotation, dict) or set(annotation) != set(blank):
+            raise RuntimeError("invalid annotation schema")
+        label, notes = annotation["target_class"], annotation["notes"]
+        guidance = annotation["bounded_guidance"]
+        if (
+            not isinstance(label, str)
+            or label not in {"SUFFICIENT", "INSUFFICIENT", "QUESTIONABLE"}
+            or not isinstance(notes, str) or not notes.strip()
+            or not isinstance(guidance, dict)
+            or set(guidance) != set(blank["bounded_guidance"])
+        ):
+            raise RuntimeError("invalid annotation class, notes or guidance")
+        supported, limits = guidance["supported"], guidance["conditions_and_limits"]
+        if (
+            supported is not None and type(supported) is not bool
+            or not isinstance(limits, str)
+            or supported is True and not limits.strip()
+            or supported is False and limits != ""
+            or supported is None and label != "QUESTIONABLE"
+        ):
+            raise RuntimeError("invalid bounded guidance conditions")
+        allowed = {source["source_id"] for source in row["sources"]}
+        for citations, required in (
+            (annotation["supporting_source_ids"], label == "SUFFICIENT"),
+            (guidance["supporting_source_ids"], supported is True),
+        ):
+            if (
+                not isinstance(citations, list)
+                or any(not isinstance(cite, str) or cite not in allowed for cite in citations)
+                or len(set(citations)) != len(citations)
+                or required and not citations
+            ):
+                raise RuntimeError("invalid Source N citations")
+        if supported is not True and guidance["supporting_source_ids"]:
+            raise RuntimeError("unsupported guidance cannot cite sources")
+        row["annotation"] = annotation
+    # ponytail: one merge into the frozen form, not a new labeling/runner framework.
+    if output_path.exists():
+        raise RuntimeError("refusing to overwrite annotated review")
+    v2._write_jsonl(output_path, packets)
+    return {
+        "cases": len(packets),
+        "classes": dict(Counter(row["annotation"]["target_class"] for row in packets)),
+        "bounded_guidance": dict(Counter(
+            str(row["annotation"]["bounded_guidance"]["supported"]).lower()
+            for row in packets
+        )),
+        "packet_sha256": v2._sha256(packet_path),
+        "annotations_sha256": v2._sha256(reviews_path),
+        "annotated_packet_sha256": v2._sha256(output_path),
+    }
 
 
 def prepare_blind_review(inputs_path, packet_path, manifest_path) -> dict:
@@ -138,9 +222,21 @@ def main() -> None:
     parser.add_argument("--targets-path", default=str(DEFAULT_TARGETS_PATH))
     parser.add_argument("--manifest-path", default=str(DEFAULT_MANIFEST_PATH))
     parser.add_argument("--prepare-blind-review", action="store_true")
+    parser.add_argument("--materialize-ai-review", action="store_true")
+    parser.add_argument("--ai-reviews-path", default=str(DEFAULT_AI_REVIEWS_PATH))
+    parser.add_argument("--annotated-review-path", default=str(DEFAULT_ANNOTATED_REVIEW_PATH))
     parser.add_argument("--review-packet-path", default=str(DEFAULT_REVIEW_PACKET_PATH))
     parser.add_argument("--review-manifest-path", default=str(DEFAULT_REVIEW_MANIFEST_PATH))
     args = parser.parse_args()
+
+    if args.materialize_ai_review:
+        if args.prepare_blind_review:
+            parser.error("choose one review operation")
+        result = materialize_ai_review(
+            args.review_packet_path, args.ai_reviews_path, args.annotated_review_path
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return
 
     if args.prepare_blind_review:
         manifest = prepare_blind_review(
