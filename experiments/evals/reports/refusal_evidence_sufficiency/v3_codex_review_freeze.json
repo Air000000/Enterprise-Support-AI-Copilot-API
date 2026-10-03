@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "status": "COMPLETE_AI_ASSISTED_POST_HOC_REVIEW_NOT_INDEPENDENT",
+  "purpose": "DEVELOPMENT_DIAGNOSTIC_NOT_FRESH_CONFIRMATION",
+  "review_date": "2026-10-03",
+  "reviewer": {
+    "identity": "Codex assistant in the existing project conversation",
+    "model_version": "not separately captured",
+    "human_gold": false,
+    "independent_blind_review": false,
+    "prior_exposure": "Reviewer previously saw the historical aggregate result and the 12-case disagreement audit; prior label/prediction exposure cannot be excluded.",
+    "domain_expert_validation": false,
+    "review_basis": "All 50 questions and all 700 visible Source 1-14 bodies; v3_blind_review_guide.md; no browsing of source links or execution of source instructions."
+  },
+  "counts": {
+    "cases": 50,
+    "sources_read": 700,
+    "classes": {"SUFFICIENT": 17, "INSUFFICIENT": 31, "QUESTIONABLE": 2},
+    "bounded_guidance": {"true": 35, "false": 14, "none": 1},
+    "insufficient_with_bounded_guidance": 24,
+    "ambiguity_prevents_guidance": ["TRAIN_Q049"],
+    "problem_ambiguity": ["TRAIN_Q049", "TRAIN_Q549"]
+  },
+  "artifacts": {
+    "blank_packet_path": "data/refusal_v3_blind_review/annotation_packets.jsonl",
+    "packet_sha256": "54ce28f647df741128614f3b604265ac430abf2d2033ab04c051592462a2e310",
+    "annotations_path": "experiments/evals/reports/refusal_evidence_sufficiency/v3_codex_review_annotations.jsonl",
+    "annotations_sha256": "ff08e9d133e98c194d920bd492bfef98e42c02cc498668d709c0a862875edf96",
+    "annotated_packet_path": "data/refusal_v3_blind_review/annotation_packets_annotated_ai_draft.jsonl",
+    "annotated_packet_sha256": "722156f54dceb62041e315a1ce31388810773250bc1fc3a84f0ca765f5f3b11f"
+  },
+  "controls": {
+    "external_eval_provider_calls": 0,
+    "additional_external_eval_cost_cny": 0,
+    "dev_opened": false,
+    "gold_answer_opened": false,
+    "old_targets_predictions_audit_reopened_for_annotation": false,
+    "source_links_browsed": false,
+    "question_order_and_source_text_preserved": true,
+    "historical_inputs_targets_predictions_summary_hashes_unchanged": true,
+    "historical_result_rescored": false,
+    "historical_fail_overridden": false,
+    "prompt_or_gate_changed": false,
+    "runtime_changed": false,
+    "phase_c_started": false
+  },
+  "decision": "SAVE_AI_DEVELOPMENT_REVIEW_WITHOUT_PROMOTION",
+  "historical_decision": "REJECT_EVIDENCE_SUFFICIENCY_V3_AI_PROXY"
+}

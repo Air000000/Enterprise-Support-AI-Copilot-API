@@ -261,3 +261,82 @@ def test_blind_review_rejects_invalid_inputs_before_writing(tmp_path, monkeypatc
     assert not (tmp_path / "packet.jsonl").exists()
     assert not (tmp_path / "m.json").exists()
     assert path.exists()
+
+
+def test_materialize_ai_review_preserves_inputs_and_rejects_bad_reviews(tmp_path, monkeypatch):
+    inputs_path, _ = _review_inputs(tmp_path, monkeypatch)
+    packet_path = tmp_path / "packet.jsonl"
+    v3.prepare_blind_review(inputs_path, packet_path, tmp_path / "manifest.json")
+    monkeypatch.setattr(v3, "EXPECTED_REVIEW_PACKET_SHA256", v3.v2._sha256(packet_path))
+    packets = v3.v2._read_jsonl(packet_path)
+    frozen = packet_path.read_bytes()
+    reviews = [
+        {
+            "question_id": row["question_id"],
+            "annotation": {
+                "target_class": "SUFFICIENT",
+                "supporting_source_ids": ["Source 1"],
+                "notes": "Direct support for the requested answer.",
+                "bounded_guidance": {
+                    "supported": False,
+                    "supporting_source_ids": [],
+                    "conditions_and_limits": "",
+                },
+            },
+        }
+        for row in reversed(packets)
+    ]
+    reviews_path = tmp_path / "reviews.jsonl"
+    v3.v2._write_jsonl(reviews_path, reviews)
+    output_path = tmp_path / "annotated.jsonl"
+    result = v3.materialize_ai_review(packet_path, reviews_path, output_path)
+    annotated = v3.v2._read_jsonl(output_path)
+    assert result["cases"] == 50
+    assert result["classes"] == {"SUFFICIENT": 50}
+    assert result["bounded_guidance"] == {"false": 50}
+    assert result["annotated_packet_sha256"] == v3.v2._sha256(output_path)
+    assert packet_path.read_bytes() == frozen
+    for before, after in zip(packets, annotated):
+        assert {k: v for k, v in before.items() if k != "annotation"} == {
+            k: v for k, v in after.items() if k != "annotation"
+        }
+        assert after["annotation"]["target_class"] == "SUFFICIENT"
+    with pytest.raises(RuntimeError, match="refusing to overwrite"):
+        v3.materialize_ai_review(packet_path, reviews_path, output_path)
+    for index, invalid in enumerate(("count", "duplicate", "citation", "guidance", "notes")):
+        bad = json.loads(json.dumps(reviews))
+        if invalid == "count":
+            bad.pop()
+        elif invalid == "duplicate":
+            bad[1]["question_id"] = bad[0]["question_id"]
+        elif invalid == "citation":
+            bad[0]["annotation"]["supporting_source_ids"] = ["Source 15"]
+        elif invalid == "guidance":
+            bad[0]["annotation"]["bounded_guidance"]["supported"] = True
+        else:
+            bad[0]["annotation"]["notes"] = ""
+        bad_path = tmp_path / f"bad{index}.jsonl"
+        v3.v2._write_jsonl(bad_path, bad)
+        missing_path = tmp_path / f"missing{index}.jsonl"
+        with pytest.raises(RuntimeError):
+            v3.materialize_ai_review(packet_path, bad_path, missing_path)
+        assert not missing_path.exists()
+    monkeypatch.setattr(v3, "EXPECTED_REVIEW_PACKET_SHA256", "tampered")
+    with pytest.raises(RuntimeError, match="packet SHA mismatch"):
+        v3.materialize_ai_review(packet_path, reviews_path, tmp_path / "blocked.jsonl")
+    report_dir = Path("experiments/evals/reports/refusal_evidence_sufficiency")
+    actual_reviews = report_dir / "v3_codex_review_annotations.jsonl"
+    freeze = json.loads((report_dir / "v3_codex_review_freeze.json").read_text())
+    records = v3.v2._read_jsonl(actual_reviews)
+    assert v3.v2._sha256(actual_reviews) == freeze["artifacts"]["annotations_sha256"]
+    # Synthetic evidence checks form integrity, not the correctness of AI judgments.
+    for packet, record in zip(packets, records):
+        packet["question_id"] = record["question_id"]
+    actual_packet = tmp_path / "actual_form.jsonl"
+    v3.v2._write_jsonl(actual_packet, packets)
+    monkeypatch.setattr(v3, "EXPECTED_REVIEW_PACKET_SHA256", v3.v2._sha256(actual_packet))
+    actual_result = v3.materialize_ai_review(
+        actual_packet, actual_reviews, tmp_path / "actual_annotated.jsonl"
+    )
+    for key in ("cases", "classes", "bounded_guidance"):
+        assert actual_result[key] == freeze["counts"][key]
