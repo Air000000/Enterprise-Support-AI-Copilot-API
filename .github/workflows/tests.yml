@@ -60,4 +60,5 @@ jobs:
             tests/test_refusal_evidence_sufficiency.py \
             tests/test_refusal_phase_b_runner.py \
             tests/test_refusal_v2_ai_proxy_runner.py \
+            tests/test_refusal_v3_ai_proxy.py \
             tests/test_refusal_v3_ai_proxy_runner.py

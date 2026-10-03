@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "status": "BLIND_REVIEW_PACKET_READY_NOT_ANNOTATED",
+  "purpose": "HISTORICAL_DIAGNOSTIC_NOT_FRESH_CONFIRMATION",
+  "cases": 50,
+  "review_order_seed": "refusal-v3-blind-review-order-v1",
+  "artifacts": {
+    "input_sha256": "87f91ba55b78bfc16db2c018b092212e39cf9d171b52e62853a5e536b6fd344d",
+    "packet_path": "data/refusal_v3_blind_review/annotation_packets.jsonl",
+    "packet_sha256": "54ce28f647df741128614f3b604265ac430abf2d2033ab04c051592462a2e310"
+  },
+  "controls": {
+    "provider_calls": 0,
+    "cost_cny": 0,
+    "targets_opened": false,
+    "predictions_opened": false,
+    "audit_opened": false,
+    "gold_answer_opened": false,
+    "dev_opened": false,
+    "historical_result_changed": false
+  }
+}

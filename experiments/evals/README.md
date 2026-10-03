@@ -48,6 +48,8 @@ R4 C1 Hybrid + rerank 的正式历史结论仍然是 **FAIL**：三项 TRAIN 聚
 [v3 结果报告](reports/refusal_evidence_sufficiency/v3_ai_proxy_result.md)。
 后验 [12 条分歧审计](reports/refusal_evidence_sufficiency/v3_disagreement_audit.md)
 显示分类器、标注理由及回答范围均存在问题；归因不是人工真值，不改变 FAIL 或分数。
+下一步已准备 [50 条历史输入盲复核说明](reports/refusal_evidence_sufficiency/v3_blind_review_guide.md)：
+完整回答充分性与有限排查可用性分开记录，尚未标注，不改变历史结果或线上行为。
 
 ---
 
