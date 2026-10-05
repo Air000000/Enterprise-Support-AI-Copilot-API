@@ -114,6 +114,14 @@ def run_paid(
     contract = shared._read_json(DEFAULT_CONTRACT_PATH)
     validate_contract(contract)
     rows = load_classifier_inputs(inputs_path)
+    return run_checkpointed_probe(
+        rows=rows, contract=contract, output_dir=output_dir, client=client,
+        messages_builder=build_classifier_messages_v2,
+    )
+
+
+def run_checkpointed_probe(*, rows, contract, output_dir, client, messages_builder):
+    """Reuse accounting/checkpoint mechanics; callers validate their own contract."""
     predictions, failures, spent = load_state(output_dir, rows, contract)
     completed = {prediction.question_id for prediction in predictions}
     calls = len(predictions) + len(failures)
@@ -125,7 +133,7 @@ def run_paid(
             continue
         if calls >= classifier["max_calls"]:
             raise RuntimeError("maximum provider-call count reached")
-        messages = build_classifier_messages_v2(shared._classifier_input_from_row(row))
+        messages = messages_builder(shared._classifier_input_from_row(row))
         # ponytail: UTF-8 byte bound plus framing margin; no tokenizer dependency.
         input_bound = (
             sum(len(message["content"].encode("utf-8")) for message in messages) + 512
@@ -147,7 +155,7 @@ def run_paid(
             input_rate_cny_per_1m=pricing["input_cny_per_1m_tokens"],
             output_rate_cny_per_1m=pricing["output_cny_per_1m_tokens"],
             max_output_tokens=classifier["max_output_tokens"],
-            messages_builder=build_classifier_messages_v2,
+            messages_builder=messages_builder,
             failed_attempt_recorder=lambda record: shared._append_jsonl(
                 Path(output_dir) / "failed_attempts.jsonl", record
             ),
@@ -160,7 +168,7 @@ def run_paid(
         # ponytail: reread at most 50 rows; validate every persisted response.
         load_state(output_dir, rows, contract)
         print(
-            f"CHECKPOINTED={len(predictions)}/{EXPECTED_CASES} PROVIDER_CALLS={calls} COST_CNY={spent:.6f}",
+            f"CHECKPOINTED={len(predictions)}/{len(rows)} PROVIDER_CALLS={calls} COST_CNY={spent:.6f}",
             flush=True,
         )
     return tuple(predictions)

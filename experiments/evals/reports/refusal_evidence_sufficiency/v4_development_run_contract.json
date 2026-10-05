@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "run": "refusal_v4_post_hoc_development_probe_v1",
+  "status": "PREREGISTERED_NOT_RUN",
+  "purpose": "One descriptive agreement probe against exposed AI-assisted review labels; no PASS or promotion.",
+  "frozen_inputs": {
+    "classifier_inputs_path": "data/refusal_v3_ai_proxy/holdout_inputs.jsonl",
+    "classifier_inputs_sha256": "87f91ba55b78bfc16db2c018b092212e39cf9d171b52e62853a5e536b6fd344d",
+    "review_path": "experiments/evals/reports/refusal_evidence_sufficiency/v3_codex_review_annotations.jsonl",
+    "review_sha256": "ff08e9d133e98c194d920bd492bfef98e42c02cc498668d709c0a862875edf96",
+    "context_policy": "flat_rerank_top14_v1",
+    "cases": 50,
+    "binary_cases": 48,
+    "sufficient": 17,
+    "insufficient": 31,
+    "questionable_descriptive_only": ["TRAIN_Q049", "TRAIN_Q549"],
+    "label_provenance": "AI_ASSISTED_POST_HOC_NOT_INDEPENDENT"
+  },
+  "classifier": {
+    "provider": "Alibaba Cloud Model Studio",
+    "region": "Singapore",
+    "model": "qwen3.5-plus-2026-04-20",
+    "temperature": 0,
+    "enable_thinking": false,
+    "response_format": "json_object",
+    "max_output_tokens": 512,
+    "required_predictions": 50,
+    "max_calls": 55,
+    "prompt_sha256": "7b8ff671d54b929f0877ddb82a41f1adc33558569aa1ce70af25ac2f1c459cd3"
+  },
+  "pricing_snapshot": {
+    "currency": "CNY_ACCOUNTING_ESTIMATE",
+    "input_usd_per_1m_tokens": 0.4,
+    "output_usd_per_1m_tokens": 2.4,
+    "accounting_cny_per_usd": 7.5,
+    "input_cny_per_1m_tokens": 3,
+    "output_cny_per_1m_tokens": 18,
+    "context_band": "0<Token<=256K",
+    "hard_cost_cap_cny": 1.5,
+    "equivalent_usd_accounting_cap": 0.2,
+    "source": "https://www.alibabacloud.com/help/en/model-studio/model-pricing",
+    "checked_date": "2026-10-05",
+    "billing_caveat": "7.5 is a fixed accounting conversion, not a verified spot rate or invoice guarantee; no cache/free-quota discount assumed."
+  },
+  "controls": {
+    "failed_attempt_retry_budget": 5,
+    "checkpoint_each_attempt": true,
+    "unknown_usage_stops_resume": true,
+    "successful_predictions_never_retried": true,
+    "review_not_loaded_by_paid_loop": true,
+    "question_ids_metadata_labels_not_sent": true,
+    "dev_opened": false,
+    "retrieval_rerank_generation_judge_calls": 0,
+    "historical_results_changed": false,
+    "promotion_allowed": false,
+    "authorization_required_before_paid_run": true
+  },
+  "output_dir": "data/refusal_v4_development/run_v1"
+}

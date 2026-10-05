@@ -54,6 +54,8 @@ R4 C1 Hybrid + rerank 的正式历史结论仍然是 **FAIL**：三项 TRAIN 聚
 [原盲复核说明](reports/refusal_evidence_sufficiency/v3_blind_review_guide.md)与准备 manifest 保留作历史记录。
 之后准备了 [v4 最小开发候选](reports/refusal_evidence_sufficiency/v4_development_candidate.md)：
 只澄清回答范围并复用原二分类消息格式，尚未运行模型，也不意味着拒答策略已收口。
+其 [单次开发探针预注册](reports/refusal_evidence_sufficiency/v4_development_preregistration.md)
+复用旧调用/checkpoint 逻辑，并固定 50 条输入、最多 55 次尝试和折算 ¥1.5 预算；无正式 PASS gate。
 
 ---
 
