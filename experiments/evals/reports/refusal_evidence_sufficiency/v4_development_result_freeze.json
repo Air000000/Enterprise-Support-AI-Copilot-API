@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "status": "COMPLETE_POST_HOC_DEVELOPMENT_PROBE_NO_PROMOTION",
+  "run_date": "2026-10-05",
+  "authorization": {
+    "source": "Human user in the existing project conversation",
+    "message": "已合并并删除分支 授权，继续",
+    "scope": "One v4 development probe: frozen 50 TRAIN questions and Top14 text sent to Singapore; explicit primary-repository .env read locally, no key copied/printed."
+  },
+  "artifacts": {
+    "contract_canonical_sha256": "d7bd916c48fdafb05f48d4684666b574e43183cdc2a5c68df9f201fbfecc8e38",
+    "prompt_sha256": "7b8ff671d54b929f0877ddb82a41f1adc33558569aa1ce70af25ac2f1c459cd3",
+    "inputs_sha256": "87f91ba55b78bfc16db2c018b092212e39cf9d171b52e62853a5e536b6fd344d",
+    "ai_review_sha256": "ff08e9d133e98c194d920bd492bfef98e42c02cc498668d709c0a862875edf96",
+    "output_dir": "data/refusal_v4_development/run_v1",
+    "predictions_sha256": "dac76c1ae0ad93c85b8c7eee8dda9fb95a24b755eb99548f4023a68f683a9e15",
+    "summary_sha256": "da49c4940c98fe8373614771a470407670ec588d3ea7dd83f88fcd424856abbf",
+    "run_identity_sha256": "f5b0a8b954c3bbc7c784b8e30084e777ce4fec77979635a625a42b77ed5de706",
+    "failed_attempts_file_present": false
+  },
+  "results": {
+    "predictions": 50,
+    "binary_cases": 48,
+    "confusion_against_ai_review": {
+      "sufficient_as_sufficient": 17,
+      "sufficient_as_insufficient": 0,
+      "insufficient_as_sufficient": 13,
+      "insufficient_as_insufficient": 18
+    },
+    "agreement_with_ai_review": 0.7291666666666666,
+    "balanced_agreement_with_ai_review": 0.7903225806451613,
+    "sufficient_recall_against_ai_review": 1.0,
+    "insufficient_recall_against_ai_review": 0.5806451612903226,
+    "disagreement_ids": ["TRAIN_Q009", "TRAIN_Q112", "TRAIN_Q116", "TRAIN_Q117", "TRAIN_Q219", "TRAIN_Q300", "TRAIN_Q306", "TRAIN_Q322", "TRAIN_Q368", "TRAIN_Q448", "TRAIN_Q452", "TRAIN_Q465", "TRAIN_Q590"],
+    "questionable_descriptive_only": {"TRAIN_Q049": "INSUFFICIENT", "TRAIN_Q549": "SUFFICIENT"},
+    "provider_calls": 50,
+    "failed_attempts": 0,
+    "unique_question_ids": 50,
+    "unique_request_ids": 50,
+    "prompt_tokens": 154706,
+    "completion_tokens": 9822,
+    "total_tokens": 164528,
+    "estimated_cost_cny": 0.640914,
+    "latency_p50_ms": 4016.540700000405,
+    "latency_p95_ms": 6088.966994999555
+  },
+  "controls": {
+    "review_opened_only_by_separate_evaluate_after_50_predictions": true,
+    "paid_loop_targets_opened": false,
+    "dev_opened": false,
+    "retrieval_rerank_generation_judge_calls": 0,
+    "prompt_or_labels_changed_after_predictions": false,
+    "historical_inputs_targets_predictions_summary_hashes_unchanged": true,
+    "historical_fail_changed": false,
+    "runtime_changed": false,
+    "promotion_allowed": false
+  },
+  "decision": "RECORD_DEVELOPMENT_DISAGREEMENT_NO_PROMOTION",
+  "historical_decision": "REJECT_EVIDENCE_SUFFICIENCY_V3_AI_PROXY",
+  "next_action": "Do not tune/relabel/rerun these 50 cases until PASS. Preserve the candidate as unevaluated-for-production; prioritize a truthful demonstration of the existing serving path over expanding annotation work."
+}
