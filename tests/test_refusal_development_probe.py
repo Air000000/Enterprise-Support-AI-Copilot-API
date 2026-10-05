@@ -127,3 +127,23 @@ def test_cli_uses_explicit_env_without_printing_key(tmp_path, monkeypatch, capsy
     assert "PREFLIGHT=PASS" in output and "PROVIDER_CALLS_THIS_COMMAND=0" in output
     assert "AUTH_KEY_SOURCE=DASHSCOPE_PHASE_B_API_KEY" in output
     assert "private_test_key" not in output
+
+
+def test_recorded_result_preserves_population_accounting_and_no_promotion():
+    record = probe.reuse.shared._read_json(
+        probe.CONTRACT_PATH.parent / "v4_development_result_freeze.json"
+    )
+    result = record["results"]
+    matrix = result["confusion_against_ai_review"]
+    assert record["artifacts"]["contract_canonical_sha256"] == probe.CONTRACT_SHA256
+    assert sum(matrix.values()) == result["binary_cases"] == 48
+    assert len(result["disagreement_ids"]) == matrix["insufficient_as_sufficient"] == 13
+    assert matrix["sufficient_as_sufficient"] == 17 and matrix["sufficient_as_insufficient"] == 0
+    assert result["agreement_with_ai_review"] == 35 / 48
+    assert result["provider_calls"] == result["predictions"] + result["failed_attempts"] == 50
+    assert result["total_tokens"] == result["prompt_tokens"] + result["completion_tokens"]
+    assert result["estimated_cost_cny"] == pytest.approx(
+        (result["prompt_tokens"] * 3 + result["completion_tokens"] * 18) / 1_000_000
+    )
+    assert record["controls"]["promotion_allowed"] is False
+    assert record["controls"]["historical_fail_changed"] is False

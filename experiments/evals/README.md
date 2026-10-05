@@ -53,9 +53,12 @@ R4 C1 Hybrid + rerank 的正式历史结论仍然是 **FAIL**：三项 TRAIN 聚
 评审者有先验暴露，不是独立盲审、人工金标或新样本确认；
 [原盲复核说明](reports/refusal_evidence_sufficiency/v3_blind_review_guide.md)与准备 manifest 保留作历史记录。
 之后准备了 [v4 最小开发候选](reports/refusal_evidence_sufficiency/v4_development_candidate.md)：
-只澄清回答范围并复用原二分类消息格式，尚未运行模型，也不意味着拒答策略已收口。
+只澄清回答范围并复用原二分类消息格式；准备时未运行模型，也不意味着拒答策略已收口。
 其 [单次开发探针预注册](reports/refusal_evidence_sufficiency/v4_development_preregistration.md)
 复用旧调用/checkpoint 逻辑，并固定 50 条输入、最多 55 次尝试和折算 ¥1.5 预算；无正式 PASS gate。
+2026-10-05 的 [v4 开发探针结果](reports/refusal_evidence_sufficiency/v4_development_result.md)
+已完成：50 次调用、0 失败、折算 ¥0.640914；与后验 AI 复核一致 35/48，
+17 条充分全部获准，但 13 条不足也被准入。仅记开发分歧，不晋升，不重算 v3 或修改其 FAIL。
 
 ---
 
