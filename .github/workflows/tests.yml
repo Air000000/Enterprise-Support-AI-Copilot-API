@@ -60,6 +60,7 @@ jobs:
             tests/test_refusal_evidence_sufficiency.py \
             tests/test_refusal_development_policy.py \
             tests/test_refusal_structured_evidence.py \
+            tests/test_refusal_citation_selection.py \
             tests/test_refusal_v5_preparation.py \
             tests/test_refusal_v5_paired_runner.py \
             tests/test_refusal_development_probe.py \

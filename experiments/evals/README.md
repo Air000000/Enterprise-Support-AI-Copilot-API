@@ -71,6 +71,10 @@ R4 C1 Hybrid + rerank 的正式历史结论仍然是 **FAIL**：三项 TRAIN 聚
 随后用户授权的 [成对实际运行](reports/refusal_evidence_sufficiency/v5_paired_result.md)
 在 Q193/v5 两次原文引文校验失败后按失败预算结束：12 次调用、折算 ¥0.185718，
 仅 10/40 个有效预测，不打开标签、不计算未完成样本的准确率，不改变线上或历史 FAIL。
+后续 [v5.1 引用定位候选](reports/refusal_evidence_sufficiency/v5_1_citation_selection_candidate.md)
+已完成离线实现：模型只选择 source-local 行号，由代码提取原文；保留全部上下文，
+不修补原 v5 响应或重算结果。仅合成/机械回归，不代表模型已选对证据或拒答质量改善；
+编号增加消息长度，付费对照仍需新的契约与授权。
 
 ---
 
