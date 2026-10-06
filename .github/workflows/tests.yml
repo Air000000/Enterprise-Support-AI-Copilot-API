@@ -63,6 +63,7 @@ jobs:
             tests/test_refusal_citation_selection.py \
             tests/test_refusal_v5_preparation.py \
             tests/test_refusal_v5_paired_runner.py \
+            tests/test_refusal_v5_1_paired_runner.py \
             tests/test_refusal_development_probe.py \
             tests/test_refusal_phase_b_runner.py \
             tests/test_refusal_v2_ai_proxy_runner.py \
