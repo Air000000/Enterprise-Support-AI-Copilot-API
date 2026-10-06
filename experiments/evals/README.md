@@ -59,6 +59,9 @@ R4 C1 Hybrid + rerank 的正式历史结论仍然是 **FAIL**：三项 TRAIN 聚
 2026-10-05 的 [v4 开发探针结果](reports/refusal_evidence_sufficiency/v4_development_result.md)
 已完成：50 次调用、0 失败、折算 ¥0.640914；与后验 AI 复核一致 35/48，
 17 条充分全部获准，但 13 条不足也被准入。仅记开发分歧，不晋升，不重算 v3 或修改其 FAIL。
+下一步已准备 [v5 结构化证据检查候选](reports/refusal_evidence_sufficiency/v5_structured_evidence_candidate.md)：
+逐项列出要求、原文引证、支持状态，再由代码派生二分类结果；仅离线逻辑回归，
+无新模型预测、付费运行授权或线上接入。引文真实不等于语义支持正确。
 
 ---
 
