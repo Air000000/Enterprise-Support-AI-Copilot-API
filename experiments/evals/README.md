@@ -67,7 +67,10 @@ R4 C1 Hybrid + rerank 的正式历史结论仍然是 **FAIL**：三项 TRAIN 聚
 不是独立人工金标。计划同题对照 v4/v5，共 40 条预测、最多 44 次调用、折算预算 ¥3；
 [成对运行器](refusal_v5_paired_runner.py)现已完成离线实现与模拟回归，
 [操作与边界](reports/refusal_evidence_sufficiency/v5_paired_runner_readiness.md)记录原始响应、计费和续跑控制；
-未授权或执行新模型评测，不把运行器就绪写成拒答效果改善。
+准备阶段尚未授权或执行新模型评测，不把运行器就绪写成拒答效果改善。
+随后用户授权的 [成对实际运行](reports/refusal_evidence_sufficiency/v5_paired_result.md)
+在 Q193/v5 两次原文引文校验失败后按失败预算结束：12 次调用、折算 ¥0.185718，
+仅 10/40 个有效预测，不打开标签、不计算未完成样本的准确率，不改变线上或历史 FAIL。
 
 ---
 

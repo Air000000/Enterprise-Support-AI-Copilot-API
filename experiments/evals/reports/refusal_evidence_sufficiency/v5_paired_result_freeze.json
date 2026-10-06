@@ -1,0 +1,175 @@
+{
+  "status": "STOPPED_V5_FORMAT_FAILURE_BUDGET_EXHAUSTED_NO_PROMOTION",
+  "completion": "INCOMPLETE",
+  "run": "refusal_v5_paired_train_diagnostic_v1",
+  "execution_date_local": "2026-10-06",
+  "contract_canonical_sha256": "ed66bfbbb841a199670e6922f29cdd30ed1e17ab5d9f3cfec6f633f504064032",
+  "execution_source_commit": "7c7de82a0c40e0ff183c4233587baecd1eb6283d",
+  "authorization_record": "v5_paired_execution_authorization.json",
+  "provider_calls": 12,
+  "case_denominator": 20,
+  "required_valid_predictions": 40,
+  "valid_predictions": 10,
+  "remaining_valid_predictions_required": 30,
+  "common_valid_pairs": 5,
+  "next_blocked_pair": {
+    "question_id": "TRAIN_Q193",
+    "arm": "v5"
+  },
+  "estimated_cost_cny": 0.185718,
+  "actual_invoice_cost_cny": null,
+  "accounting_rates": {
+    "input_cny_per_1m_tokens": 3,
+    "output_cny_per_1m_tokens": 18,
+    "cny_per_usd": 7.5
+  },
+  "arms": {
+    "v4": {
+      "case_denominator": 20,
+      "distinct_requested_cases": 5,
+      "valid_predictions": 5,
+      "provider_calls": 5,
+      "format_failed_attempts": 0,
+      "provider_failed_attempts": 0,
+      "observed_format_failure_cases": 0,
+      "not_requested_cases": 15,
+      "prompt_tokens": 14027,
+      "completion_tokens": 758,
+      "total_tokens": 14785,
+      "estimated_cost_cny": 0.055725,
+      "valid_decisions": [
+        {
+          "question_id": "TRAIN_Q029",
+          "decision": "SUFFICIENT"
+        },
+        {
+          "question_id": "TRAIN_Q059",
+          "decision": "SUFFICIENT"
+        },
+        {
+          "question_id": "TRAIN_Q168",
+          "decision": "SUFFICIENT"
+        },
+        {
+          "question_id": "TRAIN_Q172",
+          "decision": "SUFFICIENT"
+        },
+        {
+          "question_id": "TRAIN_Q188",
+          "decision": "SUFFICIENT"
+        }
+      ],
+      "accuracy_against_ai_targets": null
+    },
+    "v5": {
+      "case_denominator": 20,
+      "distinct_requested_cases": 6,
+      "valid_predictions": 5,
+      "provider_calls": 7,
+      "format_failed_attempts": 2,
+      "provider_failed_attempts": 0,
+      "observed_format_failure_cases": 1,
+      "not_requested_cases": 14,
+      "prompt_tokens": 23687,
+      "completion_tokens": 3274,
+      "total_tokens": 26961,
+      "estimated_cost_cny": 0.129993,
+      "valid_decisions": [
+        {
+          "question_id": "TRAIN_Q029",
+          "decision": "SUFFICIENT"
+        },
+        {
+          "question_id": "TRAIN_Q059",
+          "decision": "SUFFICIENT"
+        },
+        {
+          "question_id": "TRAIN_Q168",
+          "decision": "SUFFICIENT"
+        },
+        {
+          "question_id": "TRAIN_Q172",
+          "decision": "SUFFICIENT"
+        },
+        {
+          "question_id": "TRAIN_Q188",
+          "decision": "SUFFICIENT"
+        }
+      ],
+      "accuracy_against_ai_targets": null
+    }
+  },
+  "prompt_tokens": 37714,
+  "completion_tokens": 4032,
+  "total_tokens": 41746,
+  "known_usage_attempts": 12,
+  "unknown_usage_attempts": 0,
+  "unique_request_ids": 12,
+  "attempt_archives": {
+    "v4": {
+      "path": "data/refusal_v5_train/paired_run_v1/v4/attempts.jsonl",
+      "sha256": "b330c8e990b8c7b22c6b4d01db6b565b6ab70a49d9556fcadc4a28e042851ae8",
+      "format": "original UTF-8 journal bytes (Windows CRLF)",
+      "attempts": 5
+    },
+    "v5": {
+      "path": "data/refusal_v5_train/paired_run_v1/v5/attempts.jsonl",
+      "sha256": "b2e75636a4776f90cce92a167df5423de01caf8904f527a0700677f3fbe9e9ba",
+      "format": "original UTF-8 journal bytes (Windows CRLF)",
+      "attempts": 7
+    }
+  },
+  "run_identity_archive": {
+    "path": "data/refusal_v5_train/paired_run_v1/run_identity.json",
+    "sha256": "202b46ff621faad7bfe1ffcd198e2efe073e763fc14f3ceed493392aba03472d"
+  },
+  "failed_attempts": [
+    {
+      "call_index": 10,
+      "question_id": "TRAIN_Q193",
+      "arm": "v5",
+      "request_id": "chatcmpl-daaad293-b863-99d6-9b45-73c380aa981d",
+      "finish_reason": "stop",
+      "error_type": "ValueError",
+      "error_stage": "schema",
+      "raw_model_admission": "SUFFICIENT",
+      "final_valid_decision": null,
+      "usage_available": true,
+      "prompt_tokens": 3799,
+      "completion_tokens": 579,
+      "total_tokens": 4378,
+      "estimated_cost_cny": 0.021819
+    },
+    {
+      "call_index": 11,
+      "question_id": "TRAIN_Q193",
+      "arm": "v5",
+      "request_id": "chatcmpl-ab6bda12-a8fe-9e9f-b59a-e2635f2a4592",
+      "finish_reason": "stop",
+      "error_type": "ValueError",
+      "error_stage": "schema",
+      "raw_model_admission": "SUFFICIENT",
+      "final_valid_decision": null,
+      "usage_available": true,
+      "prompt_tokens": 3799,
+      "completion_tokens": 559,
+      "total_tokens": 4358,
+      "estimated_cost_cny": 0.021459
+    }
+  ],
+  "targets_opened_during_execution_or_result_analysis": false,
+  "annotation_freeze_opened_during_execution_or_result_analysis": false,
+  "dev_opened": false,
+  "promotion_allowed": false,
+  "historical_fail_changed": false,
+  "formal_quality_metrics": null,
+  "retrieval_calls": 0,
+  "rerank_calls": 0,
+  "generation_calls": 0,
+  "judge_calls": 0,
+  "paid_retry_after_recorded_audit": 1,
+  "automatic_retries": 0,
+  "successful_predictions_retried": 0,
+  "decision": "No further provider calls under this run. Preserve format failures, do not substitute refusals or report incomplete sample accuracy.",
+  "next_action": "Offline citation-selection design and tests only after user direction; any new paid schema/prompt run needs a new contract and authorization."
+}

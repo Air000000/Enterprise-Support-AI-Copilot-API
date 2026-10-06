@@ -1,0 +1,32 @@
+{
+  "run": "refusal_v5_paired_train_diagnostic_v1",
+  "authorization_recorded_utc": "2026-10-06T06:12:56Z",
+  "authorization_recorded_local": "2026-10-06T14:12:56+08:00",
+  "user_message": "已合并并删除分支，授权并继续",
+  "scope_reference": "The immediately preceding PR55 handoff explicitly requested authorization for the frozen 20 TRAIN questions and Top14 source bodies, paired v4/v5, Singapore qwen3.5-plus-2026-04-20, at most 44 calls and fixed-accounting CNY3 cap.",
+  "contract_canonical_sha256": "ed66bfbbb841a199670e6922f29cdd30ed1e17ab5d9f3cfec6f633f504064032",
+  "execution_source_commit": "7c7de82a0c40e0ff183c4233587baecd1eb6283d",
+  "merged_runner_pr": 55,
+  "provider": "Alibaba Cloud Model Studio",
+  "region": "Singapore",
+  "model": "qwen3.5-plus-2026-04-20",
+  "cases": 20,
+  "required_predictions_total": 40,
+  "max_calls_total": 44,
+  "fixed_accounting_hard_cost_cap_cny": 3,
+  "sent_data": ["question", "ordered source_id and source content"],
+  "not_sent": ["question_id", "chunk_id", "document_id", "labels", "annotation rationales", "credentials as model content"],
+  "paid_loop_opens_targets": false,
+  "dev_opened": false,
+  "promotion_allowed": false,
+  "pre_execution_checks": {
+    "frozen_contract_inputs_prompts_validator_selection_byte_bounds": "PASS",
+    "singapore_auth": "PASS",
+    "refusal_offline_tests": "94 passed",
+    "existing_predictions": 0,
+    "existing_provider_calls": 0,
+    "existing_estimated_cost_cny": 0
+  },
+  "authorization_is_not_quality_evidence": true,
+  "status_at_record_creation": "AUTHORIZED_PREFLIGHT_PASSED_NOT_YET_RUN"
+}
