@@ -52,8 +52,12 @@ def select_packets(snapshots, results, excluded_ids, *, cases=CASES):
 
 def _write_json(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("x", encoding="utf-8") as file:
+    with path.open("x", encoding="utf-8", newline="\n") as file:
         file.write(json.dumps(data, ensure_ascii=False, indent=2) + "\n")
+
+
+def canonical_sha256(value):
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
 def prepare(snapshot_path, results_path):
@@ -172,11 +176,13 @@ def prepare_contract():
         raise RuntimeError("preregistered maximum exceeds proposed accounting cap")
     contract = {
         "run": "refusal_v5_paired_train_diagnostic_v1", "status": "PREREGISTERED_NOT_RUN",
+        "amendment": {"version": "1.1", "reason": "Git normalizes tracked JSON line endings; pin canonical JSON",
+                      "supersedes_canonical_sha256": "bd0edf1e130bb625f93f078098382c5c896349e66dd7aca744ea19214a2bb76d"},
         "cases": CASES, "frozen_inputs": {
             "inputs_path": inputs_path.as_posix(), "inputs_sha256": reuse._sha256(inputs_path),
             "targets_path": targets_path.as_posix(), "targets_sha256": reuse._sha256(targets_path),
-            "annotation_freeze_sha256": reuse._sha256(freeze_path),
-            "selection_sha256": reuse._sha256(REPORT_DIR / "v5_train_selection.json"),
+            "annotation_freeze_canonical_sha256": canonical_sha256(freeze),
+            "selection_canonical_sha256": canonical_sha256(selection),
         },
         "classifier": {"provider": "Alibaba Cloud Model Studio", "region": "Singapore",
                        "model": "qwen3.5-plus-2026-04-20", "temperature": 0,
@@ -206,11 +212,10 @@ def prepare_contract():
                      "save_raw_response_and_v5_checks": True, "targets_not_loaded_by_paid_loop": True,
                      "dev_opened": False, "promotion_allowed": False, "formal_pass_gate": None},
     }
-    _write_json(REPORT_DIR / "v5_train_run_contract.json", contract)
+    _write_json(REPORT_DIR / "v5_train_run_contract_v1_1.json", contract)
     return {"status": contract["status"], "cases": CASES, "required_calls": 40, "max_calls": 44,
             "hard_cost_cap_cny": 3, "conservative_cost_bound_cny": total_bound,
-            "contract_canonical_sha256": hashlib.sha256(
-                json.dumps(contract, sort_keys=True, separators=(",", ":")).encode()).hexdigest()}
+            "contract_canonical_sha256": canonical_sha256(contract)}
 
 
 def main():

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from experiments.evals.refusal_v5_preparation import select_packets
+from experiments.evals.refusal_v5_preparation import canonical_sha256, select_packets
 from experiments.evals.refusal_structured_evidence import CLASSIFIER_SYSTEM_PROMPT_V5_DEV
 from experiments.evals.refusal_development_policy import CLASSIFIER_SYSTEM_PROMPT_V4_DEV
 
@@ -61,7 +61,7 @@ def test_insufficient_remaining_population_is_not_silently_resampled():
 def test_frozen_paired_plan_keeps_population_prompts_and_cost_bound():
     report_dir = Path("experiments/evals/reports/refusal_evidence_sufficiency")
     selection = json.loads((report_dir / "v5_train_selection.json").read_text(encoding="utf-8"))
-    contract = json.loads((report_dir / "v5_train_run_contract.json").read_text(encoding="utf-8"))
+    contract = json.loads((report_dir / "v5_train_run_contract_v1_1.json").read_text(encoding="utf-8"))
     targets = [json.loads(line) for line in (report_dir / "v5_train_targets.jsonl").read_text(encoding="utf-8").splitlines()]
     assert len(selection["excluded_question_ids"]) == 220
     assert len(selection["selected_question_ids"]) == 20
@@ -69,6 +69,10 @@ def test_frozen_paired_plan_keeps_population_prompts_and_cost_bound():
     assert [t["question_id"] for t in targets] == selection["selected_question_ids"]
     assert Counter(t["target_class"] for t in targets) == {"SUFFICIENT": 14, "INSUFFICIENT": 6}
     assert contract["frozen_inputs"]["inputs_sha256"] == selection["inputs_sha256"]
+    assert contract["frozen_inputs"]["selection_canonical_sha256"] == canonical_sha256(selection)
+    freeze = json.loads((report_dir / "v5_train_annotation_freeze.json").read_text(encoding="utf-8"))
+    assert contract["frozen_inputs"]["annotation_freeze_canonical_sha256"] == canonical_sha256(freeze)
+    assert canonical_sha256(json.loads(json.dumps(selection, indent=2).replace("\n", "\r\n"))) == canonical_sha256(selection)
     assert hashlib.sha256((report_dir / "v5_train_targets.jsonl").read_bytes()).hexdigest() == contract["frozen_inputs"]["targets_sha256"]
     assert not contract["controls"]["promotion_allowed"]
     assert not contract["controls"]["dev_opened"]
@@ -84,3 +88,16 @@ def test_frozen_paired_plan_keeps_population_prompts_and_cost_bound():
         total += expected
     assert total == contract["pricing_snapshot"]["conservative_cost_bound_cny"]
     assert total <= contract["pricing_snapshot"]["hard_cost_cap_cny"] == 3
+
+
+def test_pre_run_amendment_changes_only_tracked_json_fingerprints():
+    report_dir = Path("experiments/evals/reports/refusal_evidence_sufficiency")
+    old = json.loads((report_dir / "v5_train_run_contract.json").read_text(encoding="utf-8"))
+    new = json.loads((report_dir / "v5_train_run_contract_v1_1.json").read_text(encoding="utf-8"))
+    assert new.pop("amendment")["supersedes_canonical_sha256"] == canonical_sha256(old)
+    old_inputs, new_inputs = old.pop("frozen_inputs"), new.pop("frozen_inputs")
+    for field in ("annotation_freeze", "selection"):
+        old_inputs.pop(f"{field}_sha256")
+        new_inputs.pop(f"{field}_canonical_sha256")
+    assert old_inputs == new_inputs
+    assert old == new

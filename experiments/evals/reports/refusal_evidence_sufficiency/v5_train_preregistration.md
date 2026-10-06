@@ -44,8 +44,15 @@ Q029/Q490 是近重复的 TWS/DWC 升级连接问题；Q348/Q394 是同一 DSM S
 
 ## 冻结运行方案
 
-以 [机器契约](v5_train_run_contract.json) 为 authority，canonical SHA256：
-`bd0edf1e130bb625f93f078098382c5c896349e66dd7aca744ea19214a2bb76d`。
+以 [v1.1 机器契约](v5_train_run_contract_v1_1.json) 为 authority，canonical SHA256：
+`ed66bfbbb841a199670e6922f29cdd30ed1e17ab5d9f3cfec6f633f504064032`。
+
+运行前修订仅将 selection/annotation-freeze 两份 tracked JSON 的指纹改为 canonical
+JSON SHA，避免 Windows CRLF 经 Git 规范化为 LF 后产生假失配。原始输入与 targets
+JSONL 仍用字节 SHA。输入、标签、prompt、模型、预算与全部控制不变；原
+[v1 契约](v5_train_run_contract.json) 保留但已被 v1.1 取代，不能执行旧契约。
+v1 canonical SHA 为 `bd0edf1e130bb625f93f078098382c5c896349e66dd7aca744ea19214a2bb76d`。
+修订发生在任何模型请求之前，不改变已运行实验或历史结果。
 
 - Singapore / Alibaba Cloud Model Studio / `qwen3.5-plus-2026-04-20`。
 - temperature=0、thinking=false、JSON object；v4/v5 prompt SHA 与 v5 校验源码 SHA 固定。
