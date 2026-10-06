@@ -213,3 +213,31 @@ def test_failure_budget_and_raw_usage_tampering_block_requests(tmp_path, monkeyp
     path.write_text("".join(json.dumps(e) + "\n" for e in records), encoding="utf-8")
     with pytest.raises(RuntimeError, match="invalid checkpoint usage"):
         probe.load_state(root, rows, contract)
+
+
+def test_real_stopped_run_preserves_failures_cost_and_incomplete_denominators():
+    frozen = probe.shared._read_json(probe.REPORT_DIR / "v5_paired_result_freeze.json")
+    contract = probe.shared._read_json(probe.CONTRACT_PATH)
+    assert frozen["contract_canonical_sha256"] == probe.canonical_sha256(contract)
+    assert frozen["status"] == "STOPPED_V5_FORMAT_FAILURE_BUDGET_EXHAUSTED_NO_PROMOTION"
+    assert frozen["provider_calls"] == 12 <= contract["max_calls_total"]
+    assert frozen["valid_predictions"] == 10 < frozen["required_valid_predictions"] == 40
+    assert frozen["common_valid_pairs"] == 5 and frozen["case_denominator"] == 20
+    for arm, stats in frozen["arms"].items():
+        assert stats["case_denominator"] == contract["cases"]
+        assert stats["valid_predictions"] + stats["format_failed_attempts"] == stats["provider_calls"]
+        assert stats["distinct_requested_cases"] + stats["not_requested_cases"] == 20
+        assert stats["total_tokens"] == stats["prompt_tokens"] + stats["completion_tokens"]
+        assert stats["estimated_cost_cny"] == pytest.approx(probe.cost(stats, contract))
+        assert frozen["attempt_archives"][arm]["attempts"] == stats["provider_calls"]
+        assert stats["accuracy_against_ai_targets"] is None
+    assert frozen["arms"]["v5"]["format_failed_attempts"] == contract["controls"]["max_failed_attempts_per_arm"]
+    assert frozen["estimated_cost_cny"] == pytest.approx(sum(s["estimated_cost_cny"] for s in frozen["arms"].values()))
+    assert frozen["estimated_cost_cny"] == pytest.approx(0.185718)
+    assert frozen["known_usage_attempts"] == 12 and frozen["unknown_usage_attempts"] == 0
+    assert [e["call_index"] for e in frozen["failed_attempts"]] == [10, 11]
+    assert all(e["question_id"] == "TRAIN_Q193" and e["final_valid_decision"] is None for e in frozen["failed_attempts"])
+    assert frozen["formal_quality_metrics"] is None
+    assert not frozen["targets_opened_during_execution_or_result_analysis"]
+    assert not frozen["dev_opened"] and not frozen["promotion_allowed"] and not frozen["historical_fail_changed"]
+    assert frozen["automatic_retries"] == frozen["successful_predictions_retried"] == 0
