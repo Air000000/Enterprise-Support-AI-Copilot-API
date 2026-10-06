@@ -67,6 +67,10 @@ prompt/定位及原文校验源码、输入 SHA、顺序、消息上界、解码
 验证分母、计费、转移与不晋升边界，无需私有正文或调用模型。
 本地 refusal 回归 115 passed；编译/diff check 通过，Ruff/核心 API 回归交 PR CI。
 
+评测完成后的首次公开推送被安全审查拦截，未发布；随后明确询问上述元数据的
+公开发布与创建 PR 权限，用户直接回复“继续”。该单独公开授权已追加到授权记录；
+它不授权发布真实问题、来源正文、原始响应、密钥或新增模型调用。
+
 付费 loop 未读取 targets/annotation freeze；全部 40 结果完成后才执行冻结 evaluator。
 DEV 未打开；没有执行 resume-after-audit、自动修复、额外第 41 次请求或新标注。
 旧 v5 STOPPED/12 calls/¥0.185718、历史 FAIL、Dense serving、检索/rerank/

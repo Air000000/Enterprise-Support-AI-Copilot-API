@@ -33,5 +33,16 @@
     "existing_estimated_cost_cny": 0
   },
   "authorization_is_not_quality_evidence": true,
-  "status_at_record_creation": "AUTHORIZED_PREFLIGHT_PASSED_NOT_YET_RUN"
+  "status_at_record_creation": "AUTHORIZED_PREFLIGHT_PASSED_NOT_YET_RUN",
+  "publication_authorization": {
+    "recorded_utc": "2026-10-06T15:04:06Z",
+    "user_message": "继续",
+    "scope_reference": "Direct reply to the preceding explicit question asking permission to publish this run's aggregate metrics, anonymous question IDs with AI labels/decisions, and audit hashes to public GitHub and create a PR. No real questions, source bodies, raw model responses or credentials will be published.",
+    "destination": "public GitHub: Air000000/Enterprise-Support-AI-Copilot-API",
+    "aggregate_metrics_allowed": true,
+    "anonymous_question_ids_ai_labels_decisions_allowed": true,
+    "audit_metadata_allowed": true,
+    "real_questions_source_bodies_raw_responses_credentials_allowed": false,
+    "additional_provider_calls_authorized": false
+  }
 }
