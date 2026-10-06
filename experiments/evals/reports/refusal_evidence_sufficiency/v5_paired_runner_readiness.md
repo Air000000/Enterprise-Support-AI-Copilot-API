@@ -72,7 +72,10 @@ summary.json 独占创建，不覆盖既有结果。报告全 20 条分母、各
 成功不重试、标签隔离、provider 异常、未知 usage、截断、非法 JSON、失败预算、
 请求前成本预留、身份/输入契约及账本篡改、残留锁和未记录 pending。
 全部 refusal 离线回归 **94 passed**；预检 **PASS**，调用 0。
-本地 Ruff 不可用，Ruff 与核心 API 回归交由 PR CI，不提前宣称 CI 通过。
+本地 Ruff 不可用；实现提交 `854587d` 的
+[PR CI](https://github.com/Air000000/Enterprise-Support-AI-Copilot-API/actions/runs/37419819121)
+已确认编译、Ruff **PASS**，核心 API 与拒答回归 **197 passed / 1 warning**。
+warning 为既有 Starlette TestClient/httpx 弃用提示，不借本轮引入依赖迁移。
 
 请求未来授权范围保持预注册：20 条冻结 TRAIN 问题和每条 Top14 来源正文，同题
 v4/v5；Singapore `qwen3.5-plus-2026-04-20`，最多 44 次总调用，固定记账折算 hard
