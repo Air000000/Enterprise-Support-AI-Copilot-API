@@ -1,0 +1,92 @@
+{
+  "run": "refusal_v5_1_paired_train_diagnostic_v1",
+  "status": "PREREGISTERED_NOT_RUN",
+  "cases": 20,
+  "frozen_inputs": {
+    "inputs_path": "data/refusal_v5_train/inputs.jsonl",
+    "inputs_sha256": "e741d7d0cd655ed08e7d3b4024467fe57058711fbf72956f67eaa54610dce905",
+    "targets_path": "experiments/evals/reports/refusal_evidence_sufficiency/v5_train_targets.jsonl",
+    "targets_sha256": "08ff465489301caca19e9c428c8836592864caaaddd9be8f4a754bdc1e76967a",
+    "annotation_freeze_canonical_sha256": "1b1155f869ce194f225d4de4628bb924bfed248e925f65d59a4dd882763a2b6c",
+    "selection_canonical_sha256": "098beab8c7055b22685f0a2e4ed0088a9c34cb802483dea76e5eb655ab66fbc5"
+  },
+  "classifier": {
+    "provider": "Alibaba Cloud Model Studio",
+    "region": "Singapore",
+    "model": "qwen3.5-plus-2026-04-20",
+    "temperature": 0,
+    "enable_thinking": false,
+    "response_format": "json_object"
+  },
+  "arms": {
+    "v4": {
+      "prompt_sha256": "7b8ff671d54b929f0877ddb82a41f1adc33558569aa1ce70af25ac2f1c459cd3",
+      "max_output_tokens": 512,
+      "required_outcomes": 20,
+      "max_calls": 20,
+      "output_dir": "data/refusal_v5_train/paired_run_v5_1/v4",
+      "request_input_byte_bounds": [13468,13265,11296,12011,7720,13936,12144,14137,12159,11971,12358,12489,10760,13506,16060,12752,13162,13058,13509,11651],
+      "conservative_cost_bound_cny": 0.938556
+    },
+    "v5_1": {
+      "prompt_sha256": "368b77fe267e68f3f273d458240bafdd422cad3e7b7ca9508c991a96a9c5fba3",
+      "max_output_tokens": 2048,
+      "required_outcomes": 20,
+      "max_calls": 20,
+      "output_dir": "data/refusal_v5_train/paired_run_v5_1/v5_1",
+      "request_input_byte_bounds": [22638,25371,17894,19479,12556,21207,18810,24832,18977,19711,20697,21049,17851,21023,28062,29458,21577,25214,29240,19795],
+      "conservative_cost_bound_cny": 2.043603
+    }
+  },
+  "required_outcomes_total": 40,
+  "max_calls_total": 40,
+  "order": "frozen question-ID order; even index v4 then v5_1, odd index v5_1 then v4",
+  "v5_validator_normalized_source_sha256": "48eb7ee44af550e542a94e2a37b1daaf72669ee57a74ee8e95a27c2e725c45b8",
+  "citation_selector_normalized_source_sha256": "31c959c47608d28f4dad7be794d9a62d004a8d6ae8558255edb732828ebbf29e",
+  "pricing_snapshot": {
+    "input_usd_per_1m_tokens": 0.4,
+    "output_usd_per_1m_tokens": 2.4,
+    "accounting_cny_per_usd": 7.5,
+    "input_cny_per_1m_tokens": 3,
+    "output_cny_per_1m_tokens": 18,
+    "hard_cost_cap_cny": 3,
+    "conservative_cost_bound_cny": 2.982159,
+    "source": "https://www.alibabacloud.com/help/en/model-studio/model-pricing",
+    "checked_date": "2026-10-06",
+    "context_band": "0<Token<=256K",
+    "caveat": "UTF-8 message bytes plus 512 framing as conservative token proxy; fixed accounting conversion, not invoice guarantee; actual usage checked before resume; no discounts assumed"
+  },
+  "label_provenance": "CURRENT_ASSISTANT_AI_PROXY_NOT_INDEPENDENT_NOT_HUMAN_GOLD",
+  "metrics": [
+    "all-20 valid predictions and format/provider failures per arm",
+    "confusion and recalls only on common valid pairs with actual class denominators",
+    "all-20 valid-and-agree count/rate, failures counted as no valid agreement not as INSUFFICIENT",
+    "paired transitions including missing valid prediction",
+    "raw status-only admission versus validated final decision, never use raw admission as prediction",
+    "latency/tokens/cost per arm"
+  ],
+  "controls": {
+    "provider_calls_this_stage": 0,
+    "authorization_required": true,
+    "runner_ready": true,
+    "checkpoint_each_attempt": true,
+    "max_failed_attempts_per_arm": 20,
+    "failed_pair_is_terminal": true,
+    "known_schema_failure_requires_audit_before_advancing": true,
+    "attempted_pairs_never_retried": true,
+    "successful_predictions_never_retried": true,
+    "unknown_usage_stops_resume": true,
+    "provider_or_schema_error_stops_immediately": true,
+    "labels_open_only_after_all_40_attempted_outcomes": true,
+    "targets_not_loaded_by_paid_loop": true,
+    "dev_opened": false,
+    "promotion_allowed": false,
+    "formal_pass_gate": null
+  },
+  "scope": {
+    "development_material_not_independent_acceptance": true,
+    "old_v5_result_and_contract_unchanged": true,
+    "retrieval_context_and_runtime_unchanged": true,
+    "new_authorization_required_no_prior_authorization_reuse": true
+  }
+}

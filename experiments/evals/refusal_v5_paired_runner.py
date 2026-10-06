@@ -6,6 +6,7 @@ import json
 import math
 import os
 import time
+from functools import partial
 from pathlib import Path
 
 from experiments.evals import refusal_phase_b_runner as shared
@@ -25,18 +26,24 @@ BUILDERS = {"v4": build_classifier_messages_v4_dev,
             "v5": structured.build_classifier_messages_v5_dev}
 
 
-def load_probe(inputs_path=None):
-    contract = shared._read_json(CONTRACT_PATH)
-    if canonical_sha256(contract) != CONTRACT_SHA256:
+def load_probe(inputs_path=None, *, contract_path=None, contract_sha256=None,
+               builders=None, prompts=None, validators=None):
+    builders = BUILDERS if builders is None else builders
+    contract = shared._read_json(contract_path or CONTRACT_PATH)
+    if canonical_sha256(contract) != (contract_sha256 or CONTRACT_SHA256):
         raise RuntimeError("frozen paired contract changed")
-    prompts = {"v4": CLASSIFIER_SYSTEM_PROMPT_V4_DEV,
-               "v5": structured.CLASSIFIER_SYSTEM_PROMPT_V5_DEV}
+    prompts = prompts or {"v4": CLASSIFIER_SYSTEM_PROMPT_V4_DEV,
+                          "v5": structured.CLASSIFIER_SYSTEM_PROMPT_V5_DEV}
+    if set(builders) != set(prompts) or set(builders) != set(contract["arms"]) or len(builders) != 2:
+        raise RuntimeError("paired arm bindings mismatch")
     for arm, prompt in prompts.items():
         if hashlib.sha256(prompt.encode()).hexdigest() != contract["arms"][arm]["prompt_sha256"]:
             raise RuntimeError("frozen paired prompt changed")
-    source = Path(structured.__file__).read_text(encoding="utf-8")
-    if hashlib.sha256(source.encode()).hexdigest() != contract["v5_validator_normalized_source_sha256"]:
-        raise RuntimeError("frozen v5 validator changed")
+    validators = validators or {"v5_validator_normalized_source_sha256": structured}
+    for key, module in validators.items():
+        source = Path(module.__file__).read_text(encoding="utf-8")
+        if hashlib.sha256(source.encode()).hexdigest() != contract[key]:
+            raise RuntimeError("frozen validator changed")
     frozen = contract["frozen_inputs"]
     selection = shared._read_json(REPORT_DIR / "v5_train_selection.json")
     if canonical_sha256(selection) != frozen["selection_canonical_sha256"]:
@@ -48,7 +55,7 @@ def load_probe(inputs_path=None):
     if [row["question_id"] for row in rows] != selection["selected_question_ids"]:
         raise RuntimeError("TRAIN question order changed")
     for index, row in enumerate(rows):
-        for arm, builder in BUILDERS.items():
+        for arm, builder in builders.items():
             messages = builder(shared._classifier_input_from_row(row))
             bound = sum(len(m["content"].encode()) for m in messages) + 512
             if bound != contract["arms"][arm]["request_input_byte_bounds"][index] or bound > 256_000:
@@ -59,9 +66,9 @@ def load_probe(inputs_path=None):
     return contract, rows
 
 
-def schedule(rows):
+def schedule(rows, arms=("v4", "v5")):
     return [(row, arm) for index, row in enumerate(rows)
-            for arm in (("v4", "v5") if index % 2 == 0 else ("v5", "v4"))]
+            for arm in (arms if index % 2 == 0 else tuple(reversed(arms)))]
 
 
 def parse_result(arm, raw, row, finish_reason):
@@ -107,9 +114,12 @@ def write_json(path, value):
         os.fsync(file.fileno())
 
 
-def load_state(output_dir, rows, contract, *, create=False):
+def load_state(output_dir, rows, contract, *, create=False, builders=None,
+               result_parser=None, contract_sha256=None):
+    builders = BUILDERS if builders is None else builders
+    result_parser = result_parser or parse_result
     root = Path(output_dir)
-    identity = {"run": contract["run"], "contract_sha256": CONTRACT_SHA256}
+    identity = {"run": contract["run"], "contract_sha256": contract_sha256 or CONTRACT_SHA256}
     identity_path = root / "run_identity.json"
     if identity_path.exists():
         if shared._read_json(identity_path) != identity:
@@ -120,10 +130,10 @@ def load_state(output_dir, rows, contract, *, create=False):
         root.mkdir(parents=True, exist_ok=True)
         write_json(identity_path, identity)
     events = []
-    allowed = {"run_identity.json", "pending_request.json", "runner.lock", "summary.json", *BUILDERS}
+    allowed = {"run_identity.json", "pending_request.json", "runner.lock", "summary.json", *builders}
     if root.exists() and any(p.name not in allowed for p in root.iterdir()):
         raise RuntimeError("unexpected paired checkpoint file")
-    for arm in BUILDERS:
+    for arm in builders:
         directory = root / arm
         if directory.exists() and any(p.name != "attempts.jsonl" for p in directory.iterdir()):
             raise RuntimeError("unexpected arm checkpoint file")
@@ -135,9 +145,9 @@ def load_state(output_dir, rows, contract, *, create=False):
     if any(type(e.get("call_index")) is not int for e in events):
         raise RuntimeError("invalid checkpoint call index")
     events.sort(key=lambda e: e["call_index"])
-    ordered = schedule(rows)
+    ordered = schedule(rows, tuple(builders))
     next_pair, spent = 0, 0.0
-    counts = {arm: {"calls": 0, "failures": 0} for arm in BUILDERS}
+    counts = {arm: {"calls": 0, "failures": 0} for arm in builders}
     for index, event in enumerate(events):
         if next_pair >= len(ordered):
             raise RuntimeError("unexpected call after completion")
@@ -163,7 +173,7 @@ def load_state(output_dir, rows, contract, *, create=False):
         if not isinstance(raw, str):
             raise RuntimeError("missing raw response")
         try:
-            result = parse_result(arm, raw, row, event.get("finish_reason"))
+            result = result_parser(arm, raw, row, event.get("finish_reason"))
         except (ValueError, RuntimeError, TypeError, KeyError):
             result = None
         if event.get("result") != result or event.get("raw_model_admission") != raw_admission(arm, raw):
@@ -171,7 +181,9 @@ def load_state(output_dir, rows, contract, *, create=False):
         counts[arm]["calls"] += 1
         if result is None:
             counts[arm]["failures"] += 1
-        else:
+            if contract["controls"].get("failed_pair_is_terminal") and event.get("error_stage") != "schema":
+                raise RuntimeError("non-schema failure: audit required; no resume")
+        if result is not None or contract["controls"].get("failed_pair_is_terminal"):
             next_pair += 1
         if (counts[arm]["calls"] > contract["arms"][arm]["max_calls"]
                 or counts[arm]["failures"] > contract["controls"]["max_failed_attempts_per_arm"]):
@@ -188,7 +200,9 @@ def load_state(output_dir, rows, contract, *, create=False):
     return events, next_pair, counts, spent
 
 
-def attempt(row, arm, index, contract, client):
+def attempt(row, arm, index, contract, client, *, builders=None, result_parser=None):
+    builders = BUILDERS if builders is None else builders
+    result_parser = result_parser or parse_result
     record = {"call_index": index, "question_id": row["question_id"], "arm": arm,
               "model": contract["classifier"]["model"], "request_id": None,
               "raw_response": None, "finish_reason": None, "result": None,
@@ -200,7 +214,7 @@ def attempt(row, arm, index, contract, client):
         response = client.chat.completions.create(
             model=record["model"], temperature=0, response_format={"type": "json_object"},
             extra_body={"enable_thinking": False}, max_tokens=contract["arms"][arm]["max_output_tokens"],
-            messages=BUILDERS[arm](shared._classifier_input_from_row(row)),
+            messages=builders[arm](shared._classifier_input_from_row(row)),
         )
         record["error_stage"] = "schema"
         record["request_id"] = getattr(response, "id", None)
@@ -216,7 +230,7 @@ def attempt(row, arm, index, contract, client):
         record["raw_response"] = response.choices[0].message.content or ""
         record["finish_reason"] = response.choices[0].finish_reason
         record["raw_model_admission"] = raw_admission(arm, record["raw_response"])
-        record["result"] = parse_result(arm, record["raw_response"], row, record["finish_reason"])
+        record["result"] = result_parser(arm, record["raw_response"], row, record["finish_reason"])
         record["error_stage"] = None
     except Exception as error:
         # Never persist exception text: SDK/provider errors can contain credentials.
@@ -227,23 +241,27 @@ def attempt(row, arm, index, contract, client):
     return record
 
 
-def run_paid(*, inputs_path=None, output_dir=OUTPUT_DIR, client=None, resume_after_audit=False):
-    contract, rows = load_probe(inputs_path)
+def run_paid(*, inputs_path=None, output_dir=OUTPUT_DIR, client=None, resume_after_audit=False,
+             probe_loader=None, builders=None, result_parser=None, contract_sha256=None):
+    builders = BUILDERS if builders is None else builders
+    contract, rows = (probe_loader or load_probe)(inputs_path)
+    read_state = partial(load_state, builders=builders, result_parser=result_parser,
+                         contract_sha256=contract_sha256)
     root = Path(output_dir)
-    load_state(root, rows, contract, create=True)
+    read_state(root, rows, contract, create=True)
     # ponytail: one local exclusive lock, not a multi-host experiment scheduler.
     lock = root / "runner.lock"
     with lock.open("x", encoding="utf-8"):
         pass
     try:
-        events, next_pair, counts, spent = load_state(root, rows, contract)
+        events, next_pair, counts, spent = read_state(root, rows, contract)
         if events and events[-1]["result"] is None and not resume_after_audit:
             raise RuntimeError("prior failure: explicit resume-after-audit required")
         pending = root / "pending_request.json"
         if pending.exists():
             pending.unlink()  # load_state proved this attempt is already durably recorded.
         provider = client
-        ordered = schedule(rows)
+        ordered = schedule(rows, tuple(builders))
         while next_pair < len(ordered):
             row, arm = ordered[next_pair]
             limits = contract["arms"][arm]
@@ -257,7 +275,8 @@ def run_paid(*, inputs_path=None, output_dir=OUTPUT_DIR, client=None, resume_aft
             if provider is None:
                 provider = shared.get_classifier_client()  # Existing Singapore auth; SDK retries disabled.
             write_json(pending, {"call_index": len(events), "arm": arm, "question_id": row["question_id"]})
-            record = attempt(row, arm, len(events), contract, provider)
+            record = attempt(row, arm, len(events), contract, provider,
+                             builders=builders, result_parser=result_parser)
             path = root / arm / "attempts.jsonl"
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("a", encoding="utf-8") as file:
@@ -265,7 +284,7 @@ def run_paid(*, inputs_path=None, output_dir=OUTPUT_DIR, client=None, resume_aft
                 file.flush()
                 os.fsync(file.fileno())
             pending.unlink()
-            events, next_pair, counts, spent = load_state(root, rows, contract)
+            events, next_pair, counts, spent = read_state(root, rows, contract)
             print(f"CHECKPOINTED={next_pair}/{len(ordered)} CALLS={len(events)} COST_CNY={spent:.6f}", flush=True)
             if record["result"] is None:
                 raise RuntimeError("response failure checkpointed; stop and audit")
@@ -274,10 +293,19 @@ def run_paid(*, inputs_path=None, output_dir=OUTPUT_DIR, client=None, resume_aft
         lock.unlink()
 
 
-def evaluate(*, inputs_path=None, output_dir=OUTPUT_DIR):
-    contract, rows = load_probe(inputs_path)
-    events, completed, _, spent = load_state(output_dir, rows, contract)
-    if completed != contract["required_predictions_total"]:
+def evaluate(*, inputs_path=None, output_dir=OUTPUT_DIR, probe_loader=None,
+             builders=None, result_parser=None, contract_sha256=None):
+    builders = BUILDERS if builders is None else builders
+    candidate = tuple(builders)[1]
+    contract, rows = (probe_loader or load_probe)(inputs_path)
+    events, completed, _, spent = load_state(
+        output_dir, rows, contract, builders=builders, result_parser=result_parser,
+        contract_sha256=contract_sha256)
+    if (Path(output_dir) / "runner.lock").exists():
+        raise RuntimeError("active/stale runner lock: audit before evaluation")
+    if completed != contract.get("required_outcomes_total", contract.get("required_predictions_total")):
+        if contract["controls"].get("failed_pair_is_terminal"):
+            raise RuntimeError("all 40 attempted outcomes required before opening targets")
         raise RuntimeError("all 40 valid predictions required before opening targets")
     frozen = contract["frozen_inputs"]
     freeze = shared._read_json(REPORT_DIR / "v5_train_annotation_freeze.json")
@@ -295,44 +323,54 @@ def evaluate(*, inputs_path=None, output_dir=OUTPUT_DIR):
     cases, arms = [], {}
     for row in rows:
         qid = row["question_id"]
-        predictions = {arm: successes[qid, arm]["result"] for arm in BUILDERS}
-        correct = {arm: predictions[arm]["decision"] == labels[qid] for arm in BUILDERS}
-        transition = { (True, True): "both_agree", (False, True): "v5_gains_agreement",
-                       (True, False): "v5_loses_agreement", (False, False): "both_disagree"}[correct["v4"], correct["v5"]]
+        predictions = {arm: successes.get((qid, arm), {}).get("result") for arm in builders}
+        correct = {arm: predictions[arm]["decision"] == labels[qid] for arm in builders if predictions[arm]}
+        transition = { (True, True): "both_agree", (False, True): f"{candidate}_gains_agreement",
+                       (True, False): f"{candidate}_loses_agreement", (False, False): "both_disagree"}[
+                           correct["v4"], correct[candidate]] if len(correct) == 2 else "missing_valid_prediction"
         cases.append({"question_id": qid, "ai_target": labels[qid], "predictions": predictions,
                       "transition_against_ai_proxy": transition})
-    for arm in BUILDERS:
+    common = [c for c in cases if all(c["predictions"].values())]
+    denominators = {label: sum(c["ai_target"] == label for c in common)
+                    for label in ("SUFFICIENT", "INSUFFICIENT")}
+    for arm in builders:
         attempts = [e for e in events if e["arm"] == arm]
         failures = [e for e in attempts if e["result"] is None]
         matrix = {f"{label.lower()}_as_{decision.lower()}": sum(
-            c["ai_target"] == label and c["predictions"][arm]["decision"] == decision for c in cases)
+            c["ai_target"] == label and c["predictions"][arm]["decision"] == decision for c in common)
                   for label in ("SUFFICIENT", "INSUFFICIENT") for decision in ("SUFFICIENT", "INSUFFICIENT")}
-        arms[arm] = {"case_denominator": len(rows), "valid_predictions": len(rows),
+        agreements = sum(c["predictions"][arm] is not None
+                         and c["predictions"][arm]["decision"] == c["ai_target"] for c in cases)
+        arms[arm] = {"case_denominator": len(rows), "valid_predictions": sum(e["result"] is not None for e in attempts),
                      "failure_case_count": len({e["question_id"] for e in failures}),
                      "failed_attempts": len(failures), "provider_calls": len(attempts),
                      "format_failed_attempts": sum(e["error_stage"] == "schema" for e in attempts),
                      "provider_failed_attempts": sum(e["error_stage"] == "provider" for e in attempts),
                      "confusion_on_common_valid_pairs": matrix,
-                     "sufficient_recall_against_ai_proxy": matrix["sufficient_as_sufficient"] / 14,
-                     "insufficient_recall_against_ai_proxy": matrix["insufficient_as_insufficient"] / 6,
-                     "agreement_with_ai_proxy": (matrix["sufficient_as_sufficient"] + matrix["insufficient_as_insufficient"]) / len(rows),
+                     "common_valid_class_denominators": denominators,
+                     "sufficient_recall_against_ai_proxy": matrix["sufficient_as_sufficient"] / denominators["SUFFICIENT"] if denominators["SUFFICIENT"] else None,
+                     "insufficient_recall_against_ai_proxy": matrix["insufficient_as_insufficient"] / denominators["INSUFFICIENT"] if denominators["INSUFFICIENT"] else None,
+                     "agreement_with_ai_proxy": (matrix["sufficient_as_sufficient"] + matrix["insufficient_as_insufficient"]) / len(common) if common else None,
+                     "valid_and_agree_all_case_count": agreements,
+                     "valid_and_agree_all_case_rate": agreements / len(rows),
                      "estimated_cost_cny": sum(e["estimated_cost_cny"] for e in attempts),
                      "latency_p50_ms": shared._percentile([e["latency_ms"] for e in attempts], 0.5),
                      "latency_p95_ms": shared._percentile([e["latency_ms"] for e in attempts], 0.95)}
         for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
             arms[arm][key] = sum(e[key] for e in attempts)
     summary = {"status": "COMPLETE_PAIRED_AI_PROXY_DIAGNOSTIC_NO_PROMOTION",
-               "contract_sha256": CONTRACT_SHA256, "label_provenance": contract["label_provenance"],
-               "common_valid_pairs": len(rows), "provider_calls": len(events),
+               "contract_sha256": contract_sha256 or CONTRACT_SHA256, "label_provenance": contract["label_provenance"],
+               "case_denominator": len(rows), "common_valid_pairs": len(common), "provider_calls": len(events),
+               "quality_metrics_population": "COMMON_VALID_PAIRS_CONDITIONAL_NOT_ALL_CASE_ACCURACY",
                "estimated_cost_cny": spent, "arms": arms, "cases": cases,
                "paired_transitions_against_ai_proxy": {
                    t: sum(c["transition_against_ai_proxy"] == t for c in cases)
-                   for t in ("both_agree", "both_disagree", "v5_gains_agreement", "v5_loses_agreement")},
-               "v5_admission_attempts": [{"question_id": e["question_id"], "call_index": e["call_index"],
+                   for t in ("both_agree", "both_disagree", f"{candidate}_gains_agreement", f"{candidate}_loses_agreement", "missing_valid_prediction")},
+               f"{candidate}_admission_attempts": [{"question_id": e["question_id"], "call_index": e["call_index"],
                                           "raw_status_decision": e["raw_model_admission"],
                                           "final_valid_decision": e["result"]["decision"] if e["result"] else None,
                                           "validation_failed": e["result"] is None}
-                                         for e in events if e["arm"] == "v5"],
+                                         for e in events if e["arm"] == candidate],
                "correlated_families": [[c for c in cases if c["question_id"] in family]
                                        for family in (("TRAIN_Q029", "TRAIN_Q490"), ("TRAIN_Q348", "TRAIN_Q394"))],
                "dev_opened": False, "promotion_allowed": False, "historical_fail_changed": False}
@@ -340,14 +378,18 @@ def evaluate(*, inputs_path=None, output_dir=OUTPUT_DIR):
     return summary
 
 
-def main():
+def main(*, probe_loader=None, builders=None, result_parser=None, contract_sha256=None,
+         output_dir=OUTPUT_DIR):
+    builders = BUILDERS if builders is None else builders
+    options = {"probe_loader": probe_loader, "builders": builders,
+               "result_parser": result_parser, "contract_sha256": contract_sha256}
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--run-paid", action="store_true")
     mode.add_argument("--evaluate", action="store_true")
     parser.add_argument("--resume-after-audit", action="store_true")
     parser.add_argument("--inputs-path")
-    parser.add_argument("--output-dir", default=str(OUTPUT_DIR))
+    parser.add_argument("--output-dir", default=str(output_dir))
     parser.add_argument("--env-file", help="Local auth only; never copied into artifacts")
     args = parser.parse_args()
     if args.resume_after_audit and not args.run_paid:
@@ -357,16 +399,19 @@ def main():
             parser.error("explicit env file does not exist")
         shared.load_dotenv(args.env_file, override=True)
     if args.run_paid:
-        run_paid(inputs_path=args.inputs_path, output_dir=args.output_dir, resume_after_audit=args.resume_after_audit)
+        run_paid(inputs_path=args.inputs_path, output_dir=args.output_dir,
+                 resume_after_audit=args.resume_after_audit, **options)
         print("PAIRED_TRAIN_COMPLETE TARGETS_OPENED=NO DEV_OPENED=NO")
     elif args.evaluate:
-        print(json.dumps(evaluate(inputs_path=args.inputs_path, output_dir=args.output_dir), indent=2))
+        print(json.dumps(evaluate(inputs_path=args.inputs_path, output_dir=args.output_dir, **options), indent=2))
     else:
-        contract, rows = load_probe(args.inputs_path)
-        events, completed, _, spent = load_state(args.output_dir, rows, contract)
+        contract, rows = (probe_loader or load_probe)(args.inputs_path)
+        events, completed, _, spent = load_state(
+            args.output_dir, rows, contract, builders=builders, result_parser=result_parser,
+            contract_sha256=contract_sha256)
         if (Path(args.output_dir) / "runner.lock").exists():
             raise RuntimeError("active/stale runner lock: audit before execution")
-        print(f"PAIRED_PREFLIGHT=PASS CASES={len(rows)} CONTRACT_SHA256={CONTRACT_SHA256}")
+        print(f"PAIRED_PREFLIGHT=PASS CASES={len(rows)} CONTRACT_SHA256={contract_sha256 or CONTRACT_SHA256}")
         print(f"CHECKPOINTED={completed}/40 PRIOR_CALLS={len(events)} COST_CNY={spent:.6f}")
         print("PROVIDER_CALLS_THIS_COMMAND=0 TARGETS_OPENED=NO DEV_OPENED=NO AUTHORIZATION_REQUIRED=YES")
 
