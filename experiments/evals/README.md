@@ -62,6 +62,10 @@ R4 C1 Hybrid + rerank 的正式历史结论仍然是 **FAIL**：三项 TRAIN 聚
 下一步已准备 [v5 结构化证据检查候选](reports/refusal_evidence_sufficiency/v5_structured_evidence_candidate.md)：
 逐项列出要求、原文引证、支持状态，再由代码派生二分类结果；仅离线逻辑回归，
 无新模型预测、付费运行授权或线上接入。引文真实不等于语义支持正确。
+2026-10-06 已准备 [20 条新 TRAIN 及成对探针预注册](reports/refusal_evidence_sufficiency/v5_train_preregistration.md)：
+排除旧拒答审计/v2/v3 的全部 220 条，AI 草稿标注冻结为充分 14 / 不足 6，
+不是独立人工金标。计划同题对照 v4/v5，共 40 条预测、最多 44 次调用、折算预算 ¥3；
+当前仅数据/契约准备，尚无可运行的新付费 runner，未授权或执行新评测。
 
 ---
 
