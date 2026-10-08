@@ -41,6 +41,9 @@ jobs:
         run: |
           ruff check .
 
+      - name: Check synthetic offline refusal demo
+        run: python -m scripts.demo_refusal_coverage
+
       - name: Run focused tests
         run: |
           pytest \
