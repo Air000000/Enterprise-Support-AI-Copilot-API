@@ -379,7 +379,7 @@ qwen3-rerank
 | **拒答 v2.1** | 新分类契约 + 新的 AI 草稿代理标签 | 平衡准确率 **0.775**，门槛 0.80；充分召回 .85，不足召回 .70 | 只差 1 个 样本 即可过门槛，但后验检查发现部分 分歧 来自**标注契约与问题实际要求不一致**，不能简单继续调 提示词 | **FAIL**，不修改门槛后重跑 | [v2.1 结果](experiments/evals/reports/refusal_evidence_sufficiency/v2_ai_proxy_v2_1_result.md) |
 | **拒答 v3** | 从盲标 AI 草稿中冻结 50 条 TRAIN，25 充分 / 25 不充分 | 与 AI proxy 一致 **38/50**；平衡准确率 **0.76**；两类召回均 0.76 | 充分题误拒 6 条、不足题误放行 6 条；标签不是独立人工金标 | **FAIL**，不进入生成验收或 runtime | [v3 结果](experiments/evals/reports/refusal_evidence_sufficiency/v3_ai_proxy_result.md) |
 | **v4 / v5.1 配对开发诊断** | 20 条 TRAIN 同题对照；v5.1 选择来源行，由代码提取原文并推导决策 | 40 次调用全部有效；AI proxy 一致 **16/20 → 17/20**；估算总费 ¥0.741975 | 不足题误放行 **4/6 → 2/6**，但新增 1 个充分题误拒；费用约 2.06 倍、p50 延迟约 1.82 倍 | **NO_PROMOTION**；非独立 AI 标签、小型已见 TRAIN，不能宣称全面改善 | [v5.1 冻结结果](experiments/evals/reports/refusal_evidence_sufficiency/v5_1_paired_result.md) |
-| **v5.2 离线候选 / 演示** | 强制检查请求结果、适用性、版本与时效；复用行引用校验 | 纯合成手写响应、自检；**没有真实模型评测** | 缺字段报错、已声明缺口拒答；错误的 SUPPORTED / NOT_REQUIRED 仍可能通过 | **NOT_MODEL_EVALUATED / NO_PROMOTION**，不是实际效果证明 | [候选边界](experiments/evals/reports/refusal_evidence_sufficiency/v5_2_requirement_coverage_candidate.md)、[演示](docs/demo_script.md#21-离线拒答-gate-面试演示) |
+| **v5.2 离线候选 / 演示** | 强制检查请求结果、适用性、版本与时效；复用行引用校验 | 纯合成手写响应、自检；**没有真实模型评测** | 缺字段报错、已声明缺口拒答；错误的 SUPPORTED / NOT_REQUIRED 仍可能通过 | **NOT_MODEL_EVALUATED / NO_PROMOTION**，不是实际效果证明 | [候选边界](experiments/evals/reports/refusal_evidence_sufficiency/v5_2_requirement_coverage_candidate.md)、[演示](docs/demo_script.md#21-离线拒答-gate-演示) |
 
 完整实验契约、索引与冻结产物见 [experiments/evals/README.md](experiments/evals/README.md)。
 
@@ -583,7 +583,7 @@ python scripts/smoke_document_backend_flow.py
 python -m scripts.demo_refusal_coverage
 ```
 
-讲解顺序及已知错误放行示例见 [离线面试演示](docs/demo_script.md#21-离线拒答-gate-面试演示)。
+运行步骤及已知错误放行示例见 [离线 gate 演示](docs/demo_script.md#21-离线拒答-gate-演示)。
 
 GitHub Actions 的 `test` 作业执行 Python 3.11 环境配置、依赖安装、`compileall`、Ruff 和核心定向测试。
 
@@ -604,8 +604,6 @@ Workflow：
 5. [docs/agent_workflow.md](docs/agent_workflow.md) — 工单 Agent 预览 / 确认；
 6. [docs/security.md](docs/security.md) — 当前认证边界提示与早期 MVP 安全记录；
 7. `experiments/evals/reports/` — 检索 / Hybrid / 证据 / 生成实验产物。
-
-求职展示可直接读 [项目总结与面试提纲](docs/project_summary.md#面试交付2026-10-08)，先讲实现，再讲有证据的收益和未解决边界。
 
 `docs/*_report.md` 与 `docs/superpowers/` 中保留历史阶段报告、设计与实验计划，用于追溯项目演进；历史路线图 不自动代表当前产品方向。
 

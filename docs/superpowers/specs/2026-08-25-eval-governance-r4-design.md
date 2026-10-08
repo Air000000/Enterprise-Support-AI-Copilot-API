@@ -64,7 +64,7 @@ Every paid model experiment must answer all seven questions before execution:
 4. What is the hard cost cap?
 5. What condition stops the experiment immediately?
 6. What quantitative or auditable result will be produced?
-7. Can that result become resume evidence or interview evidence?
+7. Can that result be independently traced to reproducible engineering evidence?
 
 No paid run is justified solely because an additional metric would make the report look more complete.
 
@@ -228,7 +228,7 @@ Output:
 - initialized cost ledger.
 
 Exit gate:
-- repository contains enough compact evidence to independently trace the resume/interview metrics without committing large payloads.
+- repository contains enough compact evidence to independently trace the reported metrics without committing large payloads.
 
 ### Stage R2 — E1 TRAIN residual analysis
 
@@ -386,7 +386,7 @@ Examples of eligible R4 gate signals include:
 
 The exact numbers should be chosen from R2 population sizes and operational constraints, then frozen before R3/R4 results are inspected. The plan must not retrofit thresholds to observed outcomes.
 
-## 11. Resume/interview output rule
+## 11. Engineering reporting rule
 
 Each stage must produce a verifiable engineering result, not necessarily an improvement.
 
@@ -397,7 +397,7 @@ A valid result can be:
 - a gate decision that rejects unnecessary complexity;
 - an evaluation reliability result.
 
-Final resume wording should use only the strongest 2–3 quantitative outcomes. Other stages remain supporting interview evidence explaining why each engineering decision was made.
+Reported outcomes must retain their evaluation scope and limitations. Supporting stage evidence explains why each engineering decision was made.
 
 ## 12. Immediate next step
 

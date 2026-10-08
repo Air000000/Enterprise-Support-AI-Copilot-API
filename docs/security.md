@@ -10,7 +10,7 @@ Document / AgentOps 路由检查 support/admin 角色，相关服务传递并约
 preview/confirm 的审批校验也不保证并发恰好一次建单。不能直接据此开放公网服务。
 
 **以下正文保留早期 mock-context MVP 的历史设计与风险清单。** 其中“尚无认证”、
-“tenant_id 始终为 mock”、“尚无 Alembic”等描述不是当前实现清单，勿直接用于面试声明。
+“tenant_id 始终为 mock”、“尚无 Alembic”等描述不是当前实现清单。
 当前能力以 [README 认证与租户范围](../README.md#7-认证与租户范围)、
 [项目总结](project_summary.md)和对应代码为准；历史生产化建议不自动成为新增任务。
 

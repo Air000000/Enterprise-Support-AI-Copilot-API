@@ -13,7 +13,7 @@ This ledger tracks model/API spend at experiment-stage granularity. Historical s
 
 ## Governance rule
 
-Before any new paid stage begins, freeze its hypothesis, reusable artifacts, minimum model-call count, hard cost cap, stop condition, expected quantitative output, and resume/interview evidence. Record actual spend after the stage finishes. Bulk LLM-as-Judge evaluation is not a default action.
+Before any new paid stage begins, freeze its hypothesis, reusable artifacts, minimum model-call count, hard cost cap, stop condition, expected quantitative output, and verifiable result evidence. Record actual spend after the stage finishes. Bulk LLM-as-Judge evaluation is not a default action.
 
 ## R4 C1 accounting note
 

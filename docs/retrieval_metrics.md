@@ -4,7 +4,7 @@
 
 本项目的 RAG API 已经支持 `/rag/search` 和 `/rag/ask`。在早期版本中，接口可以返回检索结果和回答，但一次请求内部到底检索到了什么、耗时多久、是否因为上下文不足而拒答、哪些文档经常被召回，并没有形成统一的审计记录。
 
-阶段 6 的目标是补齐 Retrieval Logs / Metrics，让 RAG 不只是“能回答”，还可以被追踪、被排查、被评估和被面试解释。
+阶段 6 的目标是补齐 Retrieval Logs / Metrics，让 RAG 不只是“能回答”，还可以被追踪、被排查和被评估。
 
 当前阶段没有引入复杂 tracing 系统，也没有接入外部监控平台，而是优先用数据库表和 AgentOps API 实现最小可用的 RAGOps 证据层。
 
@@ -530,7 +530,7 @@ python -m pytest tests/test_todos.py tests/test_rag_api.py tests/test_rag_servic
 
 ### 8.2 为什么先用数据库表而不是外部 tracing 系统
 
-当前项目是求职项目，不是生产级监控平台。
+当前实现用于本地 MVP 验证，不是生产级监控平台。
 
 第一版优先选择数据库表：
 
@@ -543,7 +543,7 @@ retrieval_logs
 ```text
 1. 容易测试。
 2. 容易通过 API 查询。
-3. 容易在面试中解释。
+3. 支持直接复核检索轨迹。
 4. 不引入额外部署复杂度。
 5. 能和 AgentOps 的 agent_runs、tool_calls、approval_requests 形成统一审计视角。
 ```
@@ -627,18 +627,6 @@ top_distance
 6. 增加 dashboard。
 7. 将 retrieval_logs 和 eval cases 打通，用线上 no_context query 反哺 eval 数据集。
 8. 将高频 no_context query 转化为待补充知识文档清单。
-```
-
----
-
-## 11. 面试表达
-
-可以这样介绍阶段 6：
-
-```text
-在 RAG API 跑通后，我补了一层 Retrieval Logs / Metrics。每次 /rag/search 和 /rag/ask 请求都会记录 query、top_k、category、retrieval_status、sources、distance、latency 和 error_message。这样系统不仅能返回答案，还能复盘一次请求到底召回了什么、为什么拒答、是否检索失败，以及哪些文档被频繁命中。
-
-我把 retrieval logs 放到 AgentOps 下统一查询，并提供 summary、sources、no-context queries 和 failures 四类聚合指标。这样面试官追问 RAG 失败时，我可以区分是知识库缺文档、chunk 或阈值问题，还是 Chroma / embedding / service 层异常。这一层主要体现的是 RAGOps 和工程可观测性，而不是单纯调用模型 API。
 ```
 
 ---

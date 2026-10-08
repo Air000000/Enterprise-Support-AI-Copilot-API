@@ -55,6 +55,6 @@ python -m experiments.evals.refusal_v3_ai_proxy --materialize-ai-review
 
 保留历史 COMPLETE_PROXY_FAIL / REJECT_EVIDENCE_SUFFICIENCY_V3_AI_PROXY，
 不改 prompt、gate、runtime，不进入 Phase C。原“准备盲复核”manifest 作为历史准备记录保留。
-求职展示可如实说“完成带来源和风险边界的 AI 辅助复核，定位完整拒答与有限帮助的区别”；
-不宣称人工验证、生产可靠性或通过正式门槛。后续若做最小策略修复，应另记为开发实验，
+本次为带来源和风险边界的 AI 辅助复核，区分完整拒答与有限帮助；
+不代表人工验证、生产可靠性或通过正式门槛。后续若做最小策略修复，应另记为开发实验，
 不能在这 50 条上调好后把它们包装成新的独立验收。
