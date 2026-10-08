@@ -42,7 +42,7 @@ R4 C1 Hybrid + rerank 的正式历史结论仍然是 **FAIL**：三项 TRAIN 聚
 
 历史 `dense_top1_distance > 0.9` 不自动成为最终拒答契约，因为冻结工程候选已经不再只有 Dense Top1 这一种检索信号。
 
-最新拒答开发探针（2026-10-02）：v3 盲标 AI 代理标签上的 50 条 TRAIN 评测仍为
+历史拒答开发探针（2026-10-02）：v3 盲标 AI 代理标签上的 50 条 TRAIN 评测仍为
 **FAIL**，平衡准确率 0.76、充分召回率 0.76、误拒 6 条，不能进入 Phase C。
 这些标签不是独立人工金标；完整指标与证据边界见
 [v3 结果报告](reports/refusal_evidence_sufficiency/v3_ai_proxy_result.md)。
@@ -59,7 +59,7 @@ R4 C1 Hybrid + rerank 的正式历史结论仍然是 **FAIL**：三项 TRAIN 聚
 2026-10-05 的 [v4 开发探针结果](reports/refusal_evidence_sufficiency/v4_development_result.md)
 已完成：50 次调用、0 失败、折算 ¥0.640914；与后验 AI 复核一致 35/48，
 17 条充分全部获准，但 13 条不足也被准入。仅记开发分歧，不晋升，不重算 v3 或修改其 FAIL。
-下一步已准备 [v5 结构化证据检查候选](reports/refusal_evidence_sufficiency/v5_structured_evidence_candidate.md)：
+随后准备了 [v5 结构化证据检查候选](reports/refusal_evidence_sufficiency/v5_structured_evidence_candidate.md)：
 逐项列出要求、原文引证、支持状态，再由代码派生二分类结果；仅离线逻辑回归，
 无新模型预测、付费运行授权或线上接入。引文真实不等于语义支持正确。
 2026-10-06 已准备 [20 条新 TRAIN 及成对探针预注册](reports/refusal_evidence_sufficiency/v5_train_preregistration.md)：
@@ -75,6 +75,21 @@ R4 C1 Hybrid + rerank 的正式历史结论仍然是 **FAIL**：三项 TRAIN 聚
 已完成离线实现：模型只选择 source-local 行号，由代码提取原文；保留全部上下文，
 不修补原 v5 响应或重算结果。仅合成/机械回归，不代表模型已选对证据或拒答质量改善；
 编号增加消息长度，付费对照仍需新的契约与授权。
+
+2026-10-06 经新冻结契约及单独授权，已完成
+[v4 / v5.1 配对开发诊断](reports/refusal_evidence_sufficiency/v5_1_paired_result.md)：
+20 条 TRAIN、40 次调用全部有效，估算总费 ¥0.741975；与冻结 AI proxy 一致
+16/20 → 17/20。不足题误放行 4/6 → 2/6，但充分题误拒 0/14 → 1/14，
+v5.1 费用约为 v4 的 2.06 倍、p50 延迟约 1.82 倍。
+标签非独立、样本已见且很小；`NO_PROMOTION`，不能当作正式泛化确认。
+旧 v5 的停止记录和 v3 FAIL 不变，DEV 未打开，原始响应只保留在本地忽略目录。
+
+2026-10-08 的 [v5.2 必填覆盖审计候选](reports/refusal_evidence_sufficiency/v5_2_requirement_coverage_candidate.md)
+和 [离线面试演示](../../docs/demo_script.md#21-离线拒答-gate-面试演示)已完成：
+纯合成资料 / 手写响应，新增调用与费用均为零，没有真实模型评测或 serving 接入。
+缺失覆盖栏位会报错、声明缺口会拒答；错误 SUPPORTED / NOT_REQUIRED 仍可通过。
+当前决定是整理求职讲解，不自动启动下一轮付费调参；真实效果确认需要另行冻结
+独立验收口径并授权，不能继承已经完成的执行授权。
 
 ---
 

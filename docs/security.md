@@ -1,8 +1,22 @@
-# 安全设计
+# 安全设计（当前边界提示与早期 MVP 记录）
 
 Enterprise Support AI Copilot 安全设计说明。
 
-本文档记录当前 MVP 已实现的安全边界、仍然存在的风险，以及后续生产化需要补齐的控制项。
+## 当前边界提示（2026-10-08）
+
+当前 `main` 已有 `auth.py` Demo JWT：受保护路由从 Bearer token 获取 `user_id` / `tenant_id`，
+Document / AgentOps 路由检查 support/admin 角色，相关服务传递并约束租户范围。
+账户和默认密钥仍是演示配置，不等价于生产级 IAM、完整 RBAC 或数据库级隔离；
+preview/confirm 的审批校验也不保证并发恰好一次建单。不能直接据此开放公网服务。
+
+**以下正文保留早期 mock-context MVP 的历史设计与风险清单。** 其中“尚无认证”、
+“tenant_id 始终为 mock”、“尚无 Alembic”等描述不是当前实现清单，勿直接用于面试声明。
+当前能力以 [README 认证与租户范围](../README.md#7-认证与租户范围)、
+[项目总结](project_summary.md)和对应代码为准；历史生产化建议不自动成为新增任务。
+
+---
+
+以下为早期 MVP 已实现边界、风险与生产化控制项记录。
 
 当前项目覆盖：
 
