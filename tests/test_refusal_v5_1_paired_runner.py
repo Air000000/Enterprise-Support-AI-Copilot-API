@@ -193,3 +193,39 @@ def test_all_format_failures_keep_null_quality_and_no_41st_call(tmp_path, monkey
         assert stats["insufficient_recall_against_ai_proxy"] is None
         assert stats["common_valid_class_denominators"] == {"SUFFICIENT": 0, "INSUFFICIENT": 0}
     assert summary["paired_transitions_against_ai_proxy"]["missing_valid_prediction"] == 20
+
+
+def test_real_result_freeze_keeps_full_denominators_tradeoff_cost_and_no_promotion():
+    result = paired.shared._read_json(paired.REPORT_DIR / "v5_1_paired_result_freeze.json")
+    contract = paired.shared._read_json(probe.CONTRACT_PATH)
+    assert result["contract_canonical_sha256"] == paired.canonical_sha256(contract) == probe.CONTRACT_SHA256
+    assert result["provider_calls"] == result["unique_question_arm_pairs"] == result["known_usage_attempts"] == 40
+    assert result["valid_predictions"] == result["completed_outcomes"] == result["required_outcomes"] == 40
+    assert result["common_valid_pairs"] == result["case_denominator"] == 20
+    cases = result["case_decisions"]
+    assert len(cases) == len({c["question_id"] for c in cases}) == 20
+    for arm in probe.BUILDERS:
+        stats = result["arms"][arm]
+        assert stats["provider_calls"] == stats["valid_predictions"] == stats["case_denominator"] == 20
+        assert stats["format_failed_attempts"] == stats["provider_failed_attempts"] == 0
+        assert stats["total_tokens"] == stats["prompt_tokens"] + stats["completion_tokens"]
+        assert stats["estimated_cost_cny"] == pytest.approx(paired.cost(stats, contract))
+        agrees = sum(c[arm] == c["ai_target"] for c in cases)
+        assert stats["valid_and_agree_all_case_count"] == agrees
+        assert stats["agreement_with_ai_proxy"] == stats["valid_and_agree_all_case_rate"] == agrees / 20
+        matrix = stats["confusion_on_common_valid_pairs"]
+        for label in ("SUFFICIENT", "INSUFFICIENT"):
+            for decision in ("SUFFICIENT", "INSUFFICIENT"):
+                assert matrix[f"{label.lower()}_as_{decision.lower()}"] == sum(c["ai_target"] == label and c[arm] == decision for c in cases)
+    assert result["arms"]["v4"]["confusion_on_common_valid_pairs"]["insufficient_as_sufficient"] == 4
+    assert result["arms"]["v5_1"]["confusion_on_common_valid_pairs"]["insufficient_as_sufficient"] == 2
+    assert result["arms"]["v5_1"]["confusion_on_common_valid_pairs"]["sufficient_as_insufficient"] == 1
+    assert result["v5_1_remaining_disagreement_ids"] == [c["question_id"] for c in cases if c["v5_1"] != c["ai_target"]]
+    assert sum(result["paired_transitions_against_ai_proxy"].values()) == 20
+    assert result["estimated_cost_cny"] == pytest.approx(0.741975)
+    assert result["estimated_cost_cny"] == pytest.approx(sum(s["estimated_cost_cny"] for s in result["arms"].values()))
+    assert result["automatic_retries"] == result["failed_predictions_retried"] == result["unknown_usage_attempts"] == 0
+    assert not result["targets_opened_during_paid_loop"] and result["targets_opened_after_all_outcomes_for_evaluation"]
+    assert not result["dev_opened"] and not result["promotion_allowed"] and not result["historical_fail_changed"]
+    assert not result["retrieval_context_runtime_changed"] and result["formal_pass_gate"] is None
+    assert result["local_archive"]["primary_copy_replay"] == "PASS"
