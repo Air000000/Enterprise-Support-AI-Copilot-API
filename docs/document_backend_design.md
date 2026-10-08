@@ -909,7 +909,7 @@ curl.exe -X POST "http://127.0.0.1:8000/rag/search" `
 5. 后续可以把 index 改成异步任务。
 ```
 
-MVP 中手动触发 index 更直观，也更利于面试解释。
+MVP 中手动触发 index 便于独立验证上传与索引状态。
 
 ---
 
@@ -1051,20 +1051,6 @@ documents.error_message = 失败原因
 1. 不存在或越权返回 404。
 2. Chroma 删除失败时返回 failed，不直接标记 deleted。
 3. 保留 error_message 方便排查。
-```
-
----
-
-## 16. 面试表达
-
-可以这样解释阶段 7：
-
-```text
-我在 RAG 和 AgentOps 之后补了 Document Backend，把原来 experiments/docs 下的本地脚本文档处理升级成后端知识库模块。这个模块支持 md/txt 上传、documents 表登记、document_chunks 表记录、手动触发索引、写入 Chroma，并保持 tenant_id 和 category metadata 与现有 /rag/search、/rag/ask 兼容。
-
-我特意把 upload 和 index 拆开，因为上传是 I/O 行为，index 是向量化和检索入库行为，失败场景不同。这样可以清楚记录 document.status，例如 uploaded、indexing、indexed、failed、deleted，也方便后续把 index 改成异步任务。
-
-删除时我不是只删数据库记录，而是根据 document_chunks 中的 embedding_id 删除 Chroma 向量，保证后续 RAG 不再检索到这份文档。这体现的是知识库生命周期管理，而不是简单文件上传 demo。
 ```
 
 ---

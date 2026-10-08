@@ -818,15 +818,3 @@ Agent 为什么认为需要创建工单？
 ```
 
 因此，真正用于创建工单的数据必须来自 预览阶段服务端保存的 `approval_request.草稿_json`。
-
----
-
-## 18. 面试表达
-
-可以这样介绍本模块：
-
-```text
-我在 Ticket Agent 中没有让 Agent 直接创建工单，而是设计了 预览 / 确认 两阶段流程。预览阶段会先创建 agent_run，然后把知识库检索记录为 search_kb 工具调用，把工单判断与分类记录为 classify_工单 工具调用。如果系统判断需要创建工单，只生成 工单草稿 和 approval_request，不会真正创建业务数据。确认阶段会校验 approval_request 是否属于当前 agent_run、状态是否仍为 pending，并校验客户端提交的 草稿 是否和服务端保存的 草稿_json 一致。只有这些校验都通过，系统才调用 create_工单，并记录 create_工单 工具调用。这样可以防止 Agent 误执行、重复确认、拒绝后仍执行和客户端篡改，同时通过 agent_runs、工具调用s、approval_requests 和 指标 summary 保证整个过程可追踪、可审计、可解释。
-```
-
----
