@@ -575,6 +575,14 @@ python scripts/smoke_agentops_flow.py
 python scripts/smoke_document_backend_flow.py
 ```
 
+零调用拒答 gate 演示（合成资料、手写响应；不是模型效果或线上端到端验证）：
+
+```bash
+python -m scripts.demo_refusal_coverage
+```
+
+讲解顺序及已知错误放行示例见 [离线面试演示](docs/demo_script.md#21-离线拒答-gate-面试演示)。
+
 GitHub Actions 的 `test` 作业执行 Python 3.11 环境配置、依赖安装、`compileall`、Ruff 和核心定向测试。
 
 Workflow：
