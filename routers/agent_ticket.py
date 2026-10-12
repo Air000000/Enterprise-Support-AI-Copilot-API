@@ -30,6 +30,7 @@ def preview_ticket(
     return preview_ticket_service(
         request=request,
         tenant_id=user.tenant_id,
+        user_id=user.user_id,
     )
 
 

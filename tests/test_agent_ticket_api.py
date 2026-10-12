@@ -36,10 +36,11 @@ def client():
 def test_agent_ticket_preview_returns_draft(client, monkeypatch):
     calls = {}
 
-    def fake_preview_ticket_service(request, tenant_id: str):
+    def fake_preview_ticket_service(request, tenant_id: str, user_id: str):
         calls["message"] = request.message
         calls["category"] = request.category
         calls["tenant_id"] = tenant_id
+        calls["user_id"] = user_id
 
         return TicketAgentPreviewResponse(
             agent_run_id=1,
@@ -94,10 +95,11 @@ def test_agent_ticket_preview_returns_draft(client, monkeypatch):
     assert calls["message"] == "VPN 连不上，重启客户端也没用"
     assert calls["category"] == "it"
     assert calls["tenant_id"] == "tenant_demo"
+    assert calls["user_id"] == "user_demo"
 
 
 def test_agent_ticket_preview_can_return_no_ticket(client, monkeypatch):
-    def fake_preview_ticket_service(request, tenant_id: str):
+    def fake_preview_ticket_service(request, tenant_id: str, user_id: str):
         return TicketAgentPreviewResponse(
             agent_run_id=2,
             approval_request_id=None,

@@ -8,9 +8,11 @@ from fastapi.testclient import TestClient
 
 from auth import CurrentUser, get_current_user
 from main import app
+from models.agent_ops import AgentRun
+from models.ticket import Ticket
 
 import pytest
-from sqlmodel import SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, select
 
 import services.agent_ops_service as agent_ops_service
 import services.ticket_service as ticket_service
@@ -83,10 +85,20 @@ def get_tool_call_by_name(tool_calls: list[dict], tool_name: str) -> dict:
     raise AssertionError(f"tool_call not found: {tool_name}")
 
 
+@pytest.mark.parametrize(
+    ("username", "tenant_id", "user_id"),
+    [
+        ("support", "tenant_demo", "support_demo"),
+        ("support_other", "tenant_other", "support_other"),
+    ],
+)
 def test_ticket_agent_preview_confirm_agentops_smoke_flow(
     client,
     monkeypatch,
     smoke_test_engine,
+    username,
+    tenant_id,
+    user_id,
 ):
     """
     端到端 API smoke test。
@@ -123,6 +135,16 @@ def test_ticket_agent_preview_confirm_agentops_smoke_flow(
         fake_search_chroma,
     )
 
+    app.dependency_overrides.pop(get_current_user, None)
+    login_response = client.post(
+        "/auth/token",
+        json={"username": username, "password": "support"},
+    )
+    assert login_response.status_code == 200
+    client.headers["Authorization"] = (
+        f"Bearer {login_response.json()['access_token']}"
+    )
+
     preview_response = client.post(
         "/agent/ticket/preview",
         json={
@@ -145,6 +167,13 @@ def test_ticket_agent_preview_confirm_agentops_smoke_flow(
     assert draft["category"] == "it"
     assert draft["priority"] == "high"
     assert preview["sources"][0]["document_id"] == "doc_vpn_guide"
+
+    with Session(smoke_test_engine) as session:
+        agent_run = session.get(AgentRun, agent_run_id)
+        assert agent_run is not None
+        assert agent_run.user_id == user_id
+        assert agent_run.tenant_id == tenant_id
+        assert session.exec(select(Ticket)).first() is None
 
     preview_tool_calls_response = client.get(
         f"/agent-ops/runs/{agent_run_id}/tool-calls"
@@ -209,6 +238,8 @@ def test_ticket_agent_preview_confirm_agentops_smoke_flow(
     assert confirm["ticket"]["status"] == "open"
     assert confirm["ticket"]["category"] == "it"
     assert confirm["ticket"]["priority"] == "high"
+    assert confirm["ticket"]["created_by"] == user_id
+    assert confirm["ticket"]["tenant_id"] == tenant_id
 
     full_tool_calls_response = client.get(
         f"/agent-ops/runs/{agent_run_id}/tool-calls"
