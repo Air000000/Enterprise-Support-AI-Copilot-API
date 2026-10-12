@@ -2,20 +2,27 @@
 
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier, local
 
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from auth import CurrentUser, get_current_user
 from main import app
-from models.agent_ops import AgentRun
+from models.agent_ops import AgentRun, ApprovalRequest, ToolCall
 from models.ticket import Ticket
+from schemas.agent_ops import ApprovalRequestUpdate
+from schemas.agent_ticket import TicketAgentConfirmRequest, TicketAgentPreviewRequest
 
 import pytest
 from sqlmodel import Session, SQLModel, create_engine, select
 
 import services.agent_ops_service as agent_ops_service
 import services.ticket_service as ticket_service
+import services.ticket_agent_service as ticket_agent_service
 
 @pytest.fixture(autouse=True)
 def default_auth_user():
@@ -292,3 +299,101 @@ def test_ticket_agent_preview_confirm_agentops_smoke_flow(
     assert metrics["successful_tool_calls"] >= 3
     assert metrics["total_approval_requests"] >= 1
     assert metrics["approved_approval_requests"] >= 1
+
+
+@pytest.mark.parametrize("competing_action", ["confirm", "rejected", "cancelled"])
+def test_concurrent_approval_decisions_have_one_winner(
+    smoke_test_engine, monkeypatch, competing_action,
+):
+    monkeypatch.setattr(ticket_agent_service, "search_chroma", lambda **kwargs: [])
+    preview = ticket_agent_service.preview_ticket(
+        TicketAgentPreviewRequest(message="VPN 连不上", category="it"),
+        tenant_id="tenant_demo",
+        user_id="support_demo",
+    )
+    request = TicketAgentConfirmRequest(
+        agent_run_id=preview.agent_run_id,
+        approval_request_id=preview.approval_request_id,
+        draft=preview.draft,
+    )
+    barrier = Barrier(2)
+    decision = local()
+    original_update = agent_ops_service.update_approval_request
+
+    class RacingSession(Session):
+        def get(self, entity, *args, **kwargs):
+            result = super().get(entity, *args, **kwargs)
+            if entity is ApprovalRequest and getattr(decision, "writing", False):
+                # Both updates read pending before either writes; no timing sleeps.
+                barrier.wait(timeout=10)
+            return result
+
+    monkeypatch.setattr(agent_ops_service, "Session", RacingSession)
+
+    def racing_update(*args, **kwargs):
+        decision.writing = True
+        try:
+            return original_update(*args, **kwargs)
+        finally:
+            decision.writing = False
+
+    monkeypatch.setattr(ticket_agent_service, "update_approval_request", racing_update)
+
+    def decide(action, actor):
+        try:
+            if action == "confirm":
+                return ticket_agent_service.confirm_ticket(
+                    request, tenant_id="tenant_demo", created_by=actor,
+                )
+            return racing_update(
+                request.approval_request_id,
+                tenant_id="tenant_demo",
+                approval_request_update=ApprovalRequestUpdate(
+                    status=action, approved_by=actor, decision_reason="Test decision",
+                ),
+            )
+        except HTTPException as exc:
+            return exc
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [
+            pool.submit(decide, "confirm", "support_one"),
+            pool.submit(decide, competing_action, "support_two"),
+        ]
+        results = [future.result(timeout=20) for future in futures]
+
+    errors = [result for result in results if isinstance(result, HTTPException)]
+    assert len(errors) == 1, (
+        "Both decisions succeeded; created ticket IDs: "
+        f"{[result.ticket.id for result in results if hasattr(result, 'ticket')]}"
+    )
+    assert errors[0].status_code == 400
+    assert errors[0].detail == "Approval request is not pending"
+    winning_index = next(i for i, result in enumerate(results) if not isinstance(result, HTTPException))
+    winner = ["support_one", "support_two"][winning_index]
+    status = "approved" if winning_index == 0 or competing_action == "confirm" else competing_action
+
+    for later_status in ["pending", "approved", "rejected", "cancelled"]:
+        with pytest.raises(HTTPException) as exc_info:
+            original_update(
+                request.approval_request_id,
+                tenant_id="tenant_demo",
+                approval_request_update=ApprovalRequestUpdate(
+                    status=later_status, approved_by="late_actor", decision_reason="Late decision",
+                ),
+            )
+        assert exc_info.value.status_code == 400
+
+    with Session(smoke_test_engine) as session:
+        approval = session.get(ApprovalRequest, request.approval_request_id)
+        assert approval.status == status
+        assert approval.approved_by == winner
+        assert approval.decided_at is not None
+        tickets = session.exec(select(Ticket)).all()
+        tool_calls = session.exec(select(ToolCall).where(ToolCall.tool_name == "create_ticket")).all()
+        assert len(tickets) == len(tool_calls) == (1 if status == "approved" else 0)
+        if tickets:
+            assert tickets[0].created_by == winner
+            assert tickets[0].tenant_id == approval.tenant_id == "tenant_demo"
+            assert tool_calls[0].status == "success"
+            assert json.loads(tool_calls[0].tool_output_json)["ticket_id"] == tickets[0].id

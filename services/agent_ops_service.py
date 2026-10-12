@@ -4,6 +4,7 @@ import json
 from datetime import datetime, timezone
 
 from fastapi import HTTPException
+from sqlalchemy import update
 from sqlmodel import Session, select
 
 from database import engine
@@ -390,13 +391,23 @@ def update_approval_request(
 
         update_data = approval_request_update.model_dump(exclude_unset=True)
 
-        for field_name, field_value in update_data.items():
-            setattr(approval_request, field_name, field_value)
+        if update_data["status"] in {"approved", "rejected", "cancelled"}:
+            update_data["decided_at"] = utc_now()
 
-        if approval_request.status in {"approved", "rejected", "cancelled"}:
-            approval_request.decided_at = utc_now()
+        # Atomically consume pending approval; only the winning decision may execute.
+        result = session.execute(
+            update(ApprovalRequest)
+            .where(
+                ApprovalRequest.id == approval_request_id,
+                ApprovalRequest.tenant_id == tenant_id,
+                ApprovalRequest.status == "pending",
+            )
+            .values(**update_data)
+            .execution_options(synchronize_session=False)
+        )
+        if result.rowcount != 1:
+            raise HTTPException(status_code=400, detail="Approval request is not pending")
 
-        session.add(approval_request)
         session.commit()
         session.refresh(approval_request)
 
