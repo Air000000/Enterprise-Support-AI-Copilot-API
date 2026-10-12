@@ -174,13 +174,16 @@ POST /agent/ticket/confirm
 → 校验 ApprovalRequest 属于当前 AgentRun
 → 校验 status == pending
 → 校验 request.draft == server draft_json
-→ Approval approved
+→ 数据库条件更新：同一租户的 pending 审批原子转换为 approved
 → create_ticket ToolCall
 → 创建真实 Ticket
 → 更新 AgentRun
 ```
 
 `classify_ticket` 当前是确定性规则，不描述为自主 LLM planning。
+
+confirm / reject / cancel 共用审批条件更新；并发决策只有一个成功，终态不能覆盖或重新打开。
+该保证仅限审批至多一次消费，工单与审计仍分别写入，不提供跨事务恰好一次或崩溃恢复保证。
 
 ## 7. AgentOps
 
