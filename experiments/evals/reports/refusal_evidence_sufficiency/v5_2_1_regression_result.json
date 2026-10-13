@@ -1,0 +1,153 @@
+{
+  "status": "NO_DEMONSTRATED_FORMAT_FIX_GAIN",
+  "cases": 14,
+  "provider_calls": 28,
+  "estimated_cost_cny": 0.34231799999999996,
+  "arms": {
+    "v5_2": {
+      "case_denominator": 14,
+      "confusion": {
+        "sufficient_as_sufficient": 7,
+        "sufficient_as_insufficient": 0,
+        "insufficient_as_sufficient": 0,
+        "insufficient_as_insufficient": 7
+      },
+      "valid_correct": 14,
+      "failures": 0,
+      "estimated_cost_cny": 0.165093,
+      "latency_p50_ms": 7702.638199996727,
+      "prompt_tokens": 16643,
+      "completion_tokens": 6398
+    },
+    "v5_2_1": {
+      "case_denominator": 14,
+      "confusion": {
+        "sufficient_as_sufficient": 7,
+        "sufficient_as_insufficient": 0,
+        "insufficient_as_sufficient": 0,
+        "insufficient_as_insufficient": 7
+      },
+      "valid_correct": 14,
+      "failures": 0,
+      "estimated_cost_cny": 0.177225,
+      "latency_p50_ms": 7604.286649999267,
+      "prompt_tokens": 21599,
+      "completion_tokens": 6246
+    }
+  },
+  "transitions": [
+    {
+      "question_id": "CONTROL_STEPS_SUPPORTED",
+      "family": "steps",
+      "expected": "SUFFICIENT",
+      "v5_2": "SUFFICIENT",
+      "v5_2_1": "SUFFICIENT"
+    },
+    {
+      "question_id": "CONTROL_STEPS_MISSING",
+      "family": "steps",
+      "expected": "INSUFFICIENT",
+      "v5_2": "INSUFFICIENT",
+      "v5_2_1": "INSUFFICIENT"
+    },
+    {
+      "question_id": "CONTROL_SCOPE_SUPPORTED",
+      "family": "applicability",
+      "expected": "SUFFICIENT",
+      "v5_2": "SUFFICIENT",
+      "v5_2_1": "SUFFICIENT"
+    },
+    {
+      "question_id": "CONTROL_SCOPE_MISSING",
+      "family": "applicability",
+      "expected": "INSUFFICIENT",
+      "v5_2": "INSUFFICIENT",
+      "v5_2_1": "INSUFFICIENT"
+    },
+    {
+      "question_id": "CONTROL_VERSION_SUPPORTED",
+      "family": "version",
+      "expected": "SUFFICIENT",
+      "v5_2": "SUFFICIENT",
+      "v5_2_1": "SUFFICIENT"
+    },
+    {
+      "question_id": "CONTROL_VERSION_MISSING",
+      "family": "version",
+      "expected": "INSUFFICIENT",
+      "v5_2": "INSUFFICIENT",
+      "v5_2_1": "INSUFFICIENT"
+    },
+    {
+      "question_id": "CONTROL_TIME_SUPPORTED",
+      "family": "time",
+      "expected": "SUFFICIENT",
+      "v5_2": "SUFFICIENT",
+      "v5_2_1": "SUFFICIENT"
+    },
+    {
+      "question_id": "CONTROL_TIME_MISSING",
+      "family": "time",
+      "expected": "INSUFFICIENT",
+      "v5_2": "INSUFFICIENT",
+      "v5_2_1": "INSUFFICIENT"
+    },
+    {
+      "question_id": "CONTROL_CONDITION_SUPPORTED",
+      "family": "condition",
+      "expected": "SUFFICIENT",
+      "v5_2": "SUFFICIENT",
+      "v5_2_1": "SUFFICIENT"
+    },
+    {
+      "question_id": "CONTROL_CONDITION_MISSING",
+      "family": "condition",
+      "expected": "INSUFFICIENT",
+      "v5_2": "INSUFFICIENT",
+      "v5_2_1": "INSUFFICIENT"
+    },
+    {
+      "question_id": "CONTROL_CONFLICT_SUPPORTED",
+      "family": "conflict",
+      "expected": "SUFFICIENT",
+      "v5_2": "SUFFICIENT",
+      "v5_2_1": "SUFFICIENT"
+    },
+    {
+      "question_id": "CONTROL_CONFLICT_UNRESOLVED",
+      "family": "conflict",
+      "expected": "INSUFFICIENT",
+      "v5_2": "INSUFFICIENT",
+      "v5_2_1": "INSUFFICIENT"
+    },
+    {
+      "question_id": "CONTROL_NEGATIVE_SUPPORTED",
+      "family": "negative_answer",
+      "expected": "SUFFICIENT",
+      "v5_2": "SUFFICIENT",
+      "v5_2_1": "SUFFICIENT"
+    },
+    {
+      "question_id": "CONTROL_NEGATIVE_UNKNOWN",
+      "family": "negative_answer",
+      "expected": "INSUFFICIENT",
+      "v5_2": "INSUFFICIENT",
+      "v5_2_1": "INSUFFICIENT"
+    }
+  ],
+  "new_valid_semantic_errors": [],
+  "common_valid": {
+    "cases": 14,
+    "v5_2": 14,
+    "v5_2_1": 14
+  },
+  "contract_canonical_sha256": "b90c913d0e7f9f7fa209dd1b279bac15b2a5a091b76fdb0c6702e1710c4de109",
+  "journal_sha256": {
+    "v5_2": "6c834ef001e1306d323c9059e644478a9a051b8e8c3f1f0afc6a8d312e4d4a62",
+    "v5_2_1": "bd794a1334524cd92764b4e30202181b9c8793988ce537cc8653ef85463fa576"
+  },
+  "provenance": "Observed fictional development regressions: seven correlated pairs, construction targets; not unseen validation, real-data accuracy, independent gold or natural TRAIN augmentation",
+  "natural_train_pooled": false,
+  "dev_opened": false,
+  "promotion_allowed": false
+}
