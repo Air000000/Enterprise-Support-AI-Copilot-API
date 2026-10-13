@@ -1,5 +1,8 @@
 # Ticket Agent MVP 阶段报告
 
+本文保留早期 mock-context MVP 的阶段快照，不是当前能力清单。当前已使用 Demo JWT 传递操作人和租户，
+并通过数据库条件更新防止并发审批重复消费；精确实现与边界以 [README](../README.md) 和代码为准。
+
 ## 1. 阶段目标
 
 本阶段目标是在 RAG Core、Ticket CRUD 和 AgentOps 基础上，实现一个受控 Ticket Agent MVP。

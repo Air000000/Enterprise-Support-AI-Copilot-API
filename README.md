@@ -203,7 +203,10 @@ request.draft == server-side approval_request.draft_json
 - rejected / cancelled / already-approved 等非 `pending` 审批再次确认；
 - 预览后由客户端篡改草稿内容。
 
-> 当前流程不被描述为并发场景下的 严格的并发恰好一次副作用保证。
+审批更新通过数据库条件更新，限定审批 ID、租户和旧状态 `pending`。
+并发 confirm / reject / cancel 只有一个决策成功，其他决策返回 HTTP 400；终态不可覆盖或重新打开。
+
+> 这是审批决策至多一次消费，不是工单与审计写入的跨事务恰好一次保证，也不包含崩溃恢复。
 
 更多实现细节见 [docs/agent_workflow.md](docs/agent_workflow.md)。
 
@@ -515,12 +518,13 @@ enterprise-support-ai-copilot-api/
 
 ## Environment
 
-参考 `.env.example`：
+在仓库根目录创建或编辑未提交的 `.env`，参考 `.env.example`（不要覆盖已有配置）：
 
 ```env
 DASHSCOPE_API_KEY=your_dashscope_api_key_here
 DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 DASHSCOPE_MODEL=qwen3.5-plus
+EMBEDDING_MODEL=text-embedding-v4
 DATABASE_URL=sqlite:///data/todos.db
 SQL_ECHO=true
 DOCUMENT_STORAGE_ROOT=storage/documents
@@ -528,15 +532,20 @@ DOCUMENT_STORAGE_ROOT=storage/documents
 
 ## 安装与数据库迁移
 
+以下命令在仓库根目录、同一已激活的 Python 环境中运行，确保 `python` 与 `alembic` 属于该环境。
+先创建默认 SQLite 父目录，再将 `.env` 载入迁移进程；
+若修改 `DATABASE_URL`，需创建对应父目录。迁移与启动都优先使用已有 shell 环境变量。
+
 ```bash
-pip install -r requirements.txt
-alembic upgrade head
+python -m pip install -r requirements.txt
+python -c "from pathlib import Path; Path('data').mkdir(exist_ok=True)"
+python -m dotenv -f .env run --no-override -- alembic upgrade head
 ```
 
 ## 启动 API
 
 ```bash
-uvicorn main:app --reload
+python -m uvicorn main:app --reload --env-file .env
 ```
 
 Swagger：
@@ -572,9 +581,14 @@ python -m compileall -q .
 
 Smoke：
 
+下面的脚本需要 API 已启动，会调用已配置的向量模型并写入测试数据，请使用隔离的运行目录。
+工单脚本会调用 confirm，保留测试工单与审计记录；文档脚本会移除测试向量，但保留软删除记录和原文件。
+首次运行可先执行文档脚本建立 Chroma 集合。若要验证工单 preview 命中来源，应先上传并索引相关 IT 文档；
+工单脚本本身不要求来源命中，不能据其成功宣称检索质量已通过验证。
+
 ```bash
-python scripts/smoke_agentops_flow.py
 python scripts/smoke_document_backend_flow.py
+python scripts/smoke_agentops_flow.py
 ```
 
 零调用拒答 gate 演示（合成资料、手写响应；不是模型效果或线上端到端验证）：
