@@ -1,0 +1,231 @@
+{
+  "status": "CONTROLLED_MODEL_DIAGNOSTIC_COMPLETE_NO_PROMOTION",
+  "cases": 14,
+  "provider_calls": 28,
+  "estimated_cost_cny": 0.251634,
+  "arms": {
+    "v5_1": {
+      "case_denominator": 14,
+      "confusion": {
+        "sufficient_as_sufficient": 7,
+        "sufficient_as_insufficient": 0,
+        "insufficient_as_sufficient": 0,
+        "insufficient_as_insufficient": 7
+      },
+      "failures": 0,
+      "valid_correct": 14,
+      "estimated_cost_cny": 0.092247,
+      "latency_p50_ms": 3957.0626000022457,
+      "prompt_tokens": 14459,
+      "completion_tokens": 2715
+    },
+    "v5_2": {
+      "case_denominator": 14,
+      "confusion": {
+        "sufficient_as_sufficient": 6,
+        "sufficient_as_insufficient": 0,
+        "insufficient_as_sufficient": 0,
+        "insufficient_as_insufficient": 6
+      },
+      "failures": 2,
+      "valid_correct": 12,
+      "estimated_cost_cny": 0.159387,
+      "latency_p50_ms": 7400.359350001963,
+      "prompt_tokens": 16643,
+      "completion_tokens": 6081
+    }
+  },
+  "families": {
+    "applicability": {
+      "v5_1": [
+        {
+          "question_id": "CONTROL_SCOPE_SUPPORTED",
+          "expected": "SUFFICIENT",
+          "decision": "SUFFICIENT"
+        },
+        {
+          "question_id": "CONTROL_SCOPE_MISSING",
+          "expected": "INSUFFICIENT",
+          "decision": "INSUFFICIENT"
+        }
+      ],
+      "v5_2": [
+        {
+          "question_id": "CONTROL_SCOPE_SUPPORTED",
+          "expected": "SUFFICIENT",
+          "decision": "SUFFICIENT"
+        },
+        {
+          "question_id": "CONTROL_SCOPE_MISSING",
+          "expected": "INSUFFICIENT",
+          "decision": "INSUFFICIENT"
+        }
+      ]
+    },
+    "condition": {
+      "v5_1": [
+        {
+          "question_id": "CONTROL_CONDITION_SUPPORTED",
+          "expected": "SUFFICIENT",
+          "decision": "SUFFICIENT"
+        },
+        {
+          "question_id": "CONTROL_CONDITION_MISSING",
+          "expected": "INSUFFICIENT",
+          "decision": "INSUFFICIENT"
+        }
+      ],
+      "v5_2": [
+        {
+          "question_id": "CONTROL_CONDITION_SUPPORTED",
+          "expected": "SUFFICIENT",
+          "decision": "SUFFICIENT"
+        },
+        {
+          "question_id": "CONTROL_CONDITION_MISSING",
+          "expected": "INSUFFICIENT",
+          "decision": "INSUFFICIENT"
+        }
+      ]
+    },
+    "conflict": {
+      "v5_1": [
+        {
+          "question_id": "CONTROL_CONFLICT_SUPPORTED",
+          "expected": "SUFFICIENT",
+          "decision": "SUFFICIENT"
+        },
+        {
+          "question_id": "CONTROL_CONFLICT_UNRESOLVED",
+          "expected": "INSUFFICIENT",
+          "decision": "INSUFFICIENT"
+        }
+      ],
+      "v5_2": [
+        {
+          "question_id": "CONTROL_CONFLICT_SUPPORTED",
+          "expected": "SUFFICIENT",
+          "decision": "SUFFICIENT"
+        },
+        {
+          "question_id": "CONTROL_CONFLICT_UNRESOLVED",
+          "expected": "INSUFFICIENT",
+          "decision": null
+        }
+      ]
+    },
+    "negative_answer": {
+      "v5_1": [
+        {
+          "question_id": "CONTROL_NEGATIVE_SUPPORTED",
+          "expected": "SUFFICIENT",
+          "decision": "SUFFICIENT"
+        },
+        {
+          "question_id": "CONTROL_NEGATIVE_UNKNOWN",
+          "expected": "INSUFFICIENT",
+          "decision": "INSUFFICIENT"
+        }
+      ],
+      "v5_2": [
+        {
+          "question_id": "CONTROL_NEGATIVE_SUPPORTED",
+          "expected": "SUFFICIENT",
+          "decision": "SUFFICIENT"
+        },
+        {
+          "question_id": "CONTROL_NEGATIVE_UNKNOWN",
+          "expected": "INSUFFICIENT",
+          "decision": "INSUFFICIENT"
+        }
+      ]
+    },
+    "steps": {
+      "v5_1": [
+        {
+          "question_id": "CONTROL_STEPS_SUPPORTED",
+          "expected": "SUFFICIENT",
+          "decision": "SUFFICIENT"
+        },
+        {
+          "question_id": "CONTROL_STEPS_MISSING",
+          "expected": "INSUFFICIENT",
+          "decision": "INSUFFICIENT"
+        }
+      ],
+      "v5_2": [
+        {
+          "question_id": "CONTROL_STEPS_SUPPORTED",
+          "expected": "SUFFICIENT",
+          "decision": null
+        },
+        {
+          "question_id": "CONTROL_STEPS_MISSING",
+          "expected": "INSUFFICIENT",
+          "decision": "INSUFFICIENT"
+        }
+      ]
+    },
+    "time": {
+      "v5_1": [
+        {
+          "question_id": "CONTROL_TIME_SUPPORTED",
+          "expected": "SUFFICIENT",
+          "decision": "SUFFICIENT"
+        },
+        {
+          "question_id": "CONTROL_TIME_MISSING",
+          "expected": "INSUFFICIENT",
+          "decision": "INSUFFICIENT"
+        }
+      ],
+      "v5_2": [
+        {
+          "question_id": "CONTROL_TIME_SUPPORTED",
+          "expected": "SUFFICIENT",
+          "decision": "SUFFICIENT"
+        },
+        {
+          "question_id": "CONTROL_TIME_MISSING",
+          "expected": "INSUFFICIENT",
+          "decision": "INSUFFICIENT"
+        }
+      ]
+    },
+    "version": {
+      "v5_1": [
+        {
+          "question_id": "CONTROL_VERSION_SUPPORTED",
+          "expected": "SUFFICIENT",
+          "decision": "SUFFICIENT"
+        },
+        {
+          "question_id": "CONTROL_VERSION_MISSING",
+          "expected": "INSUFFICIENT",
+          "decision": "INSUFFICIENT"
+        }
+      ],
+      "v5_2": [
+        {
+          "question_id": "CONTROL_VERSION_SUPPORTED",
+          "expected": "SUFFICIENT",
+          "decision": "SUFFICIENT"
+        },
+        {
+          "question_id": "CONTROL_VERSION_MISSING",
+          "expected": "INSUFFICIENT",
+          "decision": "INSUFFICIENT"
+        }
+      ]
+    }
+  },
+  "contract_sha256": "bd2cd93d9460cde72b50204e7d0e6ab14ad5e353ec473e8b3c3e8fb5966d3c82",
+  "journal_sha256": {
+    "v5_1": "ecb6b676c1c306db13d70e0918d54bfb5f575af00503c20fac746b813ca9cd92",
+    "v5_2": "8e02950222fd6a9009ee26c06afda3fdf064fcef4103c9e8df35e632c82c9f99"
+  },
+  "provenance": "Fictional paired fixtures; construction targets, not real-data accuracy or independent gold",
+  "natural_train_pooled": false,
+  "dev_opened": false,
+  "promotion_allowed": false
+}
