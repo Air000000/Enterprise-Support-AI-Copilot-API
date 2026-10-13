@@ -122,6 +122,66 @@ def prepare(research_root):
     return {k: manifest[k] for k in ("status", "cases", "eligible_cases", "provider_calls")}
 
 
+def validate_review(rows, draft, review):
+    from experiments.evals.refusal_v5_2_annotation import parse
+    expected = [row["question_id"] for row in rows]
+    if [r["question_id"] for r in draft] != expected or [r["question_id"] for r in review] != expected:
+        raise RuntimeError("complete draft/review IDs and frozen order required")
+    for row, result in zip(rows, review, strict=True):
+        if set(result) != {"question_id", "annotation"} or parse(
+            json.dumps({"annotation": result["annotation"]}), row, "stop"
+        ) != result:
+            raise RuntimeError("invalid compact evidence review")
+    return sum(d["annotation"]["target_class"] != r["annotation"]["target_class"]
+               for d, r in zip(draft, review, strict=True))
+
+
+def freeze_review(review_path):
+    from collections import Counter
+    from experiments.evals import refusal_v5_2_annotation as annotation
+    manifest, rows = annotation.load_inputs()
+    contract = annotation.shared._read_json(annotation.CONTRACT)
+    state = annotation.run(contract, rows, max_new_calls=0)  # Offline replay only, never a provider call.
+    if state["completed"] != 30:
+        raise RuntimeError("all 30 annotations required before freezing")
+    journal = annotation.OUTPUT / "attempts.jsonl"
+    events = annotation.shared._read_jsonl(journal)
+    recovery_path = annotation.OUTPUT / "citation_recoveries.jsonl"
+    recoveries = {r["call_index"]: r for r in annotation.shared._read_jsonl(recovery_path)} if recovery_path.exists() else {}
+    draft = [e["result"] or annotation.parse(json.dumps({"annotation": recoveries[e["call_index"]]["annotation"]}),
+             rows[e["row_index"]], "stop") for e in events if e["result"] is not None or e["call_index"] in recoveries]
+    review = annotation.shared._read_jsonl(review_path)
+    changed = validate_review(rows, draft, review)
+    counts = Counter(r["annotation"]["target_class"] for r in review)
+    paths = (DATA_DIR / "blind_draft_annotations.jsonl", DATA_DIR / "targets.jsonl",
+             REPORT.parent / "v5_2_annotation_freeze.json")
+    if any(p.exists() for p in paths):
+        raise RuntimeError("refusing to overwrite frozen labels")
+    targets = [{"question_id": r["question_id"], **r["annotation"]} for r in review]
+    _write = prior._write_jsonl
+    _write(paths[0], draft)
+    _write(paths[1], targets)
+    result = {"status": "AI_PROXY_LABELS_FROZEN_NOT_CLASSIFIED", "cases": 30,
+              "counts": dict(counts), "draft_counts": dict(Counter(r["annotation"]["target_class"] for r in draft)),
+              "class_support_at_least_five_each": min(counts["SUFFICIENT"], counts["INSUFFICIENT"]) >= 5,
+              "label_changes_before_predictions": changed,
+              "observed_correlated_selected_family": ["TRAIN_Q383", "TRAIN_Q417"],
+              "category_counts": {tag: sum(tag in r["annotation"]["notes"].split("]", 1)[0] for r in review)
+                                  for tag in ("steps", "applicability", "version", "condition", "conflict")},
+              "selection_canonical_sha256": prior.canonical_sha256(manifest),
+              "inputs_sha256": manifest["inputs_sha256"], "contract_sha256": prior.canonical_sha256(contract),
+              "journal_sha256": prior.reuse._sha256(journal), "review_sha256": prior.reuse._sha256(review_path),
+              "draft_sha256": prior.reuse._sha256(paths[0]), "targets_sha256": prior.reuse._sha256(paths[1]),
+              "citation_recoveries_sha256": prior.reuse._sha256(recovery_path) if recovery_path.exists() else None,
+              "provider_calls": state["calls"], "estimated_cost_cny": state["estimated_cost_cny"],
+              "annotator": annotation.MODEL, "reviewer": "current Codex assistant",
+              "review_scope": "Every question/rationale and cited original evidence reviewed; targeted full-context checks; not full-source expert adjudication",
+              "provenance": "AI proxy, same Qwen family as classifier; reviewer not independent or human expert gold; additional TRAIN diagnosis not holdout",
+              "dev_opened": False, "classifier_predictions_created": False, "promotion_allowed": False}
+    prior._write_json(paths[2], result)
+    return result
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--research-root", required=True)
