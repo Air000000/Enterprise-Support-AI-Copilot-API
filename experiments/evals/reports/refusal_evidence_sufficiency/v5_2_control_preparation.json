@@ -1,0 +1,147 @@
+{
+  "status": "CONTROLLED_CASES_FROZEN_NOT_RUN_NOT_AUTHORIZED",
+  "cases": 14,
+  "pairs": 7,
+  "case_order": [
+    "CONTROL_STEPS_SUPPORTED",
+    "CONTROL_STEPS_MISSING",
+    "CONTROL_SCOPE_SUPPORTED",
+    "CONTROL_SCOPE_MISSING",
+    "CONTROL_VERSION_SUPPORTED",
+    "CONTROL_VERSION_MISSING",
+    "CONTROL_TIME_SUPPORTED",
+    "CONTROL_TIME_MISSING",
+    "CONTROL_CONDITION_SUPPORTED",
+    "CONTROL_CONDITION_MISSING",
+    "CONTROL_CONFLICT_SUPPORTED",
+    "CONTROL_CONFLICT_UNRESOLVED",
+    "CONTROL_NEGATIVE_SUPPORTED",
+    "CONTROL_NEGATIVE_UNKNOWN"
+  ],
+  "cases_canonical_sha256": "461576db0952220383aab865cff980e4f82c5fed019d08dd5f67e835c27ad896",
+  "family_counts": {
+    "steps": 2,
+    "applicability": 2,
+    "version": 2,
+    "time": 2,
+    "condition": 2,
+    "conflict": 2,
+    "negative_answer": 2
+  },
+  "expected_class_counts": {
+    "SUFFICIENT": 7,
+    "INSUFFICIENT": 7
+  },
+  "provenance": "Fictional human-readable fixtures authored by current assistant; expected targets follow construction, not blind independent gold",
+  "relation_to_natural_train": "Separate controlled stress diagnostic; never added to natural class counts or quality denominators",
+  "natural_freeze_canonical_sha256": "ff4625b0f635a0a968c055222f0e2401edd4e2baba42f8c74dae06bafc046a63",
+  "natural_insufficient_cases_unchanged": 4,
+  "natural_class_support_met_unchanged": false,
+  "no_retrieval_top14_claim": true,
+  "provider_calls": 0,
+  "dev_opened": false,
+  "promotion_allowed": false,
+  "paid_runner_ready": false,
+  "paired_preflight": {
+    "arms": {
+      "v5_1": {
+        "prompt_sha256": "368b77fe267e68f3f273d458240bafdd422cad3e7b7ca9508c991a96a9c5fba3",
+        "validator_normalized_source_sha256": "31c959c47608d28f4dad7be794d9a62d004a8d6ae8558255edb732828ebbf29e",
+        "request_sha256": [
+          "d1bf0b55962f18914d7694d743c5c8a40a13ad2470bea0d701d4730635cf7e1e",
+          "0a9d1f1d2dd5844b9c217ae7ff7812c17c734609eef2811d7257a64f643fecb2",
+          "966005c8da2086ed53fe20e892bf646713a4c6ca770582f612aa6f5dd4550e9a",
+          "c677239285571a6afa84f9b05b113d75903a07126fe75eafc1ee0a460e834ded",
+          "2f4cc846220cfd439db998c77b19db09557bd55d5556fcc67aaa62756f386988",
+          "dda1b7dc3e9e227e8d6899cfaf815a431e39587db52d982a0698141d029abc23",
+          "51145e7873f4caa3db5782f21a4f593d57a13d03926fc9b79a253708b1e71153",
+          "851c27cc1ddad337ab29d7ab9da897fb782135e56c91e5191b2ca6540e11e207",
+          "809253a8fc98d1e32389613b4dfa0e9803612427fa647dc2708d340afce566c1",
+          "5dbeaf387743ddf65ca9ee5348dd0e562ad1582227f17f01aadf2d062f71e84a",
+          "0ea2b8da0ecb8bc88f9ba96deedc649ea4f7180c0952a9fa87db877cb8fbd0ca",
+          "032a85c33a3184ccbb81890167bf87b7341b899758bf0ca250af1092a28caf05",
+          "15c4f6e8fa471ab446b0dbd1b2625342215b319ef78cf9b5e81b3db35b6cc5f7",
+          "6b560277f5f158436bf3de28ee8d984d64fb8dbe8f04f433674ad4c393a14cb9"
+        ],
+        "input_byte_plus_framing_bounds": [
+          5543,
+          5471,
+          5574,
+          5561,
+          5368,
+          5369,
+          5512,
+          5512,
+          5543,
+          5572,
+          5558,
+          5587,
+          5424,
+          5362
+        ],
+        "max_output_tokens": 2048,
+        "planned_calls": 14,
+        "planning_cost_usd": 0.09959520000000001
+      },
+      "v5_2": {
+        "prompt_sha256": "f9cd98348df09320b3485fd191f2e3fa72e52ef4ab615c5d11eab88ed367b887",
+        "validator_normalized_source_sha256": "cf7972662ae081c25e56131ddb4cfd987f1f0081f480080cc1880b63d8578283",
+        "request_sha256": [
+          "464e4a07168ab9101179d8dbae2308ef2ef3da0f3ecf630ccb9968c5b0d0754d",
+          "a803a15a7ffcab92ac96eb637267ebebb73fe28316cadcdccc34137fc1109bed",
+          "3250c87e9e098d45abee4d804ba121a42afd038db3b5e2b2c76f37b832f70d7e",
+          "bd104ebcc4189cad49b5e79ca39242a0c8008ca5e0808b16f7b80d567e99c9f8",
+          "9a05093fe4673c3267a50066c8cca85805d0ea5e0b90f3271bf7b0f5fd7cdc30",
+          "6621d29bc818fa5a175856480683ab722a51cae59cb701fd28ee67d03e77d50d",
+          "e27306b964ad4ab242e792e2352ce10ca3d20a7c09a4e3b27a3e931cf0eed7e7",
+          "598fa19589963356fd5d3e4810fa0a9e7882e0c43bd730b9782875e1ca346510",
+          "ef7e18f4d9bed95912145b91bd93a917067f13880879dbe73abe65aa86fe5cb5",
+          "c1cf0cc0ea61a24f192087c62fd73818a1993c68d9cbd1fdbe96277dfbca60a8",
+          "bdebfd8d6b389253fb27358ad8cbea6c7edd098d0643ebed7bc5601b0a80d862",
+          "80fa53ad04667f86aae85ede7c356cf4ad776315f96d1b7df69ce1371c1b139e",
+          "dc4aeb879c0f839f8e55fb4ddd9f0ba23ee4b55c1202752a7169f92be7f0a7e9",
+          "9b17b1f1bfe2b88215ffbdfd26c880d98a378b4bc680103eca9dedb72393ce1a"
+        ],
+        "input_byte_plus_framing_bounds": [
+          6221,
+          6149,
+          6252,
+          6239,
+          6046,
+          6047,
+          6190,
+          6190,
+          6221,
+          6250,
+          6236,
+          6265,
+          6102,
+          6040
+        ],
+        "max_output_tokens": 2048,
+        "planned_calls": 14,
+        "planning_cost_usd": 0.103392
+      }
+    },
+    "planned_calls": 28,
+    "planning_cost_usd": 0.2029872,
+    "shared_dependency_sha256": {
+      "refusal_structured_evidence.py": "48eb7ee44af550e542a94e2a37b1daaf72669ee57a74ee8e95a27c2e725c45b8",
+      "refusal_development_policy.py": "43bc0b6169eeeda94d1418d77255cd71f751ef3e980fe6934b007000e7ae99d7"
+    },
+    "model": "qwen3.5-plus-2026-04-20",
+    "region": "Singapore",
+    "temperature": 0,
+    "enable_thinking": false,
+    "response_format": "json_object",
+    "pricing": {
+      "checked_date": "2026-10-13",
+      "input_usd_per_million": 0.4,
+      "output_usd_per_million": 2.4,
+      "source": "https://www.alibabacloud.com/help/en/model-studio/model-pricing"
+    },
+    "caveat": "UTF-8 bytes + 512 framing is a planning proxy, not certified tokens or invoice cap; annotation and retries excluded",
+    "authorization_required": true,
+    "executable_run_contract": false
+  }
+}

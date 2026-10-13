@@ -68,6 +68,7 @@ jobs:
             tests/test_refusal_v5_preparation.py \
             tests/test_refusal_v5_2_preparation.py \
             tests/test_refusal_v5_2_annotation.py \
+            tests/test_refusal_v5_2_controls.py \
             tests/test_refusal_v5_paired_runner.py \
             tests/test_refusal_v5_1_paired_runner.py \
             tests/test_refusal_development_probe.py \
