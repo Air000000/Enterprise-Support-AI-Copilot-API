@@ -1,3 +1,4 @@
+import hashlib
 import json
 from types import SimpleNamespace
 
@@ -94,3 +95,51 @@ def test_budget_and_bad_line_references_stop(tmp_path):
     value["annotation"]["notes"] = "General assertion without evidence"
     with pytest.raises(ValueError, match="valid evidence"):
         a.parse(json.dumps(value), rows[0], "stop")
+
+
+def test_audited_format_recovery_keeps_raw_class_and_avoids_paid_retry(tmp_path):
+    contract, rows, value = setup_run()
+    value["annotation"]["notes"] = "Source 1 (Line 1) supports the requirement."
+    bad = Client(raw=json.dumps(value))
+    with pytest.raises(RuntimeError, match="failure saved"):
+        a.run(contract, rows, tmp_path, client=bad)
+    raw = (tmp_path / "attempts.jsonl").read_bytes()
+    recovery = {"call_index": 0, "raw_sha256": hashlib.sha256(bad.raw.encode()).hexdigest(),
+                "annotation": value["annotation"] | {"notes": "Evidence at Source 1:L1."}}
+    path = tmp_path / "citation_recoveries.jsonl"
+    path.write_text(json.dumps(recovery | {"annotation": recovery["annotation"] | {
+        "target_class": "INSUFFICIENT"}}) + "\n", encoding="utf-8")
+    good = Client()
+    with pytest.raises(RuntimeError, match="retain original class"):
+        a.run(contract, rows, tmp_path, client=good)
+    assert good.calls == 0
+    path.write_text(json.dumps(recovery) + "\n", encoding="utf-8")
+    assert a.run(contract, rows, tmp_path, client=good)["completed"] == 3
+    assert good.calls == 2
+    assert (tmp_path / "attempts.jsonl").read_bytes().startswith(raw)
+
+
+def test_review_is_complete_pre_prediction_and_evidence_checked():
+    from experiments.evals.refusal_v5_2_preparation import validate_review
+    _, rows, value = setup_run()
+    draft = [{"question_id": row["question_id"], **value} for row in rows]
+    assert validate_review(rows, draft, draft) == 0
+    changed = [r | {"annotation": r["annotation"] | {"target_class": "AMBIGUOUS"}} for r in draft]
+    assert validate_review(rows, draft, changed) == 3
+    with pytest.raises(RuntimeError, match="complete"):
+        validate_review(rows, draft, draft[:-1])
+    with pytest.raises(ValueError, match="line reference"):
+        validate_review(rows, draft, [r | {"annotation": r["annotation"] | {
+            "notes": "Source 1:L999"}} for r in draft])
+
+
+def test_public_freeze_reports_shortfall_and_contains_no_private_targets():
+    freeze = a.shared._read_json(a.prep.REPORT.parent / "v5_2_annotation_freeze.json")
+    assert freeze["status"] == "AI_PROXY_LABELS_FROZEN_NOT_CLASSIFIED"
+    assert sum(freeze["counts"].values()) == freeze["cases"] == 30
+    assert freeze["provider_calls"] == 31 and freeze["estimated_cost_cny"] < 8
+    assert freeze["class_support_at_least_five_each"] is False
+    assert freeze["counts"]["INSUFFICIENT"] == 4
+    assert not freeze["dev_opened"] and not freeze["classifier_predictions_created"]
+    assert not freeze["promotion_allowed"]
+    assert all(key not in json.dumps(freeze) for key in ('"question":', '"content":', '"annotation":'))

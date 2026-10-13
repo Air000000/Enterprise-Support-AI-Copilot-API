@@ -1,0 +1,43 @@
+{
+  "status": "AI_PROXY_LABELS_FROZEN_NOT_CLASSIFIED",
+  "cases": 30,
+  "counts": {
+    "INSUFFICIENT": 4,
+    "SUFFICIENT": 21,
+    "AMBIGUOUS": 5
+  },
+  "draft_counts": {
+    "INSUFFICIENT": 8,
+    "SUFFICIENT": 22
+  },
+  "class_support_at_least_five_each": false,
+  "label_changes_before_predictions": 6,
+  "observed_correlated_selected_family": [
+    "TRAIN_Q383",
+    "TRAIN_Q417"
+  ],
+  "category_counts": {
+    "steps": 10,
+    "applicability": 23,
+    "version": 13,
+    "condition": 14,
+    "conflict": 0
+  },
+  "selection_canonical_sha256": "cdf6742bfc6b65625eec9eef37b04b773b3a3f2975c6fde826ae378ff762fd0d",
+  "inputs_sha256": "e8082e4ee909dd8739529c6eeeedaaa3353efbe88a5207ba7ade1f4dee33d3df",
+  "contract_sha256": "f456abf06d7759e2f8b4318ab3e5d36d5446c96f1e618a668927280ea86aee83",
+  "journal_sha256": "7d9d267dd6c01168b437f85cc8a27ccf270430871e205a991b7baab25d9ba547",
+  "review_sha256": "7fe4532e2402a88bba94ba797a1f5dc08784f4a9acb19de4f038450061c67db8",
+  "draft_sha256": "3d31b1d7adee147d91d1857f9552f4b430f2405d0647bb6fadde0e6856102fa9",
+  "targets_sha256": "dbea0f827c0389e695462855240c43afd0541ff72ad359b592d60817a6757953",
+  "citation_recoveries_sha256": "142f86cd144b9f925632b44ef79960d5def45dabaa32dc498a612cb8b30a758f",
+  "provider_calls": 31,
+  "estimated_cost_cny": 0.7080075,
+  "annotator": "qwen3.6-plus-2026-04-02",
+  "reviewer": "current Codex assistant",
+  "review_scope": "Every question/rationale and cited original evidence reviewed; targeted full-context checks; not full-source expert adjudication",
+  "provenance": "AI proxy, same Qwen family as classifier; reviewer not independent or human expert gold; additional TRAIN diagnosis not holdout",
+  "dev_opened": false,
+  "classifier_predictions_created": false,
+  "promotion_allowed": false
+}
