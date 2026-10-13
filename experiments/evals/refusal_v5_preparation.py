@@ -18,14 +18,14 @@ SELECTION_HASHES = {
 }
 
 
-def select_packets(snapshots, results, excluded_ids, *, cases=CASES):
+def select_packets(snapshots, results, excluded_ids, *, cases=CASES, seed=SEED):
     snapshots, results = reuse._index(snapshots), reuse._index(results)
     if set(snapshots) != set(results) or any(not qid.startswith("TRAIN_Q") for qid in results):
         raise RuntimeError("matching TRAIN-only frozen artifacts required")
     eligible = set(results) - excluded_ids
     if len(eligible) < cases:
         raise RuntimeError("not enough unselected TRAIN cases")
-    selected = sorted(sorted(eligible, key=lambda qid: reuse._selection_hash(qid, seed=SEED))[:cases])
+    selected = sorted(sorted(eligible, key=lambda qid: reuse._selection_hash(qid, seed=seed))[:cases])
     packets = []
     for qid in selected:
         snapshot, result = snapshots[qid], results[qid]
