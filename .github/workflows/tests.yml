@@ -67,6 +67,7 @@ jobs:
             tests/test_refusal_requirement_coverage.py \
             tests/test_refusal_coverage_citation_example.py \
             tests/test_refusal_v5_2_1_preparation.py \
+            tests/test_refusal_v5_2_1_runner.py \
             tests/test_refusal_v5_preparation.py \
             tests/test_refusal_v5_2_preparation.py \
             tests/test_refusal_v5_2_annotation.py \
