@@ -382,7 +382,16 @@ qwen3-rerank
 | **拒答 v2.1** | 新分类契约 + 新的 AI 草稿代理标签 | 平衡准确率 **0.775**，门槛 0.80；充分召回 .85，不足召回 .70 | 只差 1 个 样本 即可过门槛，但后验检查发现部分 分歧 来自**标注契约与问题实际要求不一致**，不能简单继续调 提示词 | **FAIL**，不修改门槛后重跑 | [v2.1 结果](experiments/evals/reports/refusal_evidence_sufficiency/v2_ai_proxy_v2_1_result.md) |
 | **拒答 v3** | 从盲标 AI 草稿中冻结 50 条 TRAIN，25 充分 / 25 不充分 | 与 AI proxy 一致 **38/50**；平衡准确率 **0.76**；两类召回均 0.76 | 充分题误拒 6 条、不足题误放行 6 条；标签不是独立人工金标 | **FAIL**，不进入生成验收或 runtime | [v3 结果](experiments/evals/reports/refusal_evidence_sufficiency/v3_ai_proxy_result.md) |
 | **v4 / v5.1 配对开发诊断** | 20 条 TRAIN 同题对照；v5.1 选择来源行，由代码提取原文并推导决策 | 40 次调用全部有效；AI proxy 一致 **16/20 → 17/20**；估算总费 ¥0.741975 | 不足题误放行 **4/6 → 2/6**，但新增 1 个充分题误拒；费用约 2.06 倍、p50 延迟约 1.82 倍 | **NO_PROMOTION**；非独立 AI 标签、小型已见 TRAIN，不能宣称全面改善 | [v5.1 冻结结果](experiments/evals/reports/refusal_evidence_sufficiency/v5_1_paired_result.md) |
-| **v5.2 离线候选 / 演示** | 强制检查请求结果、适用性、版本与时效；复用行引用校验 | 纯合成手写响应、自检；**没有真实模型评测** | 缺字段报错、已声明缺口拒答；错误的 SUPPORTED / NOT_REQUIRED 仍可能通过 | **NOT_MODEL_EVALUATED / NO_PROMOTION**，不是实际效果证明 | [候选边界](experiments/evals/reports/refusal_evidence_sufficiency/v5_2_requirement_coverage_candidate.md)、[演示](docs/demo_script.md#21-离线拒答-gate-演示) |
+| **v5.2 必填覆盖审计** | 强制检查请求结果、适用性、版本与时效；复用行引用校验 | 14 条虚构控制题真实模型对照：v5.1 有效且符合构造标签 **14/14**，v5.2 **12/14**，另有 2 次格式失败 | 模型将已有证据的审计栏位输出为空引用；格式失败不是正确拒答 | **NO_PROMOTION**；控制题不是自然问题准确率 | [控制题结果](experiments/evals/reports/refusal_evidence_sufficiency/v5_2_control_result.md)、[零调用机制演示](docs/demo_script.md#21-离线拒答-gate-演示) |
+| **v5.2.1 引用示例调整** | 仅修改提示词中的引用示例，不放宽 schema / 引用校验 | 同一批已见虚构控制题，新跑 v5.2 / v5.2.1 均 **14/14** 有效且符合构造标签 | 旧版本的 2 次格式失败在同期基线中也未重现，不能归功于新示例 | **未证明格式修复收益 / NO_PROMOTION** | [同期回归结果](experiments/evals/reports/refusal_evidence_sufficiency/v5_2_1_regression_result.md) |
+| **v5.1 / v5.2.1 自然 TRAIN 诊断** | 30 条冻结自然问题、完整 Top14、两组新跑 | 25 条二元 AI proxy 标签一致 **19/25 → 21/25**；充分题误拒 **5/21 → 3/21** | 修正 4 次误拒、引入 2 次；不足题误放行仍 **1/4**；费用约 1.36 倍 | **仅开发诊断 / NO_PROMOTION** | [自然问题结果](experiments/evals/reports/refusal_evidence_sufficiency/natural_v5_2_1_result.md) |
+| **v5.2.1 / v5.3 问题范围回归** | 明确只检查必要请求，并要求具体事故的证据适用性；相同 30 题、两组重新运行 | 二元 AI proxy 标签一致 **22/25 → 23/25**；充分题误拒 **2/21 → 1/21**；60 次调用估算 ¥1.917294 | 修正 2 次误拒、新增 1 次；**同一个不足案例仍误放行（1/4）**，部分标签一致的推理仍有无依据外推 | **仅已见题开发回归 / NO_PROMOTION**，未解决语义可靠性 | [v5.3 完整结果](experiments/evals/reports/refusal_evidence_sufficiency/v5_3_regression_result.md) |
+
+后两次自然问题实验使用同一套冻结 AI proxy 标签：21 条充分、4 条不足、5 条有歧义；
+5 条有歧义只作描述，不计入二元一致率。这不是独立专家金标，也没有生成答案或验证线上整链。
+v5.3 的设计已经参考这些题；其同期 v5.2.1 基线为 22/25，不能拿历史 21/25 来夸大增益。
+目前不继续在这 30 题上追加提示词或重复付费调用；后续语义验证需先明确新样本与冻结口径，
+另行授权数据发送和费用。v5.2～v5.3 均未替换线上 Dense 距离拒答。
 
 完整实验契约、索引与冻结产物见 [experiments/evals/README.md](experiments/evals/README.md)。
 
