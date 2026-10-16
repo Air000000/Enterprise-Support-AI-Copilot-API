@@ -82,7 +82,7 @@
 | 受控工单 Agent | `search_kb` / `classify_ticket` / `create_ticket`，预览-确认 + 人工审批 |
 | 核心技术支持数据 | TechQA 28,481 Technotes、610 条可回答检索问题、910 条生成 / 拒答问答记录 |
 | RAG 评测 | 冻结 TRAIN / DEV、文档级 Recall@K / MRR、生成 / 拒答评测框架 |
-| 重排 / Hybrid 实验 | Dense Top-100 + `qwen3-rerank` 正式冻结验证集对比；BM25 / RRF / Hybrid 为离线受控实验 |
+| 重排 / Hybrid | 保留冻结离线实验；`/rag/search` 新增默认关闭的 Hybrid 可选路径，问答和工单仍为 Dense |
 | 失败归因 | 候选覆盖、chunk 拥挤、证据级审计、路线准入门槛 |
 | AgentOps | Agent 运行记录 / 工具调用 / 审批 / 检索轨迹与聚合指标 |
 | 工程化 | Alembic、Pytest、Ruff、GitHub Actions、Docker Compose、冒烟测试 |
@@ -214,7 +214,7 @@ request.draft == server-side approval_request.draft_json
 
 # 3. RAG 在线运行时
 
-当前在线 API 路径保持为 **Dense Chroma 检索**。
+API 默认保持 **Dense Chroma 检索**；`/rag/search` 另提供默认关闭的 Hybrid 可选路径。
 
 主要能力：
 
@@ -228,13 +228,34 @@ request.draft == server-side approval_request.draft_json
 
 问答路径仅根据检索 上下文 生成答案，并返回对应 sources。当前低相关拒答使用 Dense Top-1 距离作为工程信号。
 
-> **在线 / 离线边界：** BM25 / RRF / Hybrid / `qwen3-rerank` 当前用于 `experiments/evals/` 的离线评测与受控对照，不把它们描述成线上检索已切换到 Hybrid。
+> **运行时边界：** Hybrid 只接入可选搜索，不接管 `/rag/ask` 或 Ticket Agent，也不启用实验拒答 gate。代码接入不等于已部署、已开启或已证明整链质量。
+
+## 3.1 可选 Hybrid 搜索
+
+先通过 Document Backend 上传并显式索引文档，再在服务端 `.env` 配置已有 embedding 凭据、专用 `DASHSCOPE_RERANK_API_KEY` / `DASHSCOPE_RERANK_BASE_URL`，并设置 `RAG_HYBRID_SEARCH_ENABLED=true`。地址格式参见 [.env.example](.env.example)；重启服务或重建 Compose API 容器使配置生效。
+
+**开启前须批准数据外发与费用：** 查询会发往 embedding 服务；查询及最多 100 条当前租户候选正文会发往配置的 rerank 服务。每次搜索都会调用模型，未配置全局费用额度；不要把密钥交给浏览器或提交到 Git。
+
+使用现有 JWT 调用 `POST /rag/search`，请求体：
+
+```json
+{"query": "VPN error 809", "category": "it", "retrieval_mode": "hybrid", "top_k": 14}
+```
+
+- 路线固定为 `Dense100 + BM25100 → RRF(k=60) Top100 → qwen3-rerank → Top14`，返回其前 `top_k` 条；Hybrid 省略 `top_k` 时为 14，允许 1–14。Dense 仍默认 3、允许 1–10。
+- 只检索 SQL 文档后端标记为 `indexed`、当前版本、当前租户且匹配 category 的 chunk；两个通道共享此范围。仅存在于旧静态 Chroma 索引、未通过文档后端登记的内容不进入 Hybrid；TechQA 离线语料也不会自动导入。
+- `rerank_score` 越大越相关，但不是概率。`fusion_score`、`dense_rank`、`bm25_rank` 用于解释来源；BM25 独有命中的 `distance` / `dense_rank` 为 `null`。**不得把 Dense 的 0.9 距离阈值用于这些分数。** 审计 JSON 明确记录 Hybrid 模式和分数类型，Hybrid 的 `top_distance` 留空。
+- 失败返回脱敏 HTTP 503，不暗中切换检索方案。显式改为 `retrieval_mode: "dense"` 可回退；关闭开关并重启可禁用 Hybrid。重排客户端不自动重试，超时 15 秒；embedding 沿用原客户端策略。
+- Demo 上限为每租户/所选分类 5000 条可见 chunk，BM25 每请求重建，无持久化第二索引。英文技术词分词不覆盖中文；纯中文查询跳过 BM25，保留 Dense + 重排。规模或中文检索需要扩大时再单独测量和改进。
+- 发送候选正文前及返回结果前复查 SQL 内容/可见性，发现删除或变更则终止请求；这不是 SQL 与 Chroma 的跨存储原子快照。上传、重建中、失败和删除状态不会被当作可见文档。
+
+本阶段不调用答案生成、不改变拒答逻辑、不创建工单；完整问答与审批演示仍是后续独立验收范围。
 
 ---
 
 # 4. RAG 评测与迭代：从 Dense 基线到当前状态
 
-`experiments/evals/` 是正式离线评测入口。当前在线 API 仍使用 **Dense Chroma 检索**；下面的 Hybrid、rerank、直接 Top14 属于离线评测与冻结工程候选，不等同于已上线能力。
+`experiments/evals/` 是正式离线评测入口。默认 API 与问答/工单仍使用 **Dense Chroma 检索**；可选 Hybrid 搜索见上一节。下面记录的是离线实验与冻结工程选择，不是新运行时语料的质量验收或公网部署证明。
 
 ## 4.1 评测契约
 
@@ -259,7 +280,7 @@ TechQA 的 qrel 是文档级，而检索器返回 chunk。正式 IR 评测会保
 
 > **查询文本尾部空白漂移：** 历史 retrieval 与 generation 数据中，有些问题语义完全相同，只在末尾多了空格或换行。250/450 条 可回答问题 存在这种差异，其中 74 条 Top3 排序发生变化、5 条 标准相关文档准入 发生变化。由于这不是语义变化，这 5 条不用于因果失败计数；后续 模型服务调用前统一对 query 做 `rstrip()`。
 
-R4 C1 的正式历史状态仍是 **FAIL**。后续冻结工程候选保留固定 Hybrid 路线，是基于整体证据做出的工程选择，不改写这次正式实验结论，也不代表当前在线 API 已切换到 Hybrid。
+R4 C1 的正式历史状态仍是 **FAIL**。后续冻结工程候选保留固定 Hybrid 路线，是基于整体证据做出的工程选择；可选搜索接入不改写历史结论，也不代表默认 API 或问答已切换到 Hybrid。
 
 ---
 
@@ -367,8 +388,8 @@ qwen3-rerank
 
 - 检索参数研究：**CLOSED**
 - 上下文 组装研究：**CLOSED**
-- 当前在线运行时：仍是 **Dense Chroma 检索**
-- Hybrid + 重排 + 直接 Top14：**冻结工程候选，尚未推广到在线运行时**
+- 当前默认运行时、问答和工单：仍是 **Dense Chroma 检索**
+- Hybrid + 重排 + 直接 Top14：**已接入默认关闭的 `/rag/search` 可选路径，尚未接入问答/工单或完成整链验收**
 
 ---
 
@@ -637,8 +658,8 @@ Workflow：
 当前项目对外表述保持以下边界：
 
 - TechQA 是长期主技术支持语料与主评测基准，不再计划迁移到另一套 primary corpus；
-- 不把离线 BM25 / RRF / Hybrid 实验写成已经上线的 Hybrid 检索；
-- portfolio-v1 的 Hybrid + 重排已评测并冻结为工程候选，但尚未上线；R4 C1 的正式结论仍为 FAIL；
+- 不把离线 BM25 / RRF / Hybrid 实验或默认关闭的可选搜索写成默认线上已切换或公网已部署；
+- portfolio-v1 的 Hybrid + 重排已冻结并接入可选搜索，但问答/工单未接入；R4 C1 的正式结论仍为 FAIL；
 - 直接 Top14 是 TRAIN 开发阶段的选择，不是通用最优值；
 - 局部扩展 / 结构扩展的负结果不能证明 Parent-Child 或文档结构方法普遍无效；
 - 拒答策略和最终生成验证尚未冻结；

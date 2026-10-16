@@ -43,7 +43,7 @@ TechQA offline evaluation / refusal gate demo
 - AgentOps 支持 run / tool call / approval request 查询与汇总
 - Document Backend 支持上传、索引、删除闭环
 - Demo JWT 提供认证上下文与应用层租户范围；不是生产级 IAM
-- 线上仍为 Dense Chroma；Hybrid / rerank / Top14 与 v5.2～v5.3 证据充分性 gate 均未接入线上
+- 默认检索、问答和工单仍为 Dense Chroma；Hybrid / rerank / Top14 已接入默认关闭的 `/rag/search` 可选路径，v5.2～v5.3 证据充分性 gate 未接入运行时
 
 ## Legacy Compatibility
 
@@ -128,7 +128,7 @@ Smoke 需要运行中的服务与认证，可能产生真实调用费用。
 
 以下能力尚未完成：
 
-- 完整 Hybrid / rerank / Top14 线上集成与独立整链验收
+- Hybrid / rerank / Top14 的问答/工单集成与独立整链验收（可选搜索已接入，配置和外发边界见 README）
 - 拒答语义质量独立确认与最终生成验收
 - 生产级认证、授权、密钥管理及数据库级租户隔离
 - 并发恰好一次建单保证
@@ -148,7 +148,7 @@ Smoke 需要运行中的服务与认证，可能产生真实调用费用。
 草稿一致性后使用服务端审批草稿执行，但不保证并发恰好一次副作用。
 
 离线 E1 Dense + rerank 的冻结 DEV Recall@5 为 64.4% → 72.5%；此收益不代表
-Hybrid + Top14 整链已验证或已上线。Top14 在 54 条 TRAIN 证据样本上与 Top20
+Hybrid + Top14 整链已验证或默认上线；可选搜索接入也不是独立质量证明。Top14 在 54 条 TRAIN 证据样本上与 Top20
 命中相同（答案证据 35/54、有用证据 43/54），是开发阶段预算选择，不是通用最优。
 
 v5.1 对照 v4，与 AI proxy 一致性为 16/20 → 17/20：不足题误放行减少，但新增误拒，

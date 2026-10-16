@@ -54,11 +54,13 @@ def rag_search(
     started_at = time.perf_counter()
 
     try:
+        mode_options = {"retrieval_mode": "hybrid"} if request.retrieval_mode == "hybrid" else {}
         results = search_documents(
             query=request.query,
             top_k=request.top_k,
             tenant_id=user.tenant_id,
             category=request.category,
+            **mode_options,
         )
     except Exception as exc:
         latency_ms = int((time.perf_counter() - started_at) * 1000)
@@ -74,13 +76,13 @@ def rag_search(
                 retrieval_status="failed",
                 total_hits=0,
                 latency_ms=latency_ms,
-                error_message=str(exc),
+                error_message=(f"Hybrid search failed: {type(exc).__name__}" if request.retrieval_mode == "hybrid" else str(exc)),
             )
         )
 
         raise HTTPException(
-            status_code=500,
-            detail=f"RAG search failed: {exc}",
+            status_code=503 if request.retrieval_mode == "hybrid" else 500,
+            detail="Hybrid search unavailable; use dense mode or retry later" if request.retrieval_mode == "hybrid" else f"RAG search failed: {exc}",
         ) from exc
 
     response_results = []
@@ -94,7 +96,11 @@ def rag_search(
                 title=item.title,
                 source_path=item.source_path,
                 chunk_index=item.chunk_index,
-                distance=round(item.distance, 4),
+                distance=round(item.distance, 4) if item.distance is not None else None,
+                rerank_score=getattr(item, "rerank_score", None),
+                fusion_score=getattr(item, "fusion_score", None),
+                dense_rank=getattr(item, "dense_rank", None),
+                bm25_rank=getattr(item, "bm25_rank", None),
                 tenant_id=getattr(item, "tenant_id", None),
                 category=getattr(item, "category", None),
                 preview=make_preview(item.content),
@@ -120,6 +126,10 @@ def rag_search(
         result.distance
         for result in response_results
     ]
+    if request.retrieval_mode == "hybrid":
+        source_documents = [result.model_dump(exclude={"preview"}) | {"retrieval_mode": "hybrid"} for result in response_results]
+        scores = {"retrieval_mode": "hybrid", "score_type": "rerank_relevance",
+                  "larger_is_better": True, "scores": [result.rerank_score for result in response_results]}
 
     latency_ms = int((time.perf_counter() - started_at) * 1000)
 
@@ -139,7 +149,7 @@ def rag_search(
             total_hits=len(response_results),
             top_distance=(
                 response_results[0].distance
-                if response_results
+                if response_results and request.retrieval_mode == "dense"
                 else None
             ),
             source_documents_json=json.dumps(
@@ -159,6 +169,7 @@ def rag_search(
         top_k=request.top_k,
         total_hits=len(response_results),
         results=response_results,
+        retrieval_mode=request.retrieval_mode,
     )
 
 
