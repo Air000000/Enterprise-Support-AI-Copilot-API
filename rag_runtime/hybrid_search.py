@@ -30,6 +30,10 @@ class HybridSearchResult(ChromaSearchResult):
     dense_rank: int | None = None
     bm25_rank: int | None = None
 
+    @property
+    def preview(self):
+        return self.content[:160].replace("\n", " ")
+
 
 def load_visible_chunks(tenant_id, category, *, embedding_ids=None):
     statement = select(DocumentChunk, Document).join(Document, DocumentChunk.document_id == Document.id).where(

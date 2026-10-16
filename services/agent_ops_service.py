@@ -600,6 +600,7 @@ def get_retrieval_metrics_summary(
 
     return RetrievalMetricsSummaryResponse(
         total_retrieval_logs=len(retrieval_logs),
+        retrieval_status_counts=count_field_values(retrieval_logs, "retrieval_status"),
         ok_retrieval_logs=count_status(
             retrieval_logs,
             "ok",

@@ -111,7 +111,7 @@ POST /rag/search
 → RetrievalLog
 ```
 
-### /rag/ask
+### /rag/ask（默认 Dense）
 
 ```text
 POST /rag/ask
@@ -143,6 +143,24 @@ BM25 按请求重建、最多 5000 条可见 chunk；无额外持久索引或缓
 无技术词的中文查询跳过 BM25。重排失败返回脱敏 503，由调用方显式选 Dense 回退。
 本路径不生成答案、不套用 Dense 拒答阈值。开启、外发说明和分数契约见 [README](../README.md#31-可选-hybrid-搜索)。
 SQL 复查缩小并发变更窗口，但不提供跨 SQL/Chroma 的原子快照。
+
+`/rag/ask` 另有默认关闭的实验路径：两个 Hybrid 开关均开启、请求显式指定 `retrieval_mode=hybrid` 和 `refusal_policy=v5_3_experimental`，且不传 `max_distance`：
+
+```text
+Hybrid Top14 prefix
+→ current SQL visibility/content recheck
+→ v5.3 classifier + strict original-line selection/coverage validation
+→ INSUFFICIENT: fixed refusal (no generation)
+→ SUFFICIENT: full-context generation → supporting-source ID validation
+→ current SQL recheck → response + typed scores/gate audit
+```
+
+实现位于 `rag_runtime/hybrid_ask.py`，复用冻结的纯提示词/校验函数，不运行评测或改写冻结源码。
+无上下文为 `no_context`；gate 不足为 `refused_insufficient_evidence`；生成器拒答为 `refused_by_generator`。
+格式、截断、非法引用、提供方或可见性错误均返回脱敏 503、审计 `failed`，不会当作正确拒答或自动切换 Dense。
+分类使用强制专用 Phase B 配置，生成复用通用 chat 配置；两者无自动重试，完整上下文属于新增外发。
+详细配置、输出上限与已知语义限制见 [实验问答说明](../README.md#32-实验-hybrid-问答默认关闭)。
+它不是 v5.3 正式晋级、生产可用性承诺或 Ticket Agent 逻辑替换。
 
 ## 5. 文档生命周期
 
@@ -251,7 +269,7 @@ Bearer Token
 
 当前不声明：
 
-- 默认线上检索或问答/工单已经切换到 Hybrid Retrieval（目前仅默认关闭的可选搜索）；
+- 默认线上检索或问答/工单已经切换到 Hybrid Retrieval（目前是默认关闭的可选搜索/实验问答）；
 - Ticket Agent 是自主 ReAct / Function Calling Agent；
 - Demo JWT 是生产级 IAM；
 - Docker Compose 是生产部署；

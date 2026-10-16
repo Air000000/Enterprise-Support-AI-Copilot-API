@@ -344,3 +344,188 @@ def test_smoke_transport_counts_failed_sends_and_rejects_foreign_rerank():
         with pytest.raises(httpx.ConnectError):
             client.post(url + "/reranks", json={"model": "qwen3-rerank", "query": VPN_QUERY, "documents": [DOCS[0][-1]]})
     assert len(records) == 1 and records[0]["status"] is None
+
+
+@pytest.fixture
+def ask_runtime(runtime, monkeypatch):
+    import rag_runtime.hybrid_ask as ask
+    import services.agent_ops_service as agent_ops
+
+    engine, retrieval_calls = runtime
+    monkeypatch.setattr(agent_ops, "engine", engine)
+    monkeypatch.setenv("RAG_HYBRID_ASK_ENABLED", "true")
+    support = {"status": "SUPPORTED", "evidence": [{"source_id": "Source 1", "segment_ids": [1]}], "reason": "Fictional support."}
+    state = {"gate": {"requirements": [{"requirement": "Resolve the requested problem", **support}],
+        "coverage_checks": {"requested_outcomes": support, "applicability": support,
+            "version_and_time": {"status": "NOT_REQUIRED", "evidence": [], "reason": "No version constraint."}},
+        "unresolved_ambiguities": []}, "answer": "Follow the VPN guide. [Source 1]", "events": [], "hooks": {},
+        "gate_finish": "stop", "generation_finish": "stop", "real_classifier_factory": ask.get_classifier_client}
+
+    def client(stage):
+        def respond(request):
+            body = json.loads(request.content)
+            state["events"].append((stage, body))
+            if stage in state["hooks"]:
+                state["hooks"][stage]()
+            if state.get("error_stage") == stage:
+                return httpx.Response(500, json={"error": {"message": "private-provider-body secret-key"}})
+            content = json.dumps(state["gate"]) if stage == "gate" else state["answer"]
+            return httpx.Response(200, json={"id": "offline", "object": "chat.completion", "model": body["model"],
+                "choices": [{"index": 0, "finish_reason": state[stage + "_finish"],
+                             "message": {"role": "assistant", "content": content}}]})
+        return OpenAI(api_key="offline", base_url="https://chat.invalid/v1", max_retries=0,
+                      http_client=httpx.Client(transport=httpx.MockTransport(respond)))
+    monkeypatch.setattr(ask, "get_classifier_client", lambda: client("gate"))
+    monkeypatch.setattr(ask, "get_llm_client", lambda: client("generation"))
+    monkeypatch.setattr(service, "ask_rag", lambda **_: pytest.fail("Hybrid must never fall back to Dense ask"))
+    yield engine, retrieval_calls, state, ask
+
+
+ASK_BODY = {"question": "How to resolve VPN?", "retrieval_mode": "hybrid", "refusal_policy": "v5_3_experimental", "category": "it"}
+
+
+def test_hybrid_ask_admits_with_null_distance_and_audits_gate(ask_runtime, monkeypatch):
+    engine, _, state, ask = ask_runtime
+    good = add_document(engine, content="VPN guidance with necessary conditions.")
+    add_document(engine, tenant="foreign", content="Never send foreign body")
+    add_document(engine, category="hr", content="Never send other category")
+    monkeypatch.setattr(hybrid, "get_collection", lambda: SimpleNamespace(query=lambda **_: {"ids": [[]], "distances": [[]]}))
+    with TestClient(main.app) as api:
+        response = api.post("/rag/ask", json=ASK_BODY | {"tenant_id": "foreign"})
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["retrieval_status"] == "ok" and body["top_distance"] is None
+        assert body["refusal_policy"] == ask.POLICY and body["retrieval_mode"] == "hybrid"
+        assert body["evidence_gate"]["decision"] == "SUFFICIENT"
+        assert body["sources"][0]["distance"] is None and body["sources"][0]["document_id"] == good.id
+        assert body["sources"][0]["bm25_rank"] == 1 and body["sources"][0]["rerank_score"] == 1
+        logs = api.get("/agent-ops/retrieval-logs", params={"endpoint": "ask"}).json()
+        audit = json.loads(logs[0]["scores_json"])
+        assert audit["refusal_policy"] == ask.POLICY and audit["evidence_gate"]["decision"] == "SUFFICIENT"
+        assert audit["score_type"] == "rerank_relevance" and logs[0]["top_distance"] is None
+    assert [stage for stage, _ in state["events"]] == ["gate", "generation"]
+    classifier, generation = [body for _, body in state["events"]]
+    assert classifier["model"] == ask.CLASSIFIER_MODEL and classifier["max_tokens"] == 2048
+    assert generation["max_tokens"] == 1024
+    from experiments.evals.refusal_question_scoped_coverage import CLASSIFIER_SYSTEM_PROMPT_V5_3_DEV
+    assert classifier["messages"][0]["content"] == CLASSIFIER_SYSTEM_PROMPT_V5_3_DEV
+    payload = json.loads(classifier["messages"][1]["content"])
+    assert set(payload) == {"question", "sources"}
+    assert payload["sources"][0]["segments"][0]["content"] == "VPN guidance with necessary conditions."
+    assert "Never send" not in json.dumps(state["events"])
+
+
+def test_hybrid_ask_does_not_apply_dense_distance_threshold(ask_runtime, monkeypatch):
+    engine, _, _, _ = ask_runtime
+    doc = add_document(engine)
+    monkeypatch.setattr(hybrid, "get_collection", lambda: SimpleNamespace(query=lambda **_: {
+        "ids": [[f"doc:{doc.id}:v1:chunk:0"]], "distances": [[42.0]]}))
+    with TestClient(main.app) as api:
+        response = api.post("/rag/ask", json=ASK_BODY)
+    assert response.status_code == 200 and response.json()["retrieval_status"] == "ok"
+    assert response.json()["sources"][0]["distance"] == 42.0
+    assert response.json()["top_distance"] is None
+
+
+@pytest.mark.parametrize("status", ["MISSING", "CONDITIONAL", "CONFLICTING", "ambiguous"])
+def test_hybrid_ask_insufficient_never_generates_and_is_filterable(ask_runtime, status):
+    engine, _, state, _ = ask_runtime
+    add_document(engine)
+    if status == "ambiguous":
+        state["gate"]["unresolved_ambiguities"] = ["Unresolved material target"]
+    else:
+        state["gate"]["requirements"][0]["status"] = status
+        if status == "MISSING":
+            state["gate"]["requirements"][0]["evidence"] = []
+    with TestClient(main.app) as api:
+        response = api.post("/rag/ask", json=ASK_BODY)
+        assert response.status_code == 200, response.text
+        assert response.json()["retrieval_status"] == "refused_insufficient_evidence"
+        logs = api.get("/agent-ops/retrieval-logs", params={"retrieval_status": "refused_insufficient_evidence"}).json()
+        assert len(logs) == 1
+        assert api.get("/agent-ops/metrics/retrieval").json()["retrieval_status_counts"] == {"refused_insufficient_evidence": 1}
+    assert [stage for stage, _ in state["events"]] == ["gate"]
+
+
+@pytest.mark.parametrize("failure", ["bad_gate", "truncated_gate", "gate_provider", "generation_provider", "truncated_answer", "empty_answer", "no_citation", "unknown_citation", "uncited_support"])
+def test_hybrid_ask_failures_are_not_success_or_normal_refusal(ask_runtime, failure):
+    engine, _, state, _ = ask_runtime
+    add_document(engine)
+    add_document(engine)  # Source 2 is present but not admitted by the gate.
+    if failure == "bad_gate":
+        state["gate"]["requirements"][0]["evidence"] = [{"source_id": "Source 1", "segment_ids": [999]}]
+    elif failure == "truncated_gate":
+        state["gate_finish"] = "length"
+    elif failure in {"gate_provider", "generation_provider"}:
+        state["error_stage"] = failure.removesuffix("_provider")
+    elif failure == "truncated_answer":
+        state["generation_finish"] = "length"
+    else:
+        state["answer"] = {"empty_answer": "", "no_citation": "Unsupported answer", "unknown_citation": "Try it. [Source 99]",
+                           "uncited_support": "Try it. [Source 2]"}[failure]
+    with TestClient(main.app) as api:
+        response = api.post("/rag/ask", json=ASK_BODY)
+        assert response.status_code == 503
+        logs = api.get("/agent-ops/retrieval-logs").json()
+        assert logs[0]["retrieval_status"] == "failed"
+        assert "private-provider-body" not in response.text + logs[0]["error_message"]
+        assert "secret-key" not in response.text + logs[0]["error_message"]
+        assert json.loads(logs[0]["scores_json"])["refusal_policy"] == "v5_3_experimental"
+    assert sum(stage == "gate" for stage, _ in state["events"]) == 1
+    assert sum(stage == "generation" for stage, _ in state["events"]) == (failure not in {"bad_gate", "truncated_gate", "gate_provider"})
+
+
+def test_hybrid_ask_empty_and_generator_refusal_are_distinct(ask_runtime):
+    engine, calls, state, ask = ask_runtime
+    with TestClient(main.app) as api:
+        response = api.post("/rag/ask", json=ASK_BODY)
+        assert response.status_code == 200 and response.json()["retrieval_status"] == "no_context"
+        assert calls == state["events"] == []
+        add_document(engine)
+        state["answer"] = ask.REFUSAL
+        response = api.post("/rag/ask", json=ASK_BODY)
+        assert response.json()["retrieval_status"] == "refused_by_generator"
+        assert response.json()["evidence_gate"]["decision"] == "SUFFICIENT"
+
+
+@pytest.mark.parametrize("stage", ["before_gate", "gate", "generation"])
+def test_hybrid_ask_doc_mutation_blocks_stale_answer(ask_runtime, monkeypatch, stage):
+    engine, _, state, ask = ask_runtime
+    doc = add_document(engine)
+
+    def mutate():
+        with Session(engine) as session:
+            row = session.get(Document, doc.id)
+            row.status = "deleted"
+            session.add(row)
+            session.commit()
+    if stage == "before_gate":
+        search = ask.search_hybrid
+
+        def changed(*args):
+            result = search(*args)
+            mutate()
+            return result
+        monkeypatch.setattr(ask, "search_hybrid", changed)
+    else:
+        state["hooks"][stage] = mutate
+    with TestClient(main.app) as api:
+        assert api.post("/rag/ask", json=ASK_BODY).status_code == 503
+    assert len(state["events"]) == {"before_gate": 0, "gate": 1, "generation": 2}[stage]
+
+
+def test_hybrid_ask_flags_policy_and_missing_config_stop_early(ask_runtime, monkeypatch):
+    _, calls, state, ask = ask_runtime
+    with TestClient(main.app) as api:
+        for body in (ASK_BODY | {"max_distance": 0.9}, ASK_BODY | {"top_k": 15}, ASK_BODY | {"question": "  "},
+                     ASK_BODY | {"refusal_policy": None}, {"question": "x", "top_k": 11},
+                     {"question": "x", "refusal_policy": "v5_3_experimental"}):
+            assert api.post("/rag/ask", json=body).status_code == 422
+        for flag in ("RAG_HYBRID_ASK_ENABLED", "RAG_HYBRID_SEARCH_ENABLED"):
+            monkeypatch.setenv(flag, "false")
+            assert api.post("/rag/ask", json=ASK_BODY).status_code == 503
+            monkeypatch.setenv(flag, "true")
+        monkeypatch.setattr(ask, "get_classifier_client", state["real_classifier_factory"])
+        monkeypatch.delenv("DASHSCOPE_PHASE_B_API_KEY", raising=False)
+        assert api.post("/rag/ask", json=ASK_BODY).status_code == 503
+    assert calls == state["events"] == []

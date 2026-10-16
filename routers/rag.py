@@ -181,12 +181,15 @@ def rag_ask(
     started_at = time.perf_counter()
 
     try:
+        mode_options = ({"retrieval_mode": "hybrid", "refusal_policy": request.refusal_policy}
+                        if request.retrieval_mode == "hybrid" else {})
         rag_result = answer_question(
             question=request.question,
             top_k=request.top_k,
-            max_distance=request.max_distance,
+            max_distance=None if request.retrieval_mode == "hybrid" else request.max_distance,
             tenant_id=user.tenant_id,
             category=request.category,
+            **mode_options,
         )
     except Exception as exc:
         latency_ms = int((time.perf_counter() - started_at) * 1000)
@@ -202,13 +205,15 @@ def rag_ask(
                 retrieval_status="failed",
                 total_hits=0,
                 latency_ms=latency_ms,
-                error_message=str(exc),
+                error_message=(f"Hybrid ask failed: {type(exc).__name__}" if request.retrieval_mode == "hybrid" else str(exc)),
+                scores_json=(json.dumps({"retrieval_mode": "hybrid", "refusal_policy": request.refusal_policy})
+                             if request.retrieval_mode == "hybrid" else None),
             )
         )
 
         raise HTTPException(
-            status_code=500,
-            detail=f"RAG ask failed: {exc}",
+            status_code=503 if request.retrieval_mode == "hybrid" else 500,
+            detail="Experimental Hybrid ask unavailable; use dense mode or retry later" if request.retrieval_mode == "hybrid" else f"RAG ask failed: {exc}",
         ) from exc
 
     source_responses = []
@@ -222,7 +227,11 @@ def rag_ask(
                 title=source.title,
                 source_path=source.source_path,
                 chunk_index=source.chunk_index,
-                distance=round(source.distance, 4),
+                distance=round(source.distance, 4) if source.distance is not None else None,
+                rerank_score=getattr(source, "rerank_score", None),
+                fusion_score=getattr(source, "fusion_score", None),
+                dense_rank=getattr(source, "dense_rank", None),
+                bm25_rank=getattr(source, "bm25_rank", None),
                 tenant_id=getattr(source, "tenant_id", None),
                 category=getattr(source, "category", None),
                 preview=make_preview(source.preview),
@@ -248,6 +257,13 @@ def rag_ask(
         source.distance
         for source in source_responses
     ]
+    if request.retrieval_mode == "hybrid":
+        source_documents = [source.model_dump(exclude={"preview"}) | {"retrieval_mode": "hybrid"}
+                            for source in source_responses]
+        scores = {"retrieval_mode": "hybrid", "refusal_policy": request.refusal_policy,
+                  "score_type": "rerank_relevance", "larger_is_better": True,
+                  "scores": [source.rerank_score for source in source_responses],
+                  "evidence_gate": rag_result.evidence_gate}
 
     latency_ms = int((time.perf_counter() - started_at) * 1000)
 
@@ -288,4 +304,7 @@ def rag_ask(
             else None
         ),
         sources=source_responses,
+        retrieval_mode=request.retrieval_mode,
+        refusal_policy=getattr(rag_result, "refusal_policy", "dense_distance"),
+        evidence_gate=getattr(rag_result, "evidence_gate", None),
     )
