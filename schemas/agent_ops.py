@@ -180,6 +180,7 @@ class RetrievalMetricsSummaryResponse(BaseModel):
     average_top_distance: float | None = None
     endpoint_counts: dict[str, int]
     category_counts: dict[str, int]
+    retrieval_status_counts: dict[str, int] = Field(default_factory=dict)
 
 
 class RetrievalSourceMetricResponse(BaseModel):

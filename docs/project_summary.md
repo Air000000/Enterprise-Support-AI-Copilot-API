@@ -43,7 +43,7 @@ TechQA offline evaluation / refusal gate demo
 - AgentOps 支持 run / tool call / approval request 查询与汇总
 - Document Backend 支持上传、索引、删除闭环
 - Demo JWT 提供认证上下文与应用层租户范围；不是生产级 IAM
-- 默认检索、问答和工单仍为 Dense Chroma；Hybrid / rerank / Top14 已接入默认关闭的 `/rag/search` 可选路径，v5.2～v5.3 证据充分性 gate 未接入运行时
+- 默认检索、问答和工单仍为 Dense Chroma；Hybrid / rerank / Top14 已接入默认关闭的可选搜索与实验问答；后者须显式选择 v5.3 实验 gate，未通过独立语义质量验收，不替换默认拒答
 
 ## Legacy Compatibility
 
@@ -128,7 +128,7 @@ Smoke 需要运行中的服务与认证，可能产生真实调用费用。
 
 以下能力尚未完成：
 
-- Hybrid / rerank / Top14 的问答/工单集成与独立整链验收（可选搜索已接入，配置和外发边界见 README）
+- Hybrid / rerank / Top14 实验问答的真实提供方与独立整链质量验收、工单集成（可选搜索已做小范围真实接线验收；配置和外发边界见 README）
 - 拒答语义质量独立确认与最终生成验收
 - 生产级认证、授权、密钥管理及数据库级租户隔离
 - 并发恰好一次建单保证

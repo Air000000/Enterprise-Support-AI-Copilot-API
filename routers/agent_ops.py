@@ -69,6 +69,8 @@ RetrievalStatusQuery = Literal[
     "ok",
     "no_context",
     "refused_low_relevance",
+    "refused_insufficient_evidence",
+    "refused_by_generator",
     "failed",
 ]
 
