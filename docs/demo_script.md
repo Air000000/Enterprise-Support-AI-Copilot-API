@@ -1466,11 +1466,17 @@ python -m scripts.demo_refusal_coverage
 
 结尾 `5/5` 只表示复现了预设的机械行为，**不是五题全答对**。
 第 5 例说明：引用原文真实，无法证明相关性、适用性或时间覆盖正确；错误的
-`SUPPORTED` / `NOT_REQUIRED` 仍可通过。目前 v5.2 没有真实模型评测，不能声称修复了真实错误。
+`SUPPORTED` / `NOT_REQUIRED` 仍可通过。本节演示自身不调用模型，不能用它证明修复了真实错误。
 
 已冻结的 v4 / v5.1 小样本配对实验为 20 条 TRAIN、40 次调用，
 与 AI proxy 标签的一致性分别为 16/20 和 17/20，有改善也有退化；标签不独立，不能
 当成人工金标或泛化证明。完整成本、延迟及剩余分歧见
 [v5.1 冻结结果](../experiments/evals/reports/refusal_evidence_sufficiency/v5_1_paired_result.md)。
+后续 [v5.2 控制题实验](../experiments/evals/reports/refusal_evidence_sufficiency/v5_2_control_result.md)
+已有真实模型调用，但这不会把本节手写响应变成模型质量评测。
+最新 [v5.2.1 / v5.3 开发回归](../experiments/evals/reports/refusal_evidence_sufficiency/v5_3_regression_result.md)
+在同一批 30 条自然 TRAIN 上新跑两组，与二元 AI proxy 标签一致 22/25 → 23/25；
+修正 2 次误拒、新增 1 次，同一个不足案例仍误放行（1/4）。另 5 条有歧义不计入二元一致率。
+这是已见题开发结果，不是独立验收、生成答案准确率或线上效果，不能用演示的 `5/5` 代替它。
 本节不验证线上集成或真实模型端到端质量；实际 API / 文档 / 工单闭环使用前面的
 smoke，运行前需要确认环境与真实调用成本。

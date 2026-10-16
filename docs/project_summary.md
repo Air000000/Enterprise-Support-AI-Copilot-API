@@ -2,7 +2,7 @@
 
 Enterprise Support AI Copilot 当前稳定基线总结。
 
-更新：2026-10-08。本文区分当前 API 实现、离线冻结候选与尚未完成的质量验证。
+更新：2026-10-16。本文区分当前 API 实现、离线冻结候选与尚未完成的质量验证。
 
 ## 项目定位
 
@@ -43,7 +43,7 @@ TechQA offline evaluation / refusal gate demo
 - AgentOps 支持 run / tool call / approval request 查询与汇总
 - Document Backend 支持上传、索引、删除闭环
 - Demo JWT 提供认证上下文与应用层租户范围；不是生产级 IAM
-- 线上仍为 Dense Chroma；Hybrid / rerank / Top14 与 v5.2 gate 均未接入线上
+- 线上仍为 Dense Chroma；Hybrid / rerank / Top14 与 v5.2～v5.3 证据充分性 gate 均未接入线上
 
 ## Legacy Compatibility
 
@@ -153,9 +153,17 @@ Hybrid + Top14 整链已验证或已上线。Top14 在 54 条 TRAIN 证据样本
 
 v5.1 对照 v4，与 AI proxy 一致性为 16/20 → 17/20：不足题误放行减少，但新增误拒，
 费用约 2.06 倍。标签非独立，不能据此推断泛化或人工金标准确率。
-v5.2 只有合成自检，真实引用仍可能被错误解释为语义支持，尚无真实模型质量确认。
+v5.2 后续已做真实模型控制题实验；v5.2.1 的示例调整未证明格式修复收益。
+最新 v5.2.1 / v5.3 在同一批 30 条自然 TRAIN 上重新运行，二元 AI proxy 一致
+22/25 → 23/25：修正 2 次误拒、新增 1 次，同一个不足案例仍误放行（1/4）。
+另 5 条有歧义只作描述；标签非独立，v5.3 已参考这些题设计，不能视为独立验证。
+不继续在这批题上追加提示词或重复付费调用；真实引用和标签一致仍不保证语义支持。
+后续新样本验证与费用须另行冻结、授权，当前不推广到线上。
 
 数据依据：[E1 冻结 DEV](../experiments/evals/reports/e1_rerank/comparison.md)、
 [检索/上下文冻结](../experiments/evals/reports/portfolio_v1_rag_freeze/architecture_freeze.md)、
-[v5.1 配对结果](../experiments/evals/reports/refusal_evidence_sufficiency/v5_1_paired_result.md)。
+[v5.1 配对结果](../experiments/evals/reports/refusal_evidence_sufficiency/v5_1_paired_result.md)、
+[v5.2 控制题结果](../experiments/evals/reports/refusal_evidence_sufficiency/v5_2_control_result.md)、
+[v5.2.1 格式回归](../experiments/evals/reports/refusal_evidence_sufficiency/v5_2_1_regression_result.md)、
+[v5.3 开发回归](../experiments/evals/reports/refusal_evidence_sufficiency/v5_3_regression_result.md)。
 R4 C1 FAIL、G1/G2 NO_GO 保持原结论。
