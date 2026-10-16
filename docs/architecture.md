@@ -98,7 +98,7 @@ data/todos.db
 
 ## 4. RAG 请求链路
 
-### /rag/search
+### /rag/search（默认 Dense）
 
 ```text
 POST /rag/search
@@ -126,7 +126,23 @@ POST /rag/ask
 → RetrievalLog
 ```
 
-当前在线 serving 仍是 Dense Chroma。BM25、RRF、Hybrid、`qwen3-rerank` 与直接 Top14 目前属于离线冻结工程候选。
+默认 serving、`/rag/ask` 和 Ticket Agent 仍是 Dense Chroma。`/rag/search` 增加默认关闭的 `retrieval_mode=hybrid` 路径：
+
+```text
+CurrentUser tenant + category
+→ SQL indexed/current-version DocumentChunk allowlist
+→ Dense100 (Chroma ids + metadata filter) + BM25100 (same SQL scope)
+→ RRF(k=60) Top100
+→ SQL visibility/content recheck
+→ qwen3-rerank → SQL recheck → Top14 prefix
+→ typed scores + RetrievalLog
+```
+
+`rag_runtime/hybrid_search.py` 复用现有分词、BM25、RRF 和重排纯组件，不运行评测或加载评测数据。
+BM25 按请求重建、最多 5000 条可见 chunk；无额外持久索引或缓存失效系统。
+无技术词的中文查询跳过 BM25。重排失败返回脱敏 503，由调用方显式选 Dense 回退。
+本路径不生成答案、不套用 Dense 拒答阈值。开启、外发说明和分数契约见 [README](../README.md#31-可选-hybrid-搜索)。
+SQL 复查缩小并发变更窗口，但不提供跨 SQL/Chroma 的原子快照。
 
 ## 5. 文档生命周期
 
@@ -235,7 +251,7 @@ Bearer Token
 
 当前不声明：
 
-- 在线已经切换到 Hybrid Retrieval；
+- 默认线上检索或问答/工单已经切换到 Hybrid Retrieval（目前仅默认关闭的可选搜索）；
 - Ticket Agent 是自主 ReAct / Function Calling Agent；
 - Demo JWT 是生产级 IAM；
 - Docker Compose 是生产部署；
