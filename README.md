@@ -251,6 +251,20 @@ API 默认保持 **Dense Chroma 检索**；`/rag/search` 另提供默认关闭�
 
 本阶段不调用答案生成、不改变拒答逻辑、不创建工单；完整问答与审批演示仍是后续独立验收范围。
 
+小范围接线验收脚本（默认只展示计划，零模型调用且不读取 `.env`）：
+
+```bash
+python -m scripts.smoke_hybrid_runtime
+# 仅在明确批准本次数据外发和费用后执行；此参数本身不构成授权：
+python -m scripts.smoke_hybrid_runtime --execute --env-file .env
+```
+
+真实模式只发送脚本内固定的四篇虚构说明及两个查询，使用独立临时 SQLite、Chroma 与上传目录，经过 ASGI 路由及 Demo JWT 认证，不连接已运行的服务、不改现有数据库和开关。检查默认 Dense、Hybrid 简单排序、租户/分类隔离、删除生效、空语料零调用及检索审计；不是 HTTP 网络部署验收或准确率评测。
+固定使用北京 `text-embedding-v4`（最多 8 次）及新加坡 `qwen3-rerank`（最多 3 次），禁用 SDK/传输层重试与重定向。发送前校验端点、模型及文本白名单；单次请求体最多 4 KiB、累计 16 KiB。控制台只记录尝试次数、字节、状态、耗时和服务端 usage，不打印密钥或提供方错误正文。任何失败即停止，不自动重新运行。
+预算按 [官方价格](https://www.alibabacloud.com/help/en/model-studio/model-pricing) 保守预留 ¥1，短文本预计不足 ¥0.1；次数/字节限制不是提供方账单硬限额。中断后的请求可能已计费，重新执行须重新确认，不能把脚本重跑当成免费续跑。
+
+2026-10-16 已获授权完成一次真实提供方冒烟：8 次 embedding + 3 次重排全部 HTTP 200，服务端 usage 分别为 126 / 162 tokens，9 项接线检查通过；[逐次结果与边界](docs/reports/hybrid_runtime_smoke_2026-10-16.json)。这是临时 ASGI 环境的小范围验证，不证明 Hybrid 优于 Dense，也不代表已开启现有服务或验收问答、拒答、工单整链。
+
 ---
 
 # 4. RAG 评测与迭代：从 Dense 基线到当前状态

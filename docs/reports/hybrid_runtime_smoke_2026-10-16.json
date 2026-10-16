@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-16",
+  "status": "PASS",
+  "runtime_base_commit": "1557d670c8ce4a5aea8f6b436c0ed0502009e3e9",
+  "script": "scripts/smoke_hybrid_runtime.py",
+  "script_sha256": "392fee1dd5386e044a34aea238cce63b13f4a05cbbb22a32a57fe1b90638351f",
+  "execution_count": 1,
+  "scope": "ASGI TestClient, real provider HTTP, temporary SQLite/Chroma/storage, four fixed synthetic documents",
+  "models": {
+    "embedding": {"name": "text-embedding-v4", "region": "Beijing", "attempts": 8, "total_tokens": 126},
+    "rerank": {"name": "qwen3-rerank", "region": "Singapore", "attempts": 3, "total_tokens": 162}
+  },
+  "total_request_body_bytes": 1925,
+  "retries": 0,
+  "checks": [
+    "upload/index",
+    "JWT tenant scope",
+    "body tenant ignored",
+    "default Dense",
+    "Hybrid VPN ranking",
+    "category",
+    "delete",
+    "empty corpus",
+    "typed audit"
+  ],
+  "provider_attempts": [
+    {"kind": "embedding", "bytes": 155, "status": 200, "total_tokens": 21, "latency_ms": 335},
+    {"kind": "embedding", "bytes": 163, "status": 200, "total_tokens": 21, "latency_ms": 146},
+    {"kind": "embedding", "bytes": 159, "status": 200, "total_tokens": 19, "latency_ms": 136},
+    {"kind": "embedding", "bytes": 154, "status": 200, "total_tokens": 21, "latency_ms": 146},
+    {"kind": "embedding", "bytes": 99, "status": 200, "total_tokens": 12, "latency_ms": 160},
+    {"kind": "embedding", "bytes": 99, "status": 200, "total_tokens": 12, "latency_ms": 151},
+    {"kind": "rerank", "bytes": 356, "status": 200, "total_tokens": 84, "latency_ms": 394},
+    {"kind": "embedding", "bytes": 98, "status": 200, "total_tokens": 8, "latency_ms": 125},
+    {"kind": "rerank", "bytes": 270, "status": 200, "total_tokens": 36, "latency_ms": 357},
+    {"kind": "embedding", "bytes": 99, "status": 200, "total_tokens": 12, "latency_ms": 130},
+    {"kind": "rerank", "bytes": 273, "status": 200, "total_tokens": 42, "latency_ms": 334}
+  ],
+  "limitations": [
+    "Synthetic wiring smoke, not independent retrieval quality or refusal/answer acceptance",
+    "No running-server HTTP, Docker, public deployment or production-load acceptance",
+    "Latency is per provider HTTP attempt, not end-to-end request latency",
+    "Provider usage is not a billing receipt; no actual billed amount is asserted",
+    "Default Hybrid switch, existing data, answer/refusal and ticket paths were not changed"
+  ]
+}
