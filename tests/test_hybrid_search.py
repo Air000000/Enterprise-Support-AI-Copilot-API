@@ -268,3 +268,79 @@ def test_hybrid_failure_is_sanitized_without_dense_fallback(runtime, monkeypatch
     assert "secret-key" not in response.text + logs[-1].error_message
     if failure == "disabled":
         assert calls == []
+
+
+def test_full_synthetic_smoke_flow_offline(runtime, tmp_path, monkeypatch):
+    from auth import get_current_user
+    from scripts.smoke_hybrid_runtime import run_flow
+    import services.agent_ops_service as agent_ops
+
+    engine, _ = runtime
+    monkeypatch.setattr(agent_ops, "engine", engine)
+    monkeypatch.setenv("DOCUMENT_STORAGE_ROOT", str(tmp_path / "uploads"))
+    monkeypatch.setenv("AUTH_DEMO_USERS_JSON", "")
+    main.app.dependency_overrides.pop(get_current_user, None)
+    client = chromadb.EphemeralClient(settings=chromadb.Settings(anonymized_telemetry=False))
+    collection = client.create_collection("smoke_" + uuid4().hex, embedding_function=None)
+    import rag_runtime.query_chroma as dense
+    monkeypatch.setattr(dense, "get_collection", lambda: collection)
+    monkeypatch.setattr(hybrid, "get_collection", lambda: collection)
+    monkeypatch.setattr(documents, "get_document_chroma_collection", lambda **_: collection)
+    monkeypatch.setattr(dense, "embed_texts", hybrid.embed_texts)
+    # index_document binds its embedding default at definition time.
+    original_index = documents.index_document
+    import routers.documents as document_router
+    monkeypatch.setattr(document_router, "index_document_service", lambda **kwargs: original_index(
+        **kwargs, embedding_function=hybrid.embed_texts))
+
+    def response(request):
+        body = json.loads(request.content)
+        order = sorted(range(len(body["documents"])), key=lambda i: "VPN error 809" not in body["documents"][i])
+        return httpx.Response(200, json={"results": [
+            {"index": i, "relevance_score": 1 / (rank + 1)} for rank, i in enumerate(order)]})
+    monkeypatch.setattr(hybrid, "get_rerank_client", lambda: OpenAI(api_key="offline",
+        base_url="https://rerank.invalid/v1", max_retries=0,
+        http_client=httpx.Client(transport=httpx.MockTransport(response))))
+    try:
+        with TestClient(main.app) as api:
+            assert run_flow(api)["status"] == "PASS"
+    finally:
+        client.delete_collection(collection.name)
+
+
+def test_smoke_transport_bounds_real_attempts_and_synthetic_egress():
+    from scripts.smoke_hybrid_runtime import BoundedTransport, LIMITS, VPN_QUERY
+
+    records, sent = [], []
+
+    def respond(request):
+        sent.append(request)
+        return httpx.Response(200, json={"usage": {"total_tokens": 5}})
+    url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    with httpx.Client(transport=BoundedTransport("embedding", url, records, httpx.MockTransport(respond))) as client:
+        for _ in range(LIMITS["embedding"]):
+            assert client.post(url + "/embeddings", json={"model": "text-embedding-v4", "input": [VPN_QUERY]}).status_code == 200
+        with pytest.raises(RuntimeError, match="budget"):
+            client.post(url + "/embeddings", json={"model": "text-embedding-v4", "input": [VPN_QUERY]})
+        with pytest.raises(RuntimeError, match="Unapproved embedding text"):
+            client.post(url + "/embeddings", json={"model": "text-embedding-v4", "input": ["private data"]})
+        with pytest.raises(RuntimeError, match="endpoint"):
+            client.post("https://foreign.invalid/embeddings", json={})
+    assert len(sent) == LIMITS["embedding"] and all(r["total_tokens"] == 5 for r in records)
+
+
+def test_smoke_transport_counts_failed_sends_and_rejects_foreign_rerank():
+    from scripts.smoke_hybrid_runtime import BoundedTransport, DOCS, VPN_QUERY
+
+    records = []
+    url = "https://ws-test.ap-southeast-1.maas.aliyuncs.com/compatible-api/v1"
+
+    def fail(request):
+        raise httpx.ConnectError("simulated transport failure")
+    with httpx.Client(transport=BoundedTransport("rerank", url, records, httpx.MockTransport(fail))) as client:
+        with pytest.raises(RuntimeError, match="Unapproved rerank text"):
+            client.post(url + "/reranks", json={"model": "qwen3-rerank", "query": VPN_QUERY, "documents": [DOCS[-1][-1]]})
+        assert records == []
+        with pytest.raises(httpx.ConnectError):
+            client.post(url + "/reranks", json={"model": "qwen3-rerank", "query": VPN_QUERY, "documents": [DOCS[0][-1]]})
+    assert len(records) == 1 and records[0]["status"] is None
