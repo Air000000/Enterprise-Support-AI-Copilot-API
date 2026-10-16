@@ -69,6 +69,7 @@ jobs:
             tests/test_refusal_question_scoped_coverage.py \
             tests/test_refusal_v5_3_preparation.py \
             tests/test_refusal_prospective_preparation.py \
+            tests/test_refusal_prospective_annotation.py \
             tests/test_refusal_v5_3_runner.py \
             tests/test_refusal_v5_2_1_preparation.py \
             tests/test_refusal_v5_2_1_runner.py \
