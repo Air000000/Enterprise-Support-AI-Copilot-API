@@ -1,0 +1,554 @@
+{
+  "date": "2026-10-17",
+  "observed_at_utc": "2026-10-17 15:29:27 UTC",
+  "candidate_base_commit": "4d6f17c53cc33dee2997c6c6cbbc6aad431076dc",
+  "protocol_commit_before_calls": "214eb8dd6655846ebd273b1b31d28cc9dfb7d95e",
+  "execution_count_under_this_authorization": 1,
+  "offline_verification": {
+    "passed": 656,
+    "failed": 0,
+    "skipped": 0,
+    "duration_seconds": 66.4,
+    "environment": "Windows Python 3.12.4; temporary DB/dummy credentials; external Python socket and private project data guards",
+    "final_wire_guard_tests": 16
+  },
+  "scope": "Fixed six-case fictional development check; paired classification only, same inputs/parameters, alternating first arm. No TechQA or independent holdout evaluation.",
+  "budget_note": "CNY 1 is the conservative authorized estimate, not an invoice or billing-system hard cap.",
+  "plan": {
+    "mode": "PLAN_ONLY",
+    "model": "qwen3.5-plus-2026-04-20",
+    "max_calls": 12,
+    "max_body_bytes": 24576,
+    "max_total_bytes": 196608,
+    "budget_cny": 1,
+    "timeout_seconds": 30,
+    "retries": 0,
+    "thinking_enabled": false,
+    "cases": [
+      [
+        "fixed_version",
+        "What is ElmCache 3.2's timeout?",
+        "ElmCache 3.2 timeout is 40 seconds.",
+        "SUPPORTED",
+        "SUFFICIENT"
+      ],
+      [
+        "version_mismatch",
+        "What is ElmCache 4.0's timeout?",
+        "ElmCache 3.2 only: timeout is 40 seconds. No coverage of 4.0.",
+        "MISSING",
+        "INSUFFICIENT"
+      ],
+      [
+        "compatible_range",
+        "What is ElmCache 3.4's timeout?",
+        "For all ElmCache 3.x releases, timeout is 40 seconds.",
+        "SUPPORTED",
+        "SUFFICIENT"
+      ],
+      [
+        "outdated",
+        "What is ElmCache's current timeout in 2026?",
+        "Archived 2023 ElmCache timeout: 40 seconds; no later coverage.",
+        "MISSING",
+        "INSUFFICIENT"
+      ],
+      [
+        "no_version",
+        "How do I open ElmCache's help menu?",
+        "Open Help from ElmCache's toolbar.",
+        "NOT_REQUIRED",
+        "SUFFICIENT"
+      ],
+      [
+        "unrelated_gap",
+        "What encryption mode does ElmCache 3.2 use?",
+        "ElmCache 3.2 manual: timeout is 40 seconds. This manual does not specify its encryption mode.",
+        "SUPPORTED",
+        "INSUFFICIENT"
+      ]
+    ],
+    "call_order": [
+      [
+        "fixed_version",
+        "v5_3"
+      ],
+      [
+        "fixed_version",
+        "v5_3_1"
+      ],
+      [
+        "version_mismatch",
+        "v5_3_1"
+      ],
+      [
+        "version_mismatch",
+        "v5_3"
+      ],
+      [
+        "compatible_range",
+        "v5_3"
+      ],
+      [
+        "compatible_range",
+        "v5_3_1"
+      ],
+      [
+        "outdated",
+        "v5_3_1"
+      ],
+      [
+        "outdated",
+        "v5_3"
+      ],
+      [
+        "no_version",
+        "v5_3"
+      ],
+      [
+        "no_version",
+        "v5_3_1"
+      ],
+      [
+        "unrelated_gap",
+        "v5_3_1"
+      ],
+      [
+        "unrelated_gap",
+        "v5_3"
+      ]
+    ],
+    "plan_sha256": "4b427120b761e2ec544207cf5b76d993834090d4501397641d287aa7591bbf86"
+  },
+  "status": "COMPLETED_DEVELOPMENT_CHECK_NO_PROMOTION",
+  "calls": [
+    {
+      "case": "fixed_version",
+      "arm": "v5_3",
+      "bytes": 9255,
+      "status": 200,
+      "transport_phase": "complete",
+      "total_tokens": 2191,
+      "prompt_tokens": 1853,
+      "completion_tokens": 338,
+      "finish_reason": "stop",
+      "completion_text": "{\n\"requirements\": [\n{\n\"requirement\": \"Identify the timeout value for ElmCache version 3.2\",\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"Source 1 explicitly states that the ElmCache 3.2 timeout is 40 seconds.\"\n}\n],\n\"coverage_checks\": {\n\"requested_outcomes\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The source provides the specific timeout value requested for the specified product and version.\"\n},\n\"applicability\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The source explicitly addresses 'ElmCache 3.2', matching the product and version in the question.\"\n},\n\"version_and_time\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The question specifies version 3.2, and the source provides data specifically for ElmCache 3.2.\"\n}\n},\n\"unresolved_ambiguities\": []\n}",
+      "latency_ms": 6168
+    },
+    {
+      "case": "fixed_version",
+      "arm": "v5_3_1",
+      "bytes": 10577,
+      "status": 200,
+      "transport_phase": "complete",
+      "total_tokens": 2429,
+      "prompt_tokens": 2090,
+      "completion_tokens": 339,
+      "finish_reason": "stop",
+      "completion_text": "{\n\"requirements\": [\n{\n\"requirement\": \"Identify the timeout value for ElmCache version 3.2\",\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"Source 1 explicitly states that ElmCache 3.2 timeout is 40 seconds.\"\n}\n],\n\"coverage_checks\": {\n\"requested_outcomes\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The source directly provides the specific timeout value requested for the specified product and version.\"\n},\n\"applicability\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The source explicitly names 'ElmCache 3.2', matching the product and version in the question.\"\n},\n\"version_and_time\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The question requests information for a specific fixed version (3.2), and the source provides data specifically for that version.\"\n}\n},\n\"unresolved_ambiguities\": []\n}",
+      "latency_ms": 5639
+    },
+    {
+      "case": "version_mismatch",
+      "arm": "v5_3_1",
+      "bytes": 10603,
+      "status": 200,
+      "transport_phase": "complete",
+      "total_tokens": 2356,
+      "prompt_tokens": 2100,
+      "completion_tokens": 256,
+      "finish_reason": "stop",
+      "completion_text": "{\n\"requirements\": [\n{\n\"requirement\": \"Identify the timeout value for ElmCache version 4.0\",\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"The only provided source explicitly states it covers ElmCache 3.2 and has no coverage of version 4.0.\"\n}\n],\n\"coverage_checks\": {\n\"requested_outcomes\": {\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"No source provides the timeout value for ElmCache 4.0; the available source explicitly excludes this version.\"\n},\n\"applicability\": {\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"The question targets ElmCache 4.0, but the evidence is scoped to ElmCache 3.2 and explicitly notes lack of coverage for 4.0.\"\n},\n\"version_and_time\": {\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"The question explicitly requests information for version 4.0, which is not covered by the provided sources.\"\n}\n},\n\"unresolved_ambiguities\": []\n}",
+      "latency_ms": 4458
+    },
+    {
+      "case": "version_mismatch",
+      "arm": "v5_3",
+      "bytes": 9281,
+      "status": 200,
+      "transport_phase": "complete",
+      "total_tokens": 2140,
+      "prompt_tokens": 1863,
+      "completion_tokens": 277,
+      "finish_reason": "stop",
+      "completion_text": "{\n\"requirements\": [\n{\n\"requirement\": \"Identify the timeout value for ElmCache version 4.0\",\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"The only provided source explicitly states it covers ElmCache 3.2 and has no coverage of version 4.0.\"\n}\n],\n\"coverage_checks\": {\n\"requested_outcomes\": {\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"No source provides a timeout value for ElmCache 4.0; the available data is scoped to version 3.2.\"\n},\n\"applicability\": {\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"The source explicitly excludes version 4.0 from its scope ('No coverage of 4.0').\"\n},\n\"version_and_time\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The question specifies version 4.0, and the source confirms that this specific version is not covered by the provided information.\"\n}\n},\n\"unresolved_ambiguities\": []\n}",
+      "latency_ms": 4683
+    },
+    {
+      "case": "compatible_range",
+      "arm": "v5_3",
+      "bytes": 9273,
+      "status": 200,
+      "transport_phase": "complete",
+      "total_tokens": 2204,
+      "prompt_tokens": 1855,
+      "completion_tokens": 349,
+      "finish_reason": "stop",
+      "completion_text": "{\n\"requirements\": [\n{\n\"requirement\": \"Identify the specific timeout value for ElmCache version 3.4.\",\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The source states that for all ElmCache 3.x releases, the timeout is 40 seconds. Version 3.4 falls within the 3.x range.\"\n}\n],\n\"coverage_checks\": {\n\"requested_outcomes\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The source explicitly provides the timeout value (40 seconds) for the product family containing the requested version.\"\n},\n\"applicability\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The question asks about ElmCache 3.4. The source covers 'all ElmCache 3.x releases', which includes version 3.4.\"\n},\n\"version_and_time\": {\n\"status\": \"NOT_REQUIRED\",\n\"evidence\": [],\n\"reason\": \"The question asks for a configuration value (timeout) for a specific version, not for information about release dates, current status, or time-sensitive changes.\"\n}\n},\n\"unresolved_ambiguities\": []\n}",
+      "latency_ms": 5817
+    },
+    {
+      "case": "compatible_range",
+      "arm": "v5_3_1",
+      "bytes": 10595,
+      "status": 200,
+      "transport_phase": "complete",
+      "total_tokens": 2478,
+      "prompt_tokens": 2092,
+      "completion_tokens": 386,
+      "finish_reason": "stop",
+      "completion_text": "{\n\"requirements\": [\n{\n\"requirement\": \"Identify the timeout value for ElmCache version 3.4\",\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"Source 1 states that for all ElmCache 3.x releases, the timeout is 40 seconds. Version 3.4 falls within the 3.x range.\"\n}\n],\n\"coverage_checks\": {\n\"requested_outcomes\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The source explicitly provides the timeout value (40 seconds) for the requested product family (ElmCache 3.x), which includes version 3.4.\"\n},\n\"applicability\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The question asks about ElmCache 3.4. The source covers 'all ElmCache 3.x releases', which directly applies to version 3.4.\"\n},\n\"version_and_time\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The question specifies version 3.4. The source provides a rule for the entire 3.x series, covering this specific version.\"\n}\n},\n\"unresolved_ambiguities\": []\n}",
+      "latency_ms": 6090
+    },
+    {
+      "case": "outdated",
+      "arm": "v5_3_1",
+      "bytes": 10616,
+      "status": 200,
+      "transport_phase": "complete",
+      "total_tokens": 2454,
+      "prompt_tokens": 2099,
+      "completion_tokens": 355,
+      "finish_reason": "stop",
+      "completion_text": "{\n\"requirements\": [\n{\n\"requirement\": \"Identify ElmCache's current timeout value specifically for the year 2026.\",\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"The only available source provides data for 2023 and explicitly states there is no later coverage. There is no evidence supporting the timeout value for 2026.\"\n}\n],\n\"coverage_checks\": {\n\"requested_outcomes\": {\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"The question asks for a specific value in 2026. The source only covers 2023 and notes no later coverage, so the requested outcome (2026 value) is not supported.\"\n},\n\"applicability\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The source discusses ElmCache timeouts, which matches the product scope of the question, but fails on the time constraint.\"\n},\n\"version_and_time\": {\n\"status\": \"MISSING\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The question explicitly requires the timeout for 2026. The source provides 2023 data and explicitly excludes later years ('no later coverage'), leaving the 2026 requirement unsupported.\"\n}\n},\n\"unresolved_ambiguities\": []\n}",
+      "latency_ms": 5795
+    },
+    {
+      "case": "outdated",
+      "arm": "v5_3",
+      "bytes": 9294,
+      "status": 200,
+      "transport_phase": "complete",
+      "total_tokens": 2172,
+      "prompt_tokens": 1862,
+      "completion_tokens": 310,
+      "finish_reason": "stop",
+      "completion_text": "{\n\"requirements\": [\n{\n\"requirement\": \"Identify ElmCache's current timeout value specifically for the year 2026.\",\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"The only available source provides data for 2023 and explicitly states there is no later coverage. There is no evidence supporting the timeout value in 2026.\"\n}\n],\n\"coverage_checks\": {\n\"requested_outcomes\": {\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"The question requests a specific value for 2026, but the source only covers 2023 and disclaims later coverage. The requested outcome cannot be supported.\"\n},\n\"applicability\": {\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"The source applies to 2023, which does not match the requested timeframe of 2026. No other sources are provided to establish applicability for 2026.\"\n},\n\"version_and_time\": {\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"The question explicitly requires information for '2026'. The source provides 'Archived 2023' data and notes 'no later coverage', failing to meet the explicit time constraint.\"\n}\n},\n\"unresolved_ambiguities\": []\n}",
+      "latency_ms": 5299
+    },
+    {
+      "case": "no_version",
+      "arm": "v5_3",
+      "bytes": 9258,
+      "status": 200,
+      "transport_phase": "complete",
+      "total_tokens": 2137,
+      "prompt_tokens": 1846,
+      "completion_tokens": 291,
+      "finish_reason": "stop",
+      "completion_text": "{\n\"requirements\": [\n{\n\"requirement\": \"Provide the method to open ElmCache's help menu.\",\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The source explicitly states to open Help from ElmCache's toolbar.\"\n}\n],\n\"coverage_checks\": {\n\"requested_outcomes\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The source provides the specific action required to open the help menu.\"\n},\n\"applicability\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The instruction applies directly to ElmCache as requested in the question.\"\n},\n\"version_and_time\": {\n\"status\": \"NOT_REQUIRED\",\n\"evidence\": [],\n\"reason\": \"The question does not specify a version or time constraint, and the source provides a general UI instruction without version limitations.\"\n}\n},\n\"unresolved_ambiguities\": []\n}",
+      "latency_ms": 6920
+    },
+    {
+      "case": "no_version",
+      "arm": "v5_3_1",
+      "bytes": 10580,
+      "status": 200,
+      "transport_phase": "complete",
+      "total_tokens": 2374,
+      "prompt_tokens": 2083,
+      "completion_tokens": 291,
+      "finish_reason": "stop",
+      "completion_text": "{\n\"requirements\": [\n{\n\"requirement\": \"Provide the method to open ElmCache's help menu.\",\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The source explicitly states to open Help from ElmCache's toolbar.\"\n}\n],\n\"coverage_checks\": {\n\"requested_outcomes\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The source provides the specific action required to open the help menu.\"\n},\n\"applicability\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The instruction applies directly to ElmCache as requested in the question.\"\n},\n\"version_and_time\": {\n\"status\": \"NOT_REQUIRED\",\n\"evidence\": [],\n\"reason\": \"The question does not specify a version or time constraint, and the source provides a general UI instruction without version restrictions.\"\n}\n},\n\"unresolved_ambiguities\": []\n}",
+      "latency_ms": 5051
+    },
+    {
+      "case": "unrelated_gap",
+      "arm": "v5_3_1",
+      "bytes": 10647,
+      "status": 200,
+      "transport_phase": "complete",
+      "total_tokens": 2396,
+      "prompt_tokens": 2102,
+      "completion_tokens": 294,
+      "finish_reason": "stop",
+      "completion_text": "{\n\"requirements\": [\n{\n\"requirement\": \"Identify the encryption mode used by ElmCache 3.2\",\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"The only available source explicitly states that it does not specify the encryption mode for ElmCache 3.2.\"\n}\n],\n\"coverage_checks\": {\n\"requested_outcomes\": {\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"The question asks for a specific configuration detail (encryption mode) which is explicitly absent from the provided context.\"\n},\n\"applicability\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The source correctly identifies the product and version (ElmCache 3.2) relevant to the question, but fails to provide the requested data point.\"\n},\n\"version_and_time\": {\n\"status\": \"NOT_REQUIRED\",\n\"evidence\": [],\n\"reason\": \"The question specifies a fixed version (3.2), but since the information is missing entirely, there are no conflicting or supporting time/version constraints to audit beyond the explicit version match in the source scope.\"\n}\n},\n\"unresolved_ambiguities\": []\n}",
+      "latency_ms": 4961
+    },
+    {
+      "case": "unrelated_gap",
+      "arm": "v5_3",
+      "bytes": 9325,
+      "status": 200,
+      "transport_phase": "complete",
+      "total_tokens": 2150,
+      "prompt_tokens": 1865,
+      "completion_tokens": 285,
+      "finish_reason": "stop",
+      "completion_text": "{\n\"requirements\": [\n{\n\"requirement\": \"Identify the encryption mode used by ElmCache 3.2\",\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"The only provided source explicitly states that it does not specify the encryption mode for ElmCache 3.2.\"\n}\n],\n\"coverage_checks\": {\n\"requested_outcomes\": {\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"The question asks for a specific configuration detail (encryption mode) which is explicitly absent from the provided context.\"\n},\n\"applicability\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The source correctly identifies the product and version (ElmCache 3.2) relevant to the question, but fails to provide the requested data point.\"\n},\n\"version_and_time\": {\n\"status\": \"NOT_REQUIRED\",\n\"evidence\": [],\n\"reason\": \"The question specifies a fixed version (3.2), so there are no dynamic time or 'latest' status requirements to audit beyond verifying the version match.\"\n}\n},\n\"unresolved_ambiguities\": []\n}",
+      "latency_ms": 4665
+    }
+  ],
+  "outcomes": [
+    {
+      "case": "fixed_version",
+      "arm": "v5_3",
+      "decision": "SUFFICIENT",
+      "version_and_time": {
+        "status": "SUPPORTED",
+        "evidence": [
+          {
+            "source_id": "Source 1",
+            "segment_ids": [
+              1
+            ]
+          }
+        ],
+        "reason": "The question specifies version 3.2, and the source provides data specifically for ElmCache 3.2."
+      },
+      "expected_version_status": "SUPPORTED",
+      "expected_decision": "SUFFICIENT",
+      "facet_matches": true,
+      "decision_matches": true
+    },
+    {
+      "case": "fixed_version",
+      "arm": "v5_3_1",
+      "decision": "SUFFICIENT",
+      "version_and_time": {
+        "status": "SUPPORTED",
+        "evidence": [
+          {
+            "source_id": "Source 1",
+            "segment_ids": [
+              1
+            ]
+          }
+        ],
+        "reason": "The question requests information for a specific fixed version (3.2), and the source provides data specifically for that version."
+      },
+      "expected_version_status": "SUPPORTED",
+      "expected_decision": "SUFFICIENT",
+      "facet_matches": true,
+      "decision_matches": true
+    },
+    {
+      "case": "version_mismatch",
+      "arm": "v5_3_1",
+      "decision": "INSUFFICIENT",
+      "version_and_time": {
+        "status": "MISSING",
+        "evidence": [],
+        "reason": "The question explicitly requests information for version 4.0, which is not covered by the provided sources."
+      },
+      "expected_version_status": "MISSING",
+      "expected_decision": "INSUFFICIENT",
+      "facet_matches": true,
+      "decision_matches": true
+    },
+    {
+      "case": "version_mismatch",
+      "arm": "v5_3",
+      "decision": "INSUFFICIENT",
+      "version_and_time": {
+        "status": "SUPPORTED",
+        "evidence": [
+          {
+            "source_id": "Source 1",
+            "segment_ids": [
+              1
+            ]
+          }
+        ],
+        "reason": "The question specifies version 4.0, and the source confirms that this specific version is not covered by the provided information."
+      },
+      "expected_version_status": "MISSING",
+      "expected_decision": "INSUFFICIENT",
+      "facet_matches": false,
+      "decision_matches": true
+    },
+    {
+      "case": "compatible_range",
+      "arm": "v5_3",
+      "decision": "SUFFICIENT",
+      "version_and_time": {
+        "status": "NOT_REQUIRED",
+        "evidence": [],
+        "reason": "The question asks for a configuration value (timeout) for a specific version, not for information about release dates, current status, or time-sensitive changes."
+      },
+      "expected_version_status": "SUPPORTED",
+      "expected_decision": "SUFFICIENT",
+      "facet_matches": false,
+      "decision_matches": true
+    },
+    {
+      "case": "compatible_range",
+      "arm": "v5_3_1",
+      "decision": "SUFFICIENT",
+      "version_and_time": {
+        "status": "SUPPORTED",
+        "evidence": [
+          {
+            "source_id": "Source 1",
+            "segment_ids": [
+              1
+            ]
+          }
+        ],
+        "reason": "The question specifies version 3.4. The source provides a rule for the entire 3.x series, covering this specific version."
+      },
+      "expected_version_status": "SUPPORTED",
+      "expected_decision": "SUFFICIENT",
+      "facet_matches": true,
+      "decision_matches": true
+    },
+    {
+      "case": "outdated",
+      "arm": "v5_3_1",
+      "decision": "INSUFFICIENT",
+      "version_and_time": {
+        "status": "MISSING",
+        "evidence": [
+          {
+            "source_id": "Source 1",
+            "segment_ids": [
+              1
+            ]
+          }
+        ],
+        "reason": "The question explicitly requires the timeout for 2026. The source provides 2023 data and explicitly excludes later years ('no later coverage'), leaving the 2026 requirement unsupported."
+      },
+      "expected_version_status": "MISSING",
+      "expected_decision": "INSUFFICIENT",
+      "facet_matches": true,
+      "decision_matches": true
+    },
+    {
+      "case": "outdated",
+      "arm": "v5_3",
+      "decision": "INSUFFICIENT",
+      "version_and_time": {
+        "status": "MISSING",
+        "evidence": [],
+        "reason": "The question explicitly requires information for '2026'. The source provides 'Archived 2023' data and notes 'no later coverage', failing to meet the explicit time constraint."
+      },
+      "expected_version_status": "MISSING",
+      "expected_decision": "INSUFFICIENT",
+      "facet_matches": true,
+      "decision_matches": true
+    },
+    {
+      "case": "no_version",
+      "arm": "v5_3",
+      "decision": "SUFFICIENT",
+      "version_and_time": {
+        "status": "NOT_REQUIRED",
+        "evidence": [],
+        "reason": "The question does not specify a version or time constraint, and the source provides a general UI instruction without version limitations."
+      },
+      "expected_version_status": "NOT_REQUIRED",
+      "expected_decision": "SUFFICIENT",
+      "facet_matches": true,
+      "decision_matches": true
+    },
+    {
+      "case": "no_version",
+      "arm": "v5_3_1",
+      "decision": "SUFFICIENT",
+      "version_and_time": {
+        "status": "NOT_REQUIRED",
+        "evidence": [],
+        "reason": "The question does not specify a version or time constraint, and the source provides a general UI instruction without version restrictions."
+      },
+      "expected_version_status": "NOT_REQUIRED",
+      "expected_decision": "SUFFICIENT",
+      "facet_matches": true,
+      "decision_matches": true
+    },
+    {
+      "case": "unrelated_gap",
+      "arm": "v5_3_1",
+      "decision": "INSUFFICIENT",
+      "version_and_time": {
+        "status": "NOT_REQUIRED",
+        "evidence": [],
+        "reason": "The question specifies a fixed version (3.2), but since the information is missing entirely, there are no conflicting or supporting time/version constraints to audit beyond the explicit version match in the source scope."
+      },
+      "expected_version_status": "SUPPORTED",
+      "expected_decision": "INSUFFICIENT",
+      "facet_matches": false,
+      "decision_matches": true
+    },
+    {
+      "case": "unrelated_gap",
+      "arm": "v5_3",
+      "decision": "INSUFFICIENT",
+      "version_and_time": {
+        "status": "NOT_REQUIRED",
+        "evidence": [],
+        "reason": "The question specifies a fixed version (3.2), so there are no dynamic time or 'latest' status requirements to audit beyond verifying the version match."
+      },
+      "expected_version_status": "SUPPORTED",
+      "expected_decision": "INSUFFICIENT",
+      "facet_matches": false,
+      "decision_matches": true
+    }
+  ],
+  "script_sha256": "4776a2dda6b400b972a9494e8c5a593afa096c38f0383320a386d4bac2ca5078",
+  "summary": {
+    "arms": {
+      "v5_3": {
+        "calls": 6,
+        "facet_matches": 3,
+        "decision_matches": 6,
+        "total": 6,
+        "total_tokens": 12994,
+        "unknown_usage_calls": 0
+      },
+      "v5_3_1": {
+        "calls": 6,
+        "facet_matches": 5,
+        "decision_matches": 6,
+        "total": 6,
+        "total_tokens": 14487,
+        "unknown_usage_calls": 0
+      }
+    },
+    "all_http_200": true,
+    "total_tokens": 27481,
+    "unknown_usage_calls": 0,
+    "total_request_bytes": 119304,
+    "mismatches": [
+      {
+        "case": "version_mismatch",
+        "arm": "v5_3",
+        "observed": "SUPPORTED",
+        "expected": "MISSING"
+      },
+      {
+        "case": "compatible_range",
+        "arm": "v5_3",
+        "observed": "NOT_REQUIRED",
+        "expected": "SUPPORTED"
+      },
+      {
+        "case": "unrelated_gap",
+        "arm": "v5_3_1",
+        "observed": "NOT_REQUIRED",
+        "expected": "SUPPORTED"
+      },
+      {
+        "case": "unrelated_gap",
+        "arm": "v5_3",
+        "observed": "NOT_REQUIRED",
+        "expected": "SUPPORTED"
+      }
+    ],
+    "plan_sha256": "4b427120b761e2ec544207cf5b76d993834090d4501397641d287aa7591bbf86",
+    "script_sha256": "4776a2dda6b400b972a9494e8c5a593afa096c38f0383320a386d4bac2ca5078"
+  },
+  "interpretation": "Version/time facet agreement improved from 3/6 to 5/6 on these six handwritten development cases, with two candidate-only improvements and no observed regression. Overall gate decisions were identical and matched expectations in both arms (6/6); this does not demonstrate improved answer quality or general refusal accuracy. A single tiny known-fixture run is not independent acceptance or evidence of stable model behavior.",
+  "unresolved": {
+    "case": "unrelated_gap",
+    "expected": "Version is explicitly requested and visibly covered, so version_and_time should be SUPPORTED; the separate encryption-mode information gap still requires overall INSUFFICIENT.",
+    "observed": "Both arms mark the version/time facet NOT_REQUIRED. The candidate's own reason acknowledges the explicit version match but improperly treats the unrelated feature gap as removing the version-audit requirement.",
+    "assessment": "Candidate is only partially effective. Do not relabel its output, revise expectations after observation, silently retry, or enable it in serving."
+  },
+  "non_actions": [
+    "No further paid calls or prompt edits after observing results",
+    "No embedding, rerank, answer generation, business data, TechQA, DEV, expected labels or secrets in request bodies",
+    "No hidden reasoning or provider error bodies retained; only completion content, usage, phase and type-only errors",
+    "No API/policy/config changes, deployment, ticket creation, or edits to frozen v5.3/v5.3.1 and historical evidence"
+  ],
+  "next_step": "Do not promote on this probe. Decide whether audit-only improvements justify further work before introducing another prompt/structural candidate; current runtime stays v5_3_experimental with default-off switches."
+}
