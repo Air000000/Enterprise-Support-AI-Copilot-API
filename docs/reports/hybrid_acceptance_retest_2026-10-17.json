@@ -1,0 +1,523 @@
+{
+  "date": "2026-10-17",
+  "observed_at_utc": "2026-10-17 14:44:42 UTC",
+  "status": "SYNTHETIC_REAL_PROVIDER_FLOW_PASS_NOT_RELEASE_ACCEPTED",
+  "runtime_base_commit": "fca99533e939932c768cfc650fb5d416161adc3c",
+  "execution_count_under_this_authorization": 1,
+  "previous_attempt": "hybrid_acceptance_2026-10-17.json",
+  "script": "scripts/smoke_hybrid_runtime.py",
+  "script_sha256_at_execution": "e5598093136549618b53bdba398dade1cce2de582fb776b23abe3845efb7b8f0",
+  "cases_module": "scripts/hybrid_ask_cases.py",
+  "cases_sha256_at_execution": "44df8e100b1e96e8545e7c01a6a4f71a6cff4cd16365680b7c32ce046e3fe076",
+  "scope": "Fixed 7 fictional documents / 8 cases; isolated ASGI + temporary SQL/documents + ephemeral Chroma; real Beijing/Singapore provider HTTP; not a running-server or deployment acceptance",
+  "authorized_limits": {
+    "embedding": 14,
+    "rerank": 6,
+    "classifier": 6,
+    "generation": 2
+  },
+  "budget_cny": 2,
+  "budget_note": "Conservative pre-run estimate, not an invoice or billing-system hard cap.",
+  "retries": 0,
+  "thinking_enabled": false,
+  "offline_tests": {
+    "passed": 632,
+    "failed": 0,
+    "skipped": 0,
+    "duration_seconds": 48.16,
+    "environment": "Isolated Windows Python 3.12.4; temporary database, dummy keys, external Python socket/private project data guards"
+  },
+  "observed": {
+    "attempts": 28,
+    "embedding": 14,
+    "rerank": 6,
+    "classifier": 6,
+    "generation": 2,
+    "all_provider_http_200": true,
+    "all_transport_reads_complete": true,
+    "known_reported_tokens": 14525,
+    "reported_tokens_by_kind": {
+      "embedding": 374,
+      "rerank": 430,
+      "classifier": 13278,
+      "generation": 443
+    },
+    "total_request_body_bytes": 63541,
+    "generation_latency_ms": [
+      3480,
+      1889
+    ],
+    "generation_finish_reasons": [
+      "stop",
+      "stop"
+    ],
+    "flow_cases_passed": 8,
+    "flow_cases_total": 8
+  },
+  "checks": [
+    "real JWT",
+    "tenant/category scope",
+    "Dense default",
+    "typed audit"
+  ],
+  "cases": [
+    {
+      "case": "supported",
+      "expected_status": "ok",
+      "http_status": 200,
+      "actual_status": "ok",
+      "answer": "To resolve NovaVPN 1.0 error 809 when the firewall already allows VPN traffic, you must close the VPN client, then reopen it and reconnect [Source 1]. These are the complete recovery steps for this stated condition [Source 1].",
+      "provider_attempts": 4,
+      "gate_decision": "SUFFICIENT"
+    },
+    {
+      "case": "missing",
+      "expected_status": "refused_insufficient_evidence",
+      "http_status": 200,
+      "actual_status": "refused_insufficient_evidence",
+      "answer": "我在已提供资料中没有找到足够依据。",
+      "provider_attempts": 3,
+      "gate_decision": "INSUFFICIENT"
+    },
+    {
+      "case": "version",
+      "expected_status": "refused_insufficient_evidence",
+      "http_status": 200,
+      "actual_status": "refused_insufficient_evidence",
+      "answer": "我在已提供资料中没有找到足够依据。",
+      "provider_attempts": 3,
+      "gate_decision": "INSUFFICIENT"
+    },
+    {
+      "case": "conflict",
+      "expected_status": "refused_insufficient_evidence",
+      "http_status": 200,
+      "actual_status": "refused_insufficient_evidence",
+      "answer": "我在已提供资料中没有找到足够依据。",
+      "provider_attempts": 3,
+      "gate_decision": "INSUFFICIENT"
+    },
+    {
+      "case": "chinese",
+      "expected_status": "ok",
+      "http_status": 200,
+      "actual_status": "ok",
+      "answer": "根据提供的资料，青松门禁卡丢失后的办理步骤如下：先在行政系统冻结旧卡，再到行政前台申请补办 [Source 1]。",
+      "provider_attempts": 4,
+      "gate_decision": "SUFFICIENT"
+    },
+    {
+      "case": "unrelated",
+      "expected_status": "refused_insufficient_evidence",
+      "http_status": 200,
+      "actual_status": "refused_insufficient_evidence",
+      "answer": "我在已提供资料中没有找到足够依据。",
+      "provider_attempts": 3,
+      "gate_decision": "INSUFFICIENT"
+    },
+    {
+      "case": "empty",
+      "expected_status": "no_context",
+      "http_status": 200,
+      "actual_status": "no_context",
+      "answer": "我在已提供资料中没有找到足够依据。",
+      "provider_attempts": 0,
+      "gate_decision": null
+    },
+    {
+      "case": "deleted",
+      "expected_status": "no_context",
+      "http_status": 200,
+      "actual_status": "no_context",
+      "answer": "我在已提供资料中没有找到足够依据。",
+      "provider_attempts": 0,
+      "gate_decision": null
+    }
+  ],
+  "provider_attempts": [
+    {
+      "kind": "embedding",
+      "bytes": 279,
+      "status": 200,
+      "total_tokens": 50,
+      "prompt_tokens": 50,
+      "completion_tokens": null,
+      "finish_reason": null,
+      "error_types": [],
+      "transport_phase": "complete",
+      "latency_ms": 291
+    },
+    {
+      "kind": "embedding",
+      "bytes": 238,
+      "status": 200,
+      "total_tokens": 32,
+      "prompt_tokens": 32,
+      "completion_tokens": null,
+      "finish_reason": null,
+      "error_types": [],
+      "transport_phase": "complete",
+      "latency_ms": 203
+    },
+    {
+      "kind": "embedding",
+      "bytes": 219,
+      "status": 200,
+      "total_tokens": 38,
+      "prompt_tokens": 38,
+      "completion_tokens": null,
+      "finish_reason": null,
+      "error_types": [],
+      "transport_phase": "complete",
+      "latency_ms": 155
+    },
+    {
+      "kind": "embedding",
+      "bytes": 233,
+      "status": 200,
+      "total_tokens": 34,
+      "prompt_tokens": 34,
+      "completion_tokens": null,
+      "finish_reason": null,
+      "error_types": [],
+      "transport_phase": "complete",
+      "latency_ms": 200
+    },
+    {
+      "kind": "embedding",
+      "bytes": 247,
+      "status": 200,
+      "total_tokens": 36,
+      "prompt_tokens": 36,
+      "completion_tokens": null,
+      "finish_reason": null,
+      "error_types": [],
+      "transport_phase": "complete",
+      "latency_ms": 145
+    },
+    {
+      "kind": "embedding",
+      "bytes": 229,
+      "status": 200,
+      "total_tokens": 40,
+      "prompt_tokens": 40,
+      "completion_tokens": null,
+      "finish_reason": null,
+      "error_types": [],
+      "transport_phase": "complete",
+      "latency_ms": 138
+    },
+    {
+      "kind": "embedding",
+      "bytes": 172,
+      "status": 200,
+      "total_tokens": 28,
+      "prompt_tokens": 28,
+      "completion_tokens": null,
+      "finish_reason": null,
+      "error_types": [],
+      "transport_phase": "complete",
+      "latency_ms": 126
+    },
+    {
+      "kind": "embedding",
+      "bytes": 152,
+      "status": 200,
+      "total_tokens": 24,
+      "prompt_tokens": 24,
+      "completion_tokens": null,
+      "finish_reason": null,
+      "error_types": [],
+      "transport_phase": "complete",
+      "latency_ms": 135
+    },
+    {
+      "kind": "embedding",
+      "bytes": 152,
+      "status": 200,
+      "total_tokens": 24,
+      "prompt_tokens": 24,
+      "completion_tokens": null,
+      "finish_reason": null,
+      "error_types": [],
+      "transport_phase": "complete",
+      "latency_ms": 148
+    },
+    {
+      "kind": "rerank",
+      "bytes": 446,
+      "status": 200,
+      "total_tokens": 82,
+      "prompt_tokens": null,
+      "completion_tokens": null,
+      "finish_reason": null,
+      "error_types": [],
+      "transport_phase": "complete",
+      "latency_ms": 392
+    },
+    {
+      "kind": "classifier",
+      "bytes": 9477,
+      "status": 200,
+      "total_tokens": 2251,
+      "prompt_tokens": 1898,
+      "completion_tokens": 353,
+      "finish_reason": "stop",
+      "error_types": [],
+      "transport_phase": "complete",
+      "completion_text": "{\n\"requirements\": [\n{\n\"requirement\": \"Resolution steps for NovaVPN 1.0 error 809 specifically when the firewall already allows VPN traffic\",\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"Source 1 explicitly provides the complete recovery steps (close client, reopen, reconnect) for this exact product, version, error code, and condition.\"\n}\n],\n\"coverage_checks\": {\n\"requested_outcomes\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The source provides direct actionable steps to resolve the specified error under the stated condition.\"\n},\n\"applicability\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The source matches the specific product (NovaVPN), version (1.0), error code (809), and environmental condition (firewall allows VPN traffic) requested in the question.\"\n},\n\"version_and_time\": {\n\"status\": \"NOT_REQUIRED\",\n\"evidence\": [],\n\"reason\": \"The question specifies a fixed version (1.0) and does not request current/latest status or time-sensitive information beyond that static version constraint.\"\n}\n},\n\"unresolved_ambiguities\": []\n}",
+      "latency_ms": 7469
+    },
+    {
+      "kind": "generation",
+      "bytes": 960,
+      "status": 200,
+      "total_tokens": 249,
+      "prompt_tokens": 196,
+      "completion_tokens": 53,
+      "finish_reason": "stop",
+      "error_types": [],
+      "transport_phase": "complete",
+      "completion_text": "To resolve NovaVPN 1.0 error 809 when the firewall already allows VPN traffic, you must close the VPN client, then reopen it and reconnect [Source 1]. These are the complete recovery steps for this stated condition [Source 1].",
+      "latency_ms": 3480
+    },
+    {
+      "kind": "embedding",
+      "bytes": 125,
+      "status": 200,
+      "total_tokens": 14,
+      "prompt_tokens": 14,
+      "completion_tokens": null,
+      "finish_reason": null,
+      "error_types": [],
+      "transport_phase": "complete",
+      "latency_ms": 203
+    },
+    {
+      "kind": "rerank",
+      "bytes": 376,
+      "status": 200,
+      "total_tokens": 54,
+      "prompt_tokens": null,
+      "completion_tokens": null,
+      "finish_reason": null,
+      "error_types": [],
+      "transport_phase": "complete",
+      "latency_ms": 338
+    },
+    {
+      "kind": "classifier",
+      "bytes": 9407,
+      "status": 200,
+      "total_tokens": 2127,
+      "prompt_tokens": 1870,
+      "completion_tokens": 257,
+      "finish_reason": "stop",
+      "error_types": [],
+      "transport_phase": "complete",
+      "completion_text": "{\n\"requirements\": [\n{\n\"requirement\": \"Identify the specific annual leave carry-over day limit in CedarHR.\",\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"The source explicitly states that it does not specify carry-over limits.\"\n}\n],\n\"coverage_checks\": {\n\"requested_outcomes\": {\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"The question asks for a specific numerical or policy limit which is absent from the provided text.\"\n},\n\"applicability\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The source is identified as a 'Fictional CedarHR guide', establishing relevance to the product named in the question, though it lacks the specific data point.\"\n},\n\"version_and_time\": {\n\"status\": \"NOT_REQUIRED\",\n\"evidence\": [],\n\"reason\": \"The question does not specify a version or time constraint for the policy.\"\n}\n},\n\"unresolved_ambiguities\": []\n}",
+      "latency_ms": 4518
+    },
+    {
+      "kind": "embedding",
+      "bytes": 117,
+      "status": 200,
+      "total_tokens": 14,
+      "prompt_tokens": 14,
+      "completion_tokens": null,
+      "finish_reason": null,
+      "error_types": [],
+      "transport_phase": "complete",
+      "latency_ms": 202
+    },
+    {
+      "kind": "rerank",
+      "bytes": 347,
+      "status": 200,
+      "total_tokens": 60,
+      "prompt_tokens": null,
+      "completion_tokens": null,
+      "finish_reason": null,
+      "error_types": [],
+      "transport_phase": "complete",
+      "latency_ms": 346
+    },
+    {
+      "kind": "classifier",
+      "bytes": 9378,
+      "status": 200,
+      "total_tokens": 2178,
+      "prompt_tokens": 1876,
+      "completion_tokens": 302,
+      "finish_reason": "stop",
+      "error_types": [],
+      "transport_phase": "complete",
+      "completion_text": "{\n\"requirements\": [\n{\n\"requirement\": \"Determine if AcornExpense version 2.0 supports CSV export.\",\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"The only source explicitly states it covers version 1.0 only and provides no information about version 2.0.\"\n}\n],\n\"coverage_checks\": {\n\"requested_outcomes\": {\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"The question asks for a specific feature status in version 2.0, but the source explicitly excludes version 2.0 from its scope.\"\n},\n\"applicability\": {\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"The source applies to version 1.0, while the question targets version 2.0. There is no evidence linking version 1.0 capabilities to version 2.0.\"\n},\n\"version_and_time\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The source explicitly defines its applicability range as version 1.0 only, confirming the lack of coverage for the requested version 2.0.\"\n}\n},\n\"unresolved_ambiguities\": []\n}",
+      "latency_ms": 5230
+    },
+    {
+      "kind": "embedding",
+      "bytes": 145,
+      "status": 200,
+      "total_tokens": 17,
+      "prompt_tokens": 17,
+      "completion_tokens": null,
+      "finish_reason": null,
+      "error_types": [],
+      "transport_phase": "complete",
+      "latency_ms": 178
+    },
+    {
+      "kind": "rerank",
+      "bytes": 554,
+      "status": 200,
+      "total_tokens": 120,
+      "prompt_tokens": null,
+      "completion_tokens": null,
+      "finish_reason": null,
+      "error_types": [],
+      "transport_phase": "complete",
+      "latency_ms": 342
+    },
+    {
+      "kind": "classifier",
+      "bytes": 9669,
+      "status": 200,
+      "total_tokens": 2399,
+      "prompt_tokens": 1931,
+      "completion_tokens": 468,
+      "finish_reason": "stop",
+      "error_types": [],
+      "transport_phase": "complete",
+      "completion_text": "{\n\"requirements\": [\n{\n\"requirement\": \"Determine if manager approval is required for lost-card replacement in AtlasGate version 1.0\",\n\"status\": \"CONFLICTING\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n},\n{\n\"source_id\": \"Source 2\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"Source 1 states manager approval is explicitly not required, while Source 2 states it is mandatory. Both sources claim to represent the active policy for the same product and version.\"\n}\n],\n\"coverage_checks\": {\n\"requested_outcomes\": {\n\"status\": \"CONFLICTING\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n},\n{\n\"source_id\": \"Source 2\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The two sources provide mutually exclusive answers regarding the requirement for manager approval.\"\n},\n\"applicability\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n},\n{\n\"source_id\": \"Source 2\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"Both sources explicitly address 'Active AtlasGate version 1.0 policy' for 'lost-card replacement', matching the question's scope.\"\n},\n\"version_and_time\": {\n\"status\": \"CONFLICTING\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n},\n{\n\"source_id\": \"Source 2\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"Both sources claim to be the 'Active' policy for version 1.0, creating a direct conflict on the current state of the policy.\"\n}\n},\n\"unresolved_ambiguities\": []\n}",
+      "latency_ms": 7571
+    },
+    {
+      "kind": "embedding",
+      "bytes": 101,
+      "status": 200,
+      "total_tokens": 9,
+      "prompt_tokens": 9,
+      "completion_tokens": null,
+      "finish_reason": null,
+      "error_types": [],
+      "transport_phase": "complete",
+      "latency_ms": 235
+    },
+    {
+      "kind": "rerank",
+      "bytes": 341,
+      "status": 200,
+      "total_tokens": 60,
+      "prompt_tokens": null,
+      "completion_tokens": null,
+      "finish_reason": null,
+      "error_types": [],
+      "transport_phase": "complete",
+      "latency_ms": 719
+    },
+    {
+      "kind": "classifier",
+      "bytes": 9372,
+      "status": 200,
+      "total_tokens": 2198,
+      "prompt_tokens": 1864,
+      "completion_tokens": 334,
+      "finish_reason": "stop",
+      "error_types": [],
+      "transport_phase": "complete",
+      "completion_text": "{\n\"requirements\": [\n{\n\"requirement\": \"Provide specific steps or procedures for handling a lost QingSong access card.\",\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"Source 1 explicitly lists the complete procedure: freeze the old card in the administrative system and then apply for reissuance at the administrative front desk.\"\n}\n],\n\"coverage_checks\": {\n\"requested_outcomes\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The source provides the exact actionable steps requested by the user (freeze old card, apply for new one).\"\n},\n\"applicability\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The source specifically addresses 'QingSong access cards' (青松门禁卡), matching the product scope in the question.\"\n},\n\"version_and_time\": {\n\"status\": \"NOT_REQUIRED\",\n\"evidence\": [],\n\"reason\": \"The question does not specify a version or time constraint, and the provided procedure is presented as the current standard process without temporal limitations.\"\n}\n},\n\"unresolved_ambiguities\": []\n}",
+      "latency_ms": 5830
+    },
+    {
+      "kind": "generation",
+      "bytes": 855,
+      "status": 200,
+      "total_tokens": 194,
+      "prompt_tokens": 163,
+      "completion_tokens": 31,
+      "finish_reason": "stop",
+      "error_types": [],
+      "transport_phase": "complete",
+      "completion_text": "根据提供的资料，青松门禁卡丢失后的办理步骤如下：先在行政系统冻结旧卡，再到行政前台申请补办 [Source 1]。",
+      "latency_ms": 1889
+    },
+    {
+      "kind": "embedding",
+      "bytes": 139,
+      "status": 200,
+      "total_tokens": 14,
+      "prompt_tokens": 14,
+      "completion_tokens": null,
+      "finish_reason": null,
+      "error_types": [],
+      "transport_phase": "complete",
+      "latency_ms": 177
+    },
+    {
+      "kind": "rerank",
+      "bytes": 390,
+      "status": 200,
+      "total_tokens": 54,
+      "prompt_tokens": null,
+      "completion_tokens": null,
+      "finish_reason": null,
+      "error_types": [],
+      "transport_phase": "complete",
+      "latency_ms": 319
+    },
+    {
+      "kind": "classifier",
+      "bytes": 9421,
+      "status": 200,
+      "total_tokens": 2125,
+      "prompt_tokens": 1870,
+      "completion_tokens": 255,
+      "finish_reason": "stop",
+      "error_types": [],
+      "transport_phase": "complete",
+      "completion_text": "{\n\"requirements\": [\n{\n\"requirement\": \"Provide instructions or method to reset the administrator password on the OrionRouter.\",\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"The provided source discusses a CedarHR guide and explicitly states it does not specify router administration. There is no information regarding the OrionRouter or password reset procedures.\"\n}\n],\n\"coverage_checks\": {\n\"requested_outcomes\": {\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"The question asks for specific steps to reset a password on a specific device (OrionRouter). The source contains no such steps or relevant information.\"\n},\n\"applicability\": {\n\"status\": \"MISSING\",\n\"evidence\": [],\n\"reason\": \"The source explicitly disclaims coverage of router administration, making it inapplicable to the requested task.\"\n},\n\"version_and_time\": {\n\"status\": \"NOT_REQUIRED\",\n\"evidence\": [],\n\"reason\": \"The question does not specify a version or time constraint that would require verification against the source's temporal data.\"\n}\n},\n\"unresolved_ambiguities\": []\n}",
+      "latency_ms": 4619
+    }
+  ],
+  "semantic_warnings": [
+    {
+      "case": "supported",
+      "facet": "version_and_time",
+      "observed": {
+        "status": "NOT_REQUIRED",
+        "evidence": [],
+        "reason": "The question specifies a fixed version (1.0) and does not request current/latest status or time-sensitive information beyond that static version constraint."
+      },
+      "assessment": "The question explicitly constrains NovaVPN version 1.0; NOT_REQUIRED violates the frozen explicit-constraint audit contract. The fixture source and answer do cover 1.0, but correct admission is not proof the audit is reliable."
+    },
+    {
+      "case": "version",
+      "facet": "version_and_time",
+      "observed": {
+        "status": "SUPPORTED",
+        "evidence": [
+          {
+            "source_id": "Source 1",
+            "segment_ids": [
+              1
+            ]
+          }
+        ],
+        "reason": "The source explicitly defines its applicability range as version 1.0 only, confirming the lack of coverage for the requested version 2.0."
+      },
+      "assessment": "The source explicitly covers only 1.0, not the requested 2.0. The facet labels this SUPPORTED while its own reason confirms lack of coverage. Overall INSUFFICIENT/refusal was preserved by the MISSING requested_outcomes/applicability checks; the facet is not reliable semantic proof."
+    }
+  ],
+  "interpretation": "The single bounded flow run passed and generation timeout did not reproduce (3480/1889 ms). It does not establish a unique cause of the historical timeout, latency reliability, semantic-quality promotion, or production release acceptance.",
+  "pending": [
+    "Independent semantic quality acceptance; frozen v5.3 remains experimental and historical NO_PROMOTION / FAIL remains unchanged",
+    "Real running-server HTTP, Docker restart/persistence and rollback acceptance; read-only docker info still fails because dockerDesktopLinuxEngine pipe is unavailable",
+    "Ticket Agent remains Dense; no all-Hybrid ticket-chain claim"
+  ],
+  "non_actions": [
+    "No business documents, TechQA, expected labels, credentials in model input bodies, hidden reasoning, or provider error bodies retained",
+    "No extra paid run, prompt/rule tuning, ticket creation, public deployment, persistent .env/switch changes, or primary checkout changes",
+    "Historical failed acceptance report preserved unchanged"
+  ]
+}
