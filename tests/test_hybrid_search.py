@@ -529,3 +529,41 @@ def test_hybrid_ask_flags_policy_and_missing_config_stop_early(ask_runtime, monk
         monkeypatch.delenv("DASHSCOPE_PHASE_B_API_KEY", raising=False)
         assert api.post("/rag/ask", json=ASK_BODY).status_code == 503
     assert calls == state["events"] == []
+
+
+def test_ask_acceptance_guard_rejects_labels_and_foreign_text():
+    import copy
+    from experiments.evals.refusal_evidence_sufficiency import ClassifierInput, ContextSource
+    from experiments.evals.refusal_question_scoped_coverage import build_classifier_messages_v5_3_dev
+    from scripts import hybrid_ask_cases as cases
+    from scripts.smoke_hybrid_runtime import BoundedTransport
+
+    question, text = cases.CASES[0][1], cases.DOCS[0][-1]
+    body = {"model": "qwen3.5-plus-2026-04-20", "temperature": 0, "max_tokens": 2048,
+            "response_format": {"type": "json_object"}, "enable_thinking": False,
+            "messages": build_classifier_messages_v5_3_dev(ClassifierInput(question, (ContextSource("Source 1", "c", "d", text),)))}
+    sent, records = [], []
+
+    def respond(request):
+        sent.append(request)
+        return httpx.Response(200, json={"usage": {"total_tokens": 1}})
+    url = "https://ws-offline.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
+    with httpx.Client(transport=BoundedTransport("classifier", url, records, httpx.MockTransport(respond), ask=True)) as client:
+        for bad in ("labels", "foreign", "extra_field"):
+            payload = copy.deepcopy(body)
+            content = json.loads(payload["messages"][1]["content"])
+            if bad == "labels":
+                content["expected_status"] = "ok"
+            elif bad == "foreign":
+                content["sources"][0]["segments"][0]["content"] = cases.DOCS[-1][-1]
+            else:
+                payload["gold_answer"] = "private"
+            payload["messages"][1]["content"] = json.dumps(content)
+            with pytest.raises(RuntimeError, match="Unapproved"):
+                client.post(url + "/chat/completions", json=payload)
+        assert sent == records == []
+        for _ in range(cases.LIMITS["classifier"]):
+            assert client.post(url + "/chat/completions", json=body).status_code == 200
+        with pytest.raises(RuntimeError, match="budget"):
+            client.post(url + "/chat/completions", json=body)
+    assert len(sent) == len(records) == 6

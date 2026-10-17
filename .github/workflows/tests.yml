@@ -88,3 +88,54 @@ jobs:
             tests/test_refusal_v2_ai_proxy_runner.py \
             tests/test_refusal_v3_ai_proxy.py \
             tests/test_refusal_v3_ai_proxy_runner.py
+
+      - name: Install declared offline evaluation test dependencies
+        run: pip install -r requirements.txt -r experiments/evals/requirements-eval.txt
+
+      - name: Run complete offline test directory
+        env:
+          SQL_ECHO: "false"
+          AUTH_DEMO_USERS_JSON: ""
+          JWT_SECRET: offline-ci-test-only
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+          ANONYMIZED_TELEMETRY: "False"
+          DEEPEVAL_TELEMETRY_OPT_OUT: "YES"
+          DEEPEVAL_UPDATE_WARNING_OPT_OUT: "YES"
+          HF_HUB_OFFLINE: "1"
+          HF_DATASETS_OFFLINE: "1"
+          NUMBA_NUM_THREADS: "1"
+          RAG_HYBRID_SEARCH_ENABLED: "false"
+          RAG_HYBRID_ASK_ENABLED: "false"
+          OPENAI_API_KEY: offline-placeholder
+        run: |
+          python -B - <<'PY'
+          import gc, ipaddress, os, sys, tempfile
+          from pathlib import Path
+          import pytest
+          private_data = str((Path.cwd() / "data").resolve()).casefold() + os.sep
+          def guard(event, args):
+              if event == "open" and isinstance(args[0], (str, bytes, os.PathLike)):
+                  target = str(Path(os.fsdecode(args[0])).resolve()).casefold()
+                  if target.startswith(private_data):
+                      raise RuntimeError("private project data forbidden in offline tests")
+              if event in ("socket.connect", "socket.getaddrinfo"):
+                  host = args[1][0] if event == "socket.connect" else args[0]
+                  if host == "localhost":
+                      return
+                  try:
+                      if ipaddress.ip_address(host).is_loopback:
+                          return
+                  except ValueError:
+                      pass
+                  raise RuntimeError("external network forbidden in offline tests")
+          sys.addaudithook(guard)
+          with tempfile.TemporaryDirectory(prefix="offline_ci_") as temp:
+              os.environ["DATABASE_URL"] = "sqlite:///" + str(Path(temp) / "tests.db")
+              try:
+                  code = pytest.main(["-q", "--tb=short", "-p", "no:cacheprovider", "tests"])
+              finally:
+                  import database
+                  database.engine.dispose()
+                  gc.collect()
+          raise SystemExit(code)
+          PY
