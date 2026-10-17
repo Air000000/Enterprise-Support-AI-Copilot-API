@@ -36,8 +36,8 @@ def validate_chat_body(kind, body):
     from experiments.evals.refusal_question_scoped_coverage import CLASSIFIER_SYSTEM_PROMPT_V5_3_DEV
     from rag_runtime.hybrid_ask import REFUSAL
 
-    keys = {"model", "messages", "temperature", "max_tokens"}
-    if set(body) != (keys | {"response_format", "enable_thinking"} if kind == "classifier" else keys):
+    keys = {"model", "messages", "temperature", "max_tokens", "enable_thinking"}
+    if set(body) != (keys | {"response_format"} if kind == "classifier" else keys) or body.get("enable_thinking") is not False:
         raise RuntimeError("Unapproved chat fields")
     messages = body["messages"]
     if len(messages) != 2 or [m["role"] for m in messages] != ["system", "user"]:

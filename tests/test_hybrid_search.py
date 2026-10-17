@@ -365,10 +365,13 @@ def ask_runtime(runtime, monkeypatch):
         def respond(request):
             body = json.loads(request.content)
             state["events"].append((stage, body))
+            state.setdefault("timeouts", []).append((stage, request.extensions.get("timeout")))
             if stage in state["hooks"]:
                 state["hooks"][stage]()
             if state.get("error_stage") == stage:
                 return httpx.Response(500, json={"error": {"message": "private-provider-body secret-key"}})
+            if state.get("timeout_stage") == stage:
+                raise state["timeout_kind"]("private-provider-body secret-key", request=request)
             content = json.dumps(state["gate"]) if stage == "gate" else state["answer"]
             return httpx.Response(200, json={"id": "offline", "object": "chat.completion", "model": body["model"],
                 "choices": [{"index": 0, "finish_reason": state[stage + "_finish"],
@@ -407,6 +410,8 @@ def test_hybrid_ask_admits_with_null_distance_and_audits_gate(ask_runtime, monke
     classifier, generation = [body for _, body in state["events"]]
     assert classifier["model"] == ask.CLASSIFIER_MODEL and classifier["max_tokens"] == 2048
     assert generation["max_tokens"] == 1024
+    assert generation["enable_thinking"] is False
+    assert next(timeout for stage, timeout in state["timeouts"] if stage == "generation")["read"] == 30
     from experiments.evals.refusal_question_scoped_coverage import CLASSIFIER_SYSTEM_PROMPT_V5_3_DEV
     assert classifier["messages"][0]["content"] == CLASSIFIER_SYSTEM_PROMPT_V5_3_DEV
     payload = json.loads(classifier["messages"][1]["content"])
@@ -546,7 +551,8 @@ def test_ask_acceptance_guard_rejects_labels_and_foreign_text():
 
     def respond(request):
         sent.append(request)
-        return httpx.Response(200, json={"usage": {"total_tokens": 1}})
+        return httpx.Response(200, json={"usage": {"total_tokens": 6, "prompt_tokens": 5, "completion_tokens": 1},
+            "choices": [{"finish_reason": "stop", "message": {"content": "{}", "reasoning_content": "PRIVATE_REASONING"}}]})
     url = "https://ws-offline.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
     with httpx.Client(transport=BoundedTransport("classifier", url, records, httpx.MockTransport(respond), ask=True)) as client:
         for bad in ("labels", "foreign", "extra_field"):
@@ -567,3 +573,82 @@ def test_ask_acceptance_guard_rejects_labels_and_foreign_text():
         with pytest.raises(RuntimeError, match="budget"):
             client.post(url + "/chat/completions", json=body)
     assert len(sent) == len(records) == 6
+    assert all(r["finish_reason"] == "stop" and r["prompt_tokens"] == 5 and r["completion_tokens"] == 1
+               and r["transport_phase"] == "complete" and not r["error_types"] for r in records)
+    assert "PRIVATE_REASONING" not in json.dumps(records)
+
+
+@pytest.mark.parametrize("model, disabled", [("qwen3.5-plus", True), ("qwen3.5-plus-2026-02-15", True), ("other-model", False)])
+def test_generation_thinking_switch_is_model_scoped(ask_runtime, monkeypatch, model, disabled):
+    engine, _, state, _ = ask_runtime
+    add_document(engine)
+    monkeypatch.setenv("CHAT_MODEL", model)
+    with TestClient(main.app) as api:
+        assert api.post("/rag/ask", json=ASK_BODY).status_code == 200
+    body = next(body for stage, body in state["events"] if stage == "generation")
+    assert body["model"] == model
+    assert (body.get("enable_thinking") is False) == disabled
+    assert body["max_tokens"] == 1024
+
+
+@pytest.mark.parametrize("stage", ["gate", "generation"])
+@pytest.mark.parametrize("timeout_kind", [httpx.ReadTimeout, httpx.ConnectTimeout])
+def test_timeout_audit_keeps_stage_and_cause_without_error_text(ask_runtime, stage, timeout_kind):
+    engine, _, state, _ = ask_runtime
+    add_document(engine)
+    state.update(timeout_stage=stage, timeout_kind=timeout_kind)
+    with TestClient(main.app) as api:
+        response = api.post("/rag/ask", json=ASK_BODY)
+        assert response.status_code == 503
+        log = api.get("/agent-ops/retrieval-logs").json()[0]
+    details = json.loads(log["scores_json"])
+    assert details["error_stage"] == ("classification" if stage == "gate" else "generation")
+    assert any(name.endswith(".APITimeoutError") for name in details["error_types"])
+    assert any(name.endswith("." + timeout_kind.__name__) for name in details["error_types"])
+    assert log["retrieval_status"] == "failed"
+    assert "private-provider-body" not in json.dumps(log) + response.text
+    assert "secret-key" not in json.dumps(log) + response.text
+    assert sum(s == stage for s, _ in state["events"]) == 1  # No automatic retry.
+
+
+def test_safe_error_details_bound_cycles_and_do_not_copy_notes():
+    from rag_runtime.hybrid_ask import safe_error_details
+
+    error = RuntimeError("private-provider-body")
+    cause = ValueError("secret-key")
+    error.__cause__ = cause
+    cause.__cause__ = error
+    error.add_note("hybrid_stage:generation?secret-key")
+    result = safe_error_details(error)
+    assert result == {"error_stage": "service", "error_types": ["builtins.RuntimeError", "builtins.ValueError"]}
+    for _ in range(10):
+        previous = error
+        error = RuntimeError("private")
+        error.__cause__ = previous
+    assert len(safe_error_details(error)["error_types"]) == 6
+
+
+@pytest.mark.parametrize("phase", ["awaiting_headers", "reading_body"])
+def test_transport_distinguishes_header_and_body_timeout(phase):
+    from scripts.smoke_hybrid_runtime import BoundedTransport, VPN_QUERY
+
+    class BrokenBody(httpx.SyncByteStream):
+        def __iter__(self):
+            yield b"partial"
+            raise httpx.ReadTimeout("private-provider-body secret-key")
+
+    def respond(request):
+        if phase == "awaiting_headers":
+            raise httpx.ReadTimeout("private-provider-body secret-key", request=request)
+        return httpx.Response(200, stream=BrokenBody())
+
+    url, records = "https://dashscope.aliyuncs.com/compatible-mode/v1", []
+    with httpx.Client(transport=BoundedTransport("embedding", url, records, httpx.MockTransport(respond))) as client:
+        with pytest.raises(httpx.ReadTimeout):
+            client.post(url + "/embeddings", json={"model": "text-embedding-v4", "input": [VPN_QUERY]})
+    assert len(records) == 1
+    row = records[0]
+    assert row["transport_phase"] == phase
+    assert row["status"] == (200 if phase == "reading_body" else None)
+    assert row["total_tokens"] is None and row["error_types"] == ["httpx.ReadTimeout"]
+    assert "private-provider-body" not in json.dumps(records) and "secret-key" not in json.dumps(records)

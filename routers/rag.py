@@ -193,6 +193,11 @@ def rag_ask(
         )
     except Exception as exc:
         latency_ms = int((time.perf_counter() - started_at) * 1000)
+        failure_scores = None
+        if request.retrieval_mode == "hybrid":
+            from rag_runtime.hybrid_ask import safe_error_details
+            failure_scores = json.dumps({"retrieval_mode": "hybrid", "refusal_policy": request.refusal_policy,
+                                         **safe_error_details(exc)})
 
         safe_create_retrieval_log(
             RetrievalLogCreate(
@@ -206,8 +211,7 @@ def rag_ask(
                 total_hits=0,
                 latency_ms=latency_ms,
                 error_message=(f"Hybrid ask failed: {type(exc).__name__}" if request.retrieval_mode == "hybrid" else str(exc)),
-                scores_json=(json.dumps({"retrieval_mode": "hybrid", "refusal_policy": request.refusal_policy})
-                             if request.retrieval_mode == "hybrid" else None),
+                scores_json=failure_scores,
             )
         )
 
