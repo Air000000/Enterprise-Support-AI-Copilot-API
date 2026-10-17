@@ -1,0 +1,197 @@
+{
+  "date": "2026-10-17",
+  "status": "FAILED_NOT_RELEASE_ACCEPTED",
+  "runtime_base_commit": "73174a03eaa17db3ee334e3d3042f5315b60d30a",
+  "execution_count": 1,
+  "script": "scripts/smoke_hybrid_runtime.py",
+  "script_sha256_at_execution": "53a54ca40c2ab5c8d452ae9dce0c1c354c5c0b18ab7bd63e35721909d1647643",
+  "cases_module": "scripts/hybrid_ask_cases.py",
+  "cases_sha256_at_execution": "50e051ea61e162e2534ba7867b68a9b8cd7766e4d0ac983edd7c92905f76a082",
+  "scope": "Fixed 7 fictional documents / 8-case isolated ASGI acceptance; real provider HTTP; no running-server or public deployment",
+  "authorized_limits": {
+    "embedding": 14,
+    "rerank": 6,
+    "classifier": 6,
+    "generation": 2
+  },
+  "budget_cny": 2,
+  "retries": 0,
+  "offline_tests": {
+    "collected_and_passed": 622,
+    "failed": 0,
+    "skipped": 0,
+    "environment": "isolated Windows Python environment; requirements.txt plus experiments/evals/requirements-eval.txt; external Python socket and private project data guards",
+    "initial_collection_errors_resolved": 22
+  },
+  "observed": {
+    "attempts": 12,
+    "embedding": 9,
+    "rerank": 1,
+    "classifier": 1,
+    "generation": 1,
+    "known_reported_tokens": 2639,
+    "generation_usage": "UNKNOWN: no usable response; may have been billed",
+    "total_request_body_bytes": 12780
+  },
+  "failure": {
+    "case": "supported",
+    "expected_status": "ok",
+    "http_status": 503,
+    "provider_generation_response_status": null,
+    "generation_transport_duration_ms": 30059,
+    "cause": "No usable generation response within the 30-second timeout; exact timeout phase was not recorded"
+  },
+  "semantic_warning": {
+    "facet": "version_and_time",
+    "observed": {
+      "status": "NOT_REQUIRED",
+      "evidence": [],
+      "reason": "The question specifies a fixed version (1.0) and does not request current/latest status or time-sensitive information beyond that static version constraint."
+    },
+    "assessment": "The question explicitly constrains version 1.0. NOT_REQUIRED conflicts with the frozen policy for explicit version constraints, even though the available source covers version 1.0. A valid locator/schema is not semantic quality proof."
+  },
+  "diagnostic_hypothesis": {
+    "observation": "The generation request omits enable_thinking while using qwen3.5-plus with timeout=30 and max_tokens=1024",
+    "official_documentation": "https://www.alibabacloud.com/help/en/model-studio/deep-thinking",
+    "documented_default": "Qwen3.5 Plus thinking enabled by default",
+    "conclusion": "Configuration risk, not a proven unique cause of this timeout; no parameter changes or paid retries performed"
+  },
+  "cases": [
+    {
+      "case": "supported",
+      "expected_status": "ok",
+      "http_status": 503,
+      "actual_status": null,
+      "answer": null,
+      "gate": null,
+      "provider_attempts": 4
+    },
+    {
+      "case": "missing",
+      "status": "NOT_RUN_AFTER_FIRST_FAILURE"
+    },
+    {
+      "case": "version",
+      "status": "NOT_RUN_AFTER_FIRST_FAILURE"
+    },
+    {
+      "case": "conflict",
+      "status": "NOT_RUN_AFTER_FIRST_FAILURE"
+    },
+    {
+      "case": "chinese",
+      "status": "NOT_RUN_AFTER_FIRST_FAILURE"
+    },
+    {
+      "case": "unrelated",
+      "status": "NOT_RUN_AFTER_FIRST_FAILURE"
+    },
+    {
+      "case": "empty",
+      "status": "NOT_RUN_AFTER_FIRST_FAILURE"
+    },
+    {
+      "case": "deleted",
+      "status": "NOT_RUN_AFTER_FIRST_FAILURE"
+    }
+  ],
+  "provider_attempts": [
+    {
+      "kind": "embedding",
+      "bytes": 279,
+      "status": 200,
+      "total_tokens": 50,
+      "latency_ms": 273
+    },
+    {
+      "kind": "embedding",
+      "bytes": 238,
+      "status": 200,
+      "total_tokens": 32,
+      "latency_ms": 124
+    },
+    {
+      "kind": "embedding",
+      "bytes": 219,
+      "status": 200,
+      "total_tokens": 38,
+      "latency_ms": 181
+    },
+    {
+      "kind": "embedding",
+      "bytes": 233,
+      "status": 200,
+      "total_tokens": 34,
+      "latency_ms": 135
+    },
+    {
+      "kind": "embedding",
+      "bytes": 247,
+      "status": 200,
+      "total_tokens": 36,
+      "latency_ms": 130
+    },
+    {
+      "kind": "embedding",
+      "bytes": 229,
+      "status": 200,
+      "total_tokens": 40,
+      "latency_ms": 147
+    },
+    {
+      "kind": "embedding",
+      "bytes": 172,
+      "status": 200,
+      "total_tokens": 28,
+      "latency_ms": 168
+    },
+    {
+      "kind": "embedding",
+      "bytes": 152,
+      "status": 200,
+      "total_tokens": 24,
+      "latency_ms": 152
+    },
+    {
+      "kind": "embedding",
+      "bytes": 152,
+      "status": 200,
+      "total_tokens": 24,
+      "latency_ms": 187
+    },
+    {
+      "kind": "rerank",
+      "bytes": 446,
+      "status": 200,
+      "total_tokens": 82,
+      "latency_ms": 394
+    },
+    {
+      "kind": "classifier",
+      "bytes": 9477,
+      "status": 200,
+      "total_tokens": 2251,
+      "completion_text": "{\n\"requirements\": [\n{\n\"requirement\": \"Provide resolution steps for NovaVPN 1.0 error 809 specifically when the firewall already allows VPN traffic.\",\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"Source 1 explicitly provides the complete recovery steps (close client, reopen, reconnect) for this exact product, version, error code, and condition.\"\n}\n],\n\"coverage_checks\": {\n\"requested_outcomes\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The source provides direct actionable steps to resolve the specific error under the specified condition.\"\n},\n\"applicability\": {\n\"status\": \"SUPPORTED\",\n\"evidence\": [\n{\n\"source_id\": \"Source 1\",\n\"segment_ids\": [\n1\n]\n}\n],\n\"reason\": \"The source matches the product (NovaVPN), version (1.0), error code (809), and environmental condition (firewall allows VPN traffic) requested in the question.\"\n},\n\"version_and_time\": {\n\"status\": \"NOT_REQUIRED\",\n\"evidence\": [],\n\"reason\": \"The question specifies a fixed version (1.0) and does not request current/latest status or time-sensitive information beyond that static version constraint.\"\n}\n},\n\"unresolved_ambiguities\": []\n}",
+      "latency_ms": 6140
+    },
+    {
+      "kind": "generation",
+      "bytes": 936,
+      "status": null,
+      "total_tokens": null,
+      "latency_ms": 30059
+    }
+  ],
+  "pending": [
+    "Repair/diagnose generation configuration and timeout observability before separately authorized re-test",
+    "Remaining 7 real-provider cases",
+    "Independent semantic quality acceptance; v5.3 remains experimental",
+    "Real running-server HTTP, Docker restart/persistence and rollback acceptance; Docker engine unavailable",
+    "Ticket Agent remains Dense; no all-Hybrid ticket-chain claim"
+  ],
+  "non_actions": [
+    "No business documents, TechQA, ground-truth labels or secrets in model inputs",
+    "No ticket creation, main checkout changes, persistent Hybrid enablement or public deployment",
+    "No automatic rerun, no spent/unknown requests relabeled as normal refusal"
+  ]
+}
