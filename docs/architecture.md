@@ -159,6 +159,8 @@ Hybrid Top14 prefix
 无上下文为 `no_context`；gate 不足为 `refused_insufficient_evidence`；生成器拒答为 `refused_by_generator`。
 格式、截断、非法引用、提供方或可见性错误均返回脱敏 503、审计 `failed`，不会当作正确拒答或自动切换 Dense。
 分类使用强制专用 Phase B 配置，生成复用通用 chat 配置；两者无自动重试，完整上下文属于新增外发。
+Qwen3.5 Plus 生成与分类均显式关闭思考模式；生成仍为 1024 输出 tokens、30 秒超时。
+失败审计仅增加分类/生成/未细分服务阶段与有界异常类型链，不记录异常正文；验收脚本另记响应读取阶段、已知 usage 和结束原因，不记录隐藏思考。
 详细配置、输出上限与已知语义限制见 [实验问答说明](../README.md#32-实验-hybrid-问答默认关闭)。
 它不是 v5.3 正式晋级、生产可用性承诺或 Ticket Agent 逻辑替换。
 

@@ -32,7 +32,7 @@ MAX_TOTAL_BYTES = 16384
 
 
 class BoundedTransport(httpx.BaseTransport):
-    """Bound actual wire attempts, including failures; never log credentials or bodies."""
+    """Bound wire attempts, including failures; never log credentials/error bodies."""
 
     def __init__(self, kind, base_url, records, delegate, *, ask=False):
         self.kind, self.base_url, self.records, self.delegate = kind, base_url, records, delegate
@@ -68,20 +68,33 @@ class BoundedTransport(httpx.BaseTransport):
         if (sum(r["kind"] == self.kind for r in self.records) >= limits[self.kind]
                 or size > max_body or sum(r["bytes"] for r in self.records) + size > max_total):
             raise RuntimeError("Smoke call/size budget exhausted")
-        row = {"kind": self.kind, "bytes": size, "status": None, "total_tokens": None}
+        row = {"kind": self.kind, "bytes": size, "status": None, "total_tokens": None,
+               "prompt_tokens": None, "completion_tokens": None, "finish_reason": None,
+               "error_types": [], "transport_phase": "awaiting_headers"}
         self.records.append(row)  # Count an attempted send even if its response is lost.
         started = time.perf_counter()
         try:
             response = self.delegate.handle_request(request)
-            response.read()
             row["status"] = response.status_code
+            row["transport_phase"] = "reading_body"
+            response.read()
+            row["transport_phase"] = "complete"
             try:
-                row["total_tokens"] = response.json().get("usage", {}).get("total_tokens")
+                payload = response.json()
+                usage = payload.get("usage", {})
+                for field in ("total_tokens", "prompt_tokens", "completion_tokens"):
+                    value = usage.get(field)
+                    row[field] = value if type(value) is int and value >= 0 else None
                 if self.ask and self.kind in {"classifier", "generation"} and response.status_code == 200:
-                    row["completion_text"] = response.json()["choices"][0]["message"]["content"]
+                    row["completion_text"] = payload["choices"][0]["message"]["content"]
+                    row["finish_reason"] = payload["choices"][0].get("finish_reason")
             except (ValueError, AttributeError, KeyError, IndexError, TypeError):
                 pass
             return response
+        except Exception as error:
+            from rag_runtime.hybrid_ask import safe_error_details
+            row["error_types"] = safe_error_details(error)["error_types"]
+            raise
         finally:
             row["latency_ms"] = round((time.perf_counter() - started) * 1000)
 
@@ -246,7 +259,7 @@ def main():
         try:
             print(json.dumps(execute(args.env_file, ask=args.ask), ensure_ascii=False, indent=2))
         except Exception as exc:
-            print(f"Smoke failed ({type(exc).__name__}); no automatic rerun. Provider bodies are not printed.", file=sys.stderr)
+            print(f"Smoke failed ({type(exc).__name__}); no automatic rerun. Provider error bodies are not printed.", file=sys.stderr)
             raise SystemExit(1) from None
 
 
