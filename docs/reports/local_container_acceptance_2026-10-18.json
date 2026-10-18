@@ -1,0 +1,188 @@
+{
+  "date": "2026-10-18",
+  "observed_at_utc": "2026-10-18 14:11:48 UTC",
+  "status": "LOCAL_CONTAINER_PERSISTENCE_PASS_NOT_FULL_DEPLOYMENT_ACCEPTANCE",
+  "base_commit": "6b56b3b10726f8cf922b407190cc69ae4bb7f801",
+  "scope": "Actual Dockerfile-built Linux containers, Alembic and Uvicorn, real TCP HTTP on container loopback. Dedicated disposable volumes, no port publication; not TestClient/ASGI in-process and not the full Compose deployment.",
+  "docker_engine_version": "29.6.2",
+  "container_python_version": "3.11.15",
+  "migration_revision": "20260705_0001 (head)",
+  "image": "copilot-acceptance-20261018:latest",
+  "final_image_id": "sha256:3a6991f9dae4ed2f127a97aa2afc818cb72d171220a9abddfd87c781d6069fbc",
+  "initial_phase_image_id": "sha256:8c4e38c8f99adb8671426f7260882bbbd0a51a7fe361b98ed981a54e2afb2d54",
+  "source_sha256_raw_at_execution": [
+    {
+      "Name": ".dockerignore",
+      "Sha256": "f38a591e61b17cbd9f84876a09cd94e14d9f146a9e89bd8b4bac8d68cdd6e480"
+    },
+    {
+      "Name": "Dockerfile",
+      "Sha256": "065848ff7de76fa0cac1c21346a1f235692050c6825c6d7b84b68a6b33c8c851"
+    },
+    {
+      "Name": "smoke_local_persistence.py",
+      "Sha256": "fd113cf6cf40d47b00e4d23c562a5155832001033294b3a3f6e9a4e833665852"
+    },
+    {
+      "Name": "test_docker_build_context.py",
+      "Sha256": "22dcfd8d3e163120025814dd61df6355728c3b077445e4474ab30475360ceb10"
+    }
+  ],
+  "image_build": {
+    "dockerfile_changed": false,
+    "requirements_changed": false,
+    "declared_dependencies_installed": true,
+    "pip_check": "No broken requirements found.",
+    "runtime_data_and_env_paths_absent_in_image": true,
+    "public_env_template_retained": true
+  },
+  "isolation": {
+    "runtime_network": "none",
+    "published_ports": {},
+    "real_env_loaded": false,
+    "credentials": "fixed dummy key; provider base URLs point to container loopback port 9",
+    "data_mounts": [
+      {
+        "Name": "copilot_acceptance_20261018_6b56b3b_sql",
+        "Destination": "/app/data"
+      },
+      {
+        "Name": "copilot_acceptance_20261018_6b56b3b_storage",
+        "Destination": "/app/storage"
+      },
+      {
+        "Name": "copilot_acceptance_20261018_6b56b3b_chroma",
+        "Destination": "/app/experiments/chroma_db"
+      }
+    ],
+    "no_primary_checkout_data_mounts": true,
+    "provider_calls": 0,
+    "candidate_v5_3_1_activated": false
+  },
+  "phases": [
+    {
+      "name": "fresh_seed_default_off",
+      "status": "PASS",
+      "network": "none",
+      "published_ports": {},
+      "documents": 2,
+      "vector_canaries": 1,
+      "provider_calls": 0,
+      "container_id": "57a0029efb63af2d2f7ae4651e111444b7757b8ab3c9a2b877f5695731d430b1",
+      "hybrid_search_enabled": false,
+      "hybrid_ask_enabled": false,
+      "search_http_status": 503,
+      "ask_http_status": 503,
+      "audit_records": 2
+    },
+    {
+      "name": "same_container_restart",
+      "status": "PASS",
+      "network": "none",
+      "published_ports": {},
+      "documents": 2,
+      "vector_canaries": 1,
+      "provider_calls": 0,
+      "container_id": "57a0029efb63af2d2f7ae4651e111444b7757b8ab3c9a2b877f5695731d430b1",
+      "hybrid_search_enabled": false,
+      "hybrid_ask_enabled": false,
+      "search_http_status": 503,
+      "ask_http_status": 503,
+      "audit_records": 4
+    },
+    {
+      "name": "remove_recreate_same_volumes_empty_scope_on",
+      "status": "PASS",
+      "network": "none",
+      "published_ports": {},
+      "documents": 2,
+      "vector_canaries": 1,
+      "provider_calls": 0,
+      "container_id": "5708fdffdbc2fa6fc3c5136ddb985857d289d05f62eb6605fe151ae22f87ef69",
+      "hybrid_search_enabled": true,
+      "hybrid_ask_enabled": true,
+      "search_http_status": 200,
+      "search_result": "empty results",
+      "ask_http_status": 200,
+      "ask_result": "no_context",
+      "audit_records": 6
+    },
+    {
+      "name": "recreate_configuration_rollback_off",
+      "status": "PASS",
+      "network": "none",
+      "published_ports": {},
+      "documents": 2,
+      "vector_canaries": 1,
+      "provider_calls": 0,
+      "container_id": "65fb0850ff81f45859f8b105e2982aa4c174861bec37c911a6c097751c7bbd96",
+      "hybrid_search_enabled": false,
+      "hybrid_ask_enabled": false,
+      "search_http_status": 503,
+      "ask_http_status": 503,
+      "audit_records": 8
+    },
+    {
+      "name": "final_guarded_image_default_off_recheck",
+      "status": "PASS",
+      "network": "none",
+      "published_ports": {},
+      "documents": 2,
+      "vector_canaries": 1,
+      "provider_calls": 0,
+      "container_id": "3aef54544ada721714bd45ccbe903acaf1b2a3821004150a7b73b08b2ead6ec7",
+      "image_id": "sha256:3a6991f9dae4ed2f127a97aa2afc818cb72d171220a9abddfd87c781d6069fbc",
+      "hybrid_search_enabled": false,
+      "hybrid_ask_enabled": false,
+      "search_http_status": 503,
+      "ask_http_status": 503,
+      "audit_records": 10
+    }
+  ],
+  "checks_held_across_successful_phases": [
+    "live loopback HTTP",
+    "migration head/integrity",
+    "JWT/role/tenant scope",
+    "SQL/document file checksums",
+    "Chroma canary (not retrieval quality)",
+    "Hybrid empty-scope/disabled behavior",
+    "audit persistence",
+    "zero tickets/agent actions"
+  ],
+  "persistence_checks": {
+    "sqlite_integrity": "ok",
+    "documents_metadata_and_checksums": "unchanged for both tenants",
+    "uploaded_file_content": "fixed fictional source retained",
+    "chroma": "one directly inserted fixed 2D vector and document retained; separate canary collection, not embedding/index/retrieval quality",
+    "initial_audit_ids": "retained across restart/recreation",
+    "ticket_agent_tables": "ticket, agent_runs, approval_requests, tool_calls all zero"
+  },
+  "local_orchestration_note": "One verify exec was issued before the asynchronous docker restart command completed and exited 1 without a result. The command was awaited before running the successful verification; no reseed, no failed exec counted as PASS.",
+  "offline_verification": {
+    "passed": 659,
+    "failed": 0,
+    "skipped": 0,
+    "duration_seconds": 72.99,
+    "environment": "Windows Python 3.12.4; temporary DB/dummy keys; external Python socket and private project data guards"
+  },
+  "cleanup": {
+    "owned_container_removed": true,
+    "owned_synthetic_volumes_removed": 3,
+    "label": "copilot.acceptance=20261018-6b56b3b",
+    "business_data_removed": false,
+    "synthetic_data_reproducible_from_seed_script": true,
+    "dedicated_image_retained_for_reproduction": true,
+    "global_prune_run": false
+  },
+  "pending": [
+    "Original Compose configuration and host-loopback port access; real .env intentionally not loaded",
+    "Non-empty document index/Hybrid retrieval/classification/generation through a running server (earlier real-provider checks were isolated ASGI)",
+    "Functional Dense answer fallback, rather than only restoring disabled Hybrid configuration",
+    "Independent semantic-quality acceptance; v5.3.1 version-audit candidate remains offline and partially effective"
+  ],
+  "non_actions": [
+    "No paid model calls, business documents, TechQA/DEV, real credentials, public deployment or new ticket/agent action",
+    "No primary checkout edits, existing container/volume changes, persistent .env edits or candidate-policy promotion",
+    "Frozen prompts and historical real-provider records unchanged"
+  ]
+}

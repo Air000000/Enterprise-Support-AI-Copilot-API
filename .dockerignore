@@ -3,6 +3,8 @@ __pycache__/
 .venv/
 venv/
 .env
+.env.*
+!.env.example
 .git/
 .gitignore
 todos.db
@@ -10,3 +12,8 @@ todos.db
 *.db-wal
 *.db-shm
 data/
+storage/
+experiments/chroma_db/
+docker_data/
+docker_storage/
+docker_chroma_db/
