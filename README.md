@@ -183,6 +183,16 @@ create_ticket
 5. 将草稿持久化到 `approval_request.draft_json`，状态保持 `pending`；
 6. 返回预览结果，不产生真实工单写操作。
 
+预览默认仍为 Dense Top3；可显式复用冻结 Hybrid Top14 检索：
+
+```json
+{"message": "VPN 连不上", "category": "it", "retrieval_mode": "hybrid"}
+```
+
+需先批准查询及当前租户候选正文的外发与费用，并开启现有 `RAG_HYBRID_SEARCH_ENABLED`。不需要 ask 开关或 Phase B 分类配置，因为这里只检索并执行原有工单规则，不调用 v5.x 证据 gate 或答案生成模型。`other` 分类继续表示不限制检索分类，租户始终来自 JWT。响应返回 `retrieval_mode`；来源保留可空 `distance` 和独立重排/融合分数及排名，`search_kb` 与运行摘要记录模式和分数类型，Hybrid 汇总 `top_distance=null`。开关关闭或提供方失败返回脱敏 503，记录失败且不产生后续分类/审批，不自动回退 Dense。
+
+`confirm` 契约不变：只消费当前租户的 pending 审批及服务端冻结草稿，不重跑检索、不调用模型。本文新增接线仅有离线模型替身回归，不是工单真实提供方或质量验收；默认开关不变。
+
 ### Confirm
 
 `POST /agent/ticket/confirm`
@@ -221,7 +231,7 @@ API 默认保持 **Dense Chroma 检索**；搜索和实验问答另提供默认�
 | 冻结 Hybrid：Dense100 + BM25100 → RRF(k=60) Top100 → qwen3-rerank → 直接 Top14 | 已接入可选搜索和实验问答 | 两个开关均关闭，请求默认 Dense |
 | v5.3 结构化证据拒答 | 已接入 Hybrid 实验问答，策略名 `v5_3_experimental` | 不替换默认 Dense 拒答 |
 | v5.3.1 版本审计候选 | 已接入显式实验选项 `v5_3_1_experimental` | 不自动选择，不替换 v5.3 或 Dense |
-| Ticket Agent | 仍使用 Dense | 未切换 Hybrid |
+| Ticket Agent | preview 可显式选择 Hybrid 检索；confirm 不变 | 默认 Dense，不调用 v5.x 拒答 gate |
 
 以上是代码及仓库默认配置状态，不代表某台机器的实际 `.env`、运行进程或公网部署状态。启用实验问答还需两个开关、专用分类凭据及显式请求参数，见 §3.2；接入不等于质量晋级。
 
@@ -783,7 +793,7 @@ Workflow：
 
 - TechQA 是长期主技术支持语料与主评测基准，不再计划迁移到另一套 primary corpus；
 - 不把离线 BM25 / RRF / Hybrid 实验或默认关闭的可选搜索写成默认线上已切换或公网已部署；
-- portfolio-v1 的 Hybrid + 重排已冻结并接入可选搜索和默认关闭的实验问答，工单未接入；R4 C1 的正式结论仍为 FAIL；
+- portfolio-v1 的 Hybrid + 重排已冻结并接入可选搜索、默认关闭的实验问答及显式可选的工单预览检索；默认仍为 Dense，工单不使用 v5.x gate；R4 C1 的正式结论仍为 FAIL；
 - 直接 Top14 是 TRAIN 开发阶段的选择，不是通用最优值；
 - 局部扩展 / 结构扩展的负结果不能证明 Parent-Child 或文档结构方法普遍无效；
 - 拒答策略和最终生成验证尚未冻结；

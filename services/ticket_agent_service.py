@@ -5,6 +5,7 @@ import time
 
 from fastapi import HTTPException
 from rag_runtime.query_chroma import search_chroma
+from services.rag_service import search_documents
 from schemas.agent_ticket import (
     TicketAgentConfirmRequest,
     TicketAgentConfirmResponse,
@@ -120,7 +121,11 @@ def to_agent_source(search_result) -> TicketAgentSource:
         chunk_id=search_result.chunk_id,
         title=search_result.title,
         source_path=search_result.source_path,
-        distance=round(search_result.distance, 4),
+        distance=round(search_result.distance, 4) if search_result.distance is not None else None,
+        rerank_score=getattr(search_result, "rerank_score", None),
+        fusion_score=getattr(search_result, "fusion_score", None),
+        dense_rank=getattr(search_result, "dense_rank", None),
+        bm25_rank=getattr(search_result, "bm25_rank", None),
         preview=make_preview(content),
         category=getattr(search_result, "category", None),
     )
@@ -135,13 +140,15 @@ def build_retrieval_summary_json(
     request_category: TicketCategory | None,
     rag_category: str | None,
     sources: list[TicketAgentSource],
+    retrieval_mode: str = "dense",
 ) -> str:
     top_distance = None
 
-    if sources:
+    if sources and retrieval_mode == "dense":
         top_distance = sources[0].distance
 
     summary = {
+        "retrieval_mode": retrieval_mode,
         "top_k": top_k,
         "request_category": request_category,
         "rag_category": rag_category,
@@ -152,6 +159,9 @@ def build_retrieval_summary_json(
             for source in sources
         ],
     }
+    if retrieval_mode == "hybrid":
+        summary.update(score_type="rerank_relevance", larger_is_better=True,
+                       rerank_scores=[source.rerank_score for source in sources])
 
     return json.dumps(summary, ensure_ascii=False)
 
@@ -303,9 +313,11 @@ def preview_ticket(
     request: TicketAgentPreviewRequest,
     tenant_id: str,
     user_id: str = "user_demo",
-    top_k: int = 3,
+    top_k: int | None = None,
 ) -> TicketAgentPreviewResponse:
     start_time = time.perf_counter()
+    if top_k is None:
+        top_k = 14 if request.retrieval_mode == "hybrid" else 3
 
     agent_run = create_agent_run(
         AgentRunCreate(
@@ -331,6 +343,7 @@ def preview_ticket(
                     "top_k": top_k,
                     "tenant_id": tenant_id,
                     "category": rag_category,
+                    "retrieval_mode": request.retrieval_mode,
                 },
                 ensure_ascii=False,
             ),
@@ -339,12 +352,27 @@ def preview_ticket(
     )
 
     try:
-        search_results = search_chroma(
+        # ponytail: reuse the existing Hybrid service; keep the default Dense path unchanged.
+        search = search_documents if request.retrieval_mode == "hybrid" else search_chroma
+        mode_options = {"retrieval_mode": "hybrid"} if request.retrieval_mode == "hybrid" else {}
+        search_results = search(
             query=request.message,
             top_k=top_k,
             tenant_id=tenant_id,
             category=rag_category,
+            **mode_options,
         )
+
+        sources = [to_agent_source(result) for result in search_results]
+        output = {
+            "results_count": len(sources),
+            "document_ids": [source.document_id for source in sources],
+            "top_distance": getattr(search_results[0], "distance", None) if sources and request.retrieval_mode == "dense" else None,
+            "retrieval_mode": request.retrieval_mode,
+        }
+        if request.retrieval_mode == "hybrid":
+            output.update(score_type="rerank_relevance", larger_is_better=True,
+                          rerank_scores=[source.rerank_score for source in sources])
 
         update_tool_call(
             tool_call_id=search_tool_call.id,
@@ -352,31 +380,21 @@ def preview_ticket(
             tool_call_update=ToolCallUpdate(
                 status="success",
                 tool_output_json=json.dumps(
-                    {
-                        "results_count": len(search_results),
-                        "document_ids": [
-                            getattr(result, "document_id", None)
-                            for result in search_results
-                        ],
-                        "top_distance": (
-                            getattr(search_results[0], "distance", None)
-                            if search_results
-                            else None
-                        ),
-                    },
+                    output,
                     ensure_ascii=False,
                 ),
             ),
         )
 
     except Exception as exc:
+        error = f"Hybrid search failed: {type(exc).__name__}" if request.retrieval_mode == "hybrid" else str(exc)
         update_tool_call(
             tool_call_id=search_tool_call.id,
             tenant_id=tenant_id,
             tool_call_update=ToolCallUpdate(
                 status="failed",
                 error_type="search_kb_failed",
-                error_message=str(exc),
+                error_message=error,
             ),
         )
 
@@ -385,17 +403,14 @@ def preview_ticket(
             tenant_id=tenant_id,
             agent_run_update=AgentRunUpdate(
                 status="failed",
-                result_summary=f"search_kb failed: {exc}",
+                result_summary=f"search_kb failed: {error}",
                 latency_ms=calculate_latency_ms(start_time),
             ),
         )
 
+        if request.retrieval_mode == "hybrid":
+            raise HTTPException(status_code=503, detail="Hybrid ticket preview unavailable; select dense explicitly") from exc
         raise
-
-    sources = [
-        to_agent_source(search_result)
-        for search_result in search_results
-    ]
 
     classify_tool_call = create_tool_call(
         ToolCallCreate(
@@ -428,6 +443,7 @@ def preview_ticket(
             request_category=request.category,
             rag_category=rag_category,
             sources=sources,
+            retrieval_mode=request.retrieval_mode,
         )
 
         should_create = should_create_ticket(
@@ -537,6 +553,7 @@ def preview_ticket(
         reason=reason,
         draft=draft,
         sources=sources,
+        retrieval_mode=request.retrieval_mode,
     )
 
 

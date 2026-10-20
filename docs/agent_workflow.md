@@ -57,8 +57,8 @@ LLM / Agent 只能建议；
 ### 工单 Agent API
 
 ```http
-POST /agent/工单/预览
-POST /agent/工单/确认
+POST /agent/ticket/preview
+POST /agent/ticket/confirm
 ```
 
 ### AgentOps API
@@ -75,6 +75,8 @@ POST /agent-ops/approval-requests/{approval_request_id}/cancel
 ```
 
 当前项目使用 `/agent-ops` 作为运维观测接口前缀，用于查看 Agent 运行记录、工具调用记录、审批记录和指标汇总。
+
+`preview` 默认 Dense Top3；显式传 `retrieval_mode="hybrid"` 且开启 `RAG_HYBRID_SEARCH_ENABLED` 时，复用冻结 Hybrid Top14。该模式只改变检索，不调用 v5.x 充分性检查或生成模型，不修改工单建议规则。来源 `distance` 可为空，重排分数及排名单独返回；工具输入/输出与运行摘要记录实际模式。Hybrid 关闭或失败时返回脱敏 503，审计失败，不生成审批或自动回退 Dense。`confirm` 请求体、租户隔离、pending 和草稿校验保持不变，不重跑检索。
 
 ---
 
