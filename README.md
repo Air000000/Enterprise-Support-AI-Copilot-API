@@ -216,6 +216,15 @@ request.draft == server-side approval_request.draft_json
 
 API 默认保持 **Dense Chroma 检索**；搜索和实验问答另提供默认关闭的 Hybrid 可选路径。
 
+| 方案 | API 接入状态 | 仓库默认行为 |
+| --- | --- | --- |
+| 冻结 Hybrid：Dense100 + BM25100 → RRF(k=60) Top100 → qwen3-rerank → 直接 Top14 | 已接入可选搜索和实验问答 | 两个开关均关闭，请求默认 Dense |
+| v5.3 结构化证据拒答 | 已接入 Hybrid 实验问答，策略名 `v5_3_experimental` | 不替换默认 Dense 拒答 |
+| v5.3.1 版本审计候选 | 仅离线开发检查，未接入 API | 不参与运行时请求 |
+| Ticket Agent | 仍使用 Dense | 未切换 Hybrid |
+
+以上是代码及仓库默认配置状态，不代表某台机器的实际 `.env`、运行进程或公网部署状态。启用实验问答还需两个开关、专用分类凭据及显式请求参数，见 §3.2；接入不等于质量晋级。
+
 主要能力：
 
 - `/rag/search`
@@ -226,7 +235,7 @@ API 默认保持 **Dense Chroma 检索**；搜索和实验问答另提供默认�
 - 无上下文与低相关拒答
 - 检索日志
 
-问答路径仅根据检索 上下文 生成答案，并返回对应 sources。当前低相关拒答使用 Dense Top-1 距离作为工程信号。
+问答路径仅根据检索上下文生成答案，并返回对应 sources。默认 Dense 路径的低相关拒答使用 Top-1 距离作为工程信号；实验 Hybrid 路径使用 v5.3 证据 gate，不使用该距离阈值。
 
 > **运行时边界：** Hybrid 搜索和实验问答需要显式选择并开启服务端开关，不接管默认问答或 Ticket Agent。实验问答使用尚未独立验收的 v5.3 gate，不代表稳定拒答策略已升级。代码接入不等于已部署、已开启或已证明整链质量。
 
@@ -329,7 +338,9 @@ python -m scripts.smoke_hybrid_runtime --ask --execute --env-file .env
 
 2026-10-18 启动 Docker 后完成[隔离本地容器验收](docs/reports/local_container_acceptance_2026-10-18.json)：使用原 Dockerfile/Alembic/Uvicorn、假凭据、3 个独立卷和 `--network none`，通过容器内真实回环 TCP HTTP 检查迁移 head、JWT/角色/租户隔离、两篇虚构文档的元数据/原文校验和、独立 Chroma 预制向量及审计记录。在重启、删除重建保留卷、临时开启空范围 Hybrid、恢复关闭配置后均通过，最终审计 10 条，工单/Agent 执行表仍为零；没有付费模型调用。
 
-本次不发布宿主机端口、不加载真实 `.env`；Chroma 预制向量不是文档索引/检索质量验证，空范围 `no_context` 不是非空问答验证。完整 Compose、宿主机回环访问、真实服务非空问答及 Dense 答案回退仍待验收，不因此宣称全面发布通过。固定检查入口为 `python -m scripts.smoke_local_persistence`，首次全新验收卷加 `--seed`；**只允许规定假凭据/数据库路径、Docker 无网络环境，拒绝 `-O`，不能直接针对日常服务运行**。临时容器和仅含虚构数据的卷已清理，专用镜像保留供复现。Ticket Agent 仍使用 Dense，默认 Hybrid 开关和 v5.3.1 候选接线均未改变。
+该次验收不发布宿主机端口、不加载真实 `.env`；Chroma 预制向量不是文档索引/检索质量验证，空范围 `no_context` 不是非空问答验证。其范围不含完整 Compose、宿主机访问或非空问答。固定检查入口为 `python -m scripts.smoke_local_persistence`，首次全新验收卷加 `--seed`；**只允许规定假凭据/数据库路径、Docker 无网络环境，拒绝 `-O`，不能直接针对日常服务运行**。临时容器和仅含虚构数据的卷已清理，专用镜像保留供复现。Ticket Agent 仍使用 Dense，默认 Hybrid 开关和 v5.3.1 候选接线均未改变。
+
+后续已分别补充 [Compose / 宿主机回环、重启与容器重建验收](docs/reports/compose_loopback_acceptance_2026-10-20.json)，以及 `tests/test_hybrid_search.py::test_nonempty_hybrid_over_real_uvicorn_tcp` 的非空真实 HTTP 检查（模型使用测试替身）。这些证据不能拼成同一次 Docker + 真实提供方端到端通过；该组合验收、真实服务 Dense 答案及独立语义质量仍未完成。
 
 ---
 

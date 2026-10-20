@@ -6,7 +6,9 @@
 
 ### 当前在线运行时
 
-当前在线 API 仍使用 **Dense Chroma 检索**。BM25、RRF、Hybrid、rerank 和直接 Top14 目前都属于离线评测与冻结工程候选，不描述为已上线能力。
+当前 API **默认使用 Dense Chroma 检索**；冻结的 Dense100 + BM25100 → RRF(k=60) Top100 → qwen3-rerank → 直接 Top14 已接入默认关闭的可选搜索和实验问答。实验问答使用 `v5_3_experimental` 证据 gate，v5.3.1 仍仅为离线候选；Ticket Agent 仍用 Dense。代码接入不等于默认启用、公网部署或独立质量验收通过，配置与请求契约见 [当前运行时说明](../../README.md#3-rag-在线运行时)。
+
+`portfolio_v1_rag_freeze/` 的架构及时间线保留冻结当时的快照，其中“在线集成尚未完成”不作为当前 API 接入状态；历史实验参数与结论不因此改写。
 
 ### 冻结 DEV 对比
 
@@ -30,14 +32,14 @@ Dense chunk Top100 + BM25 chunk Top100
     → 直接 Top14
 ```
 
-R4 C1 Hybrid + rerank 的正式历史结论仍然是 **FAIL**：三项 TRAIN 聚合指标都上涨，但预注册的 MRR 门槛没有通过。后来保留这条固定 Hybrid 路线，是基于整体证据做出的工程冻结，不改写原实验结论，也不意味着已经上线。
+R4 C1 Hybrid + rerank 的正式历史结论仍然是 **FAIL**：三项 TRAIN 聚合指标都上涨，但预注册的 MRR 门槛没有通过。后来保留这条固定 Hybrid 路线，是基于整体证据做出的工程冻结；后续可选 API 接入不改写原实验结论，也不意味着默认启用或质量晋级。
 
 ### 尚未冻结的部分
 
 - 证据充分性拒答策略；
 - 最终生成验收协议；
 - 最终 DEV 生成验证；
-- 在线运行时集成；
+- 可选链路的 Docker + 真实提供方组合验收及默认启用决策；
 - Ticket Agent 复用同一检索链。
 
 历史 `dense_top1_distance > 0.9` 不自动成为最终拒答契约，因为冻结工程候选已经不再只有 Dense Top1 这一种检索信号。
