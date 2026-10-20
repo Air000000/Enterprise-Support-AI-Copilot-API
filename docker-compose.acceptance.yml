@@ -1,0 +1,36 @@
+# Disposable, zero-provider-call acceptance overlay; never load real .env or bind-mount user data.
+# Requires Compose >= 2.24.4 for !override.
+services:
+  api:
+    image: copilot-compose-acceptance:local
+    pull_policy: never
+    container_name: !reset null
+    env_file: !reset []
+    ports: !override
+      - "127.0.0.1:18080:8000"
+    environment: !override
+      DATABASE_URL: sqlite:////app/data/acceptance.db
+      DOCUMENT_STORAGE_ROOT: /app/storage/documents
+      SQL_ECHO: "false"
+      PYTHON_DOTENV_DISABLED: "1"
+      ANONYMIZED_TELEMETRY: "False"
+      AUTH_DEMO_USERS_JSON: ""
+      JWT_SECRET: offline-compose-acceptance-only-not-for-deployment
+      DASHSCOPE_API_KEY: offline-acceptance-not-a-key
+      DASHSCOPE_BASE_URL: http://127.0.0.1:9/v1
+      DASHSCOPE_RERANK_API_KEY: offline-acceptance-not-a-key
+      DASHSCOPE_RERANK_BASE_URL: http://127.0.0.1:9/v1
+      DASHSCOPE_PHASE_B_API_KEY: offline-acceptance-not-a-key
+      DASHSCOPE_PHASE_B_BASE_URL: http://127.0.0.1:9/v1
+      RAG_HYBRID_SEARCH_ENABLED: "false"
+      RAG_HYBRID_ASK_ENABLED: "false"
+    volumes: !override
+      - sql:/app/data
+      - storage:/app/storage
+      - chroma:/app/experiments/chroma_db
+
+volumes:
+  sql:
+  storage:
+  chroma:
+
