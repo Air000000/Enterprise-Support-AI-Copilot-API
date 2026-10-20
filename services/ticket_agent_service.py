@@ -244,11 +244,13 @@ def build_ticket_description(
     else:
         sources_text = "未检索到明确知识库来源。"
 
-    return (
+    description = (
         f"用户问题：{message}\n\n"
         "系统根据用户描述生成工单草稿，建议支持人员进一步确认和处理。\n\n"
         f"相关知识库来源：\n{sources_text}"
     )
+    # ponytail: on overflow keep the full user message; sources remain in preview/AgentOps.
+    return description if len(description) <= 2000 else message
 
 
 def build_reason(

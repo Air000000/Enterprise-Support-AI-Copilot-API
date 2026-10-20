@@ -10,6 +10,7 @@ from schemas.agent_ticket import (
     TicketDraft,
 )
 from services.ticket_agent_service import (
+    build_ticket_description,
     confirm_ticket,
     infer_priority,
     normalize_rag_category,
@@ -122,6 +123,19 @@ def fake_update_tool_call(tool_call_id, tenant_id, tool_call_update):
         tool_output_json=tool_call_update.tool_output_json,
         error_message=tool_call_update.error_message,
     )
+
+
+@pytest.mark.parametrize("source_count", [0, 3])
+def test_description_keeps_appendix_at_limit_and_preserves_full_message_on_overflow(source_count):
+    sources = [make_search_result() for _ in range(source_count)]
+    overhead = len(build_ticket_description("VPN", sources)) - len("VPN")
+    message = "问" * (2000 - overhead)
+    description = build_ticket_description(message, sources)
+    assert len(description) == 2000
+    assert description.startswith(f"用户问题：{message}\n\n")
+    assert "相关知识库来源：" in description
+    assert build_ticket_description(message + "？", sources) == message + "？"
+    assert build_ticket_description("问" * 2000, sources) == "问" * 2000
 
 
 def test_normalize_rag_category():

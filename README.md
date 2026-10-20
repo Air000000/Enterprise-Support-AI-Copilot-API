@@ -193,6 +193,8 @@ create_ticket
 
 `confirm` 契约不变：只消费当前租户的 pending 审批及服务端冻结草稿，不重跑检索、不调用模型。本文新增接线仅有离线模型替身回归，不是工单真实提供方或质量验收；默认开关不变。
 
+工单描述仍限制为 2000 字符。用户原文加来源附录若超限，描述只保留完整用户原文，不截断问题；完整来源列表仍在 preview 的 `sources` 中，AgentOps 运行摘要与检索工具记录保留来源 ID。该规则同时适用于 Dense 和 Hybrid，不改变用户输入上限、审批草稿冻结或确认建单规则。
+
 离线集成检查：`pytest tests/test_hybrid_search.py -k ticket_hybrid_document_to_decision`。通过真实 Uvicorn 回环 HTTP、JWT、上传/索引、临时 SQLite 与 Chroma，分别验证 Hybrid 预览后的确认、拒绝和取消，以及 trace/metrics 查询、租户与角色隔离；只有显式确认会在临时库产生测试工单。外部 embedding/rerank 使用替身，不是检索质量或并发审批验收，不外发资料、不修改日常数据。
 
 ### Confirm
