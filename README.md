@@ -689,6 +689,8 @@ docker compose --env-file .env.example -p copilot-acceptance -f docker-compose.y
 
 实际宿主机回环、重启及容器重建结果与未覆盖范围见 [Compose 验收记录](docs/reports/compose_loopback_acceptance_2026-10-20.json)。
 
+非空 Hybrid 的真实 HTTP 回归见 `tests/test_hybrid_search.py::test_nonempty_hybrid_over_real_uvicorn_tcp`：启动仅回环的 Uvicorn，使用真实 JWT、临时 SQL 和 Chroma，验证回答、证据不足、提供方错误、空范围及开关关闭的状态与审计。外部模型响应使用测试替身，不调用付费模型；这不是同次 Docker + 真实提供方端到端验证，也不证明模型语义质量或 Dense 答案质量。
+
 ---
 
 # 10. 测试 / CI
