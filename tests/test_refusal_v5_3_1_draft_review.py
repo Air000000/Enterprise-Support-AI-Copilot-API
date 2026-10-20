@@ -112,3 +112,35 @@ def test_review_requires_all_drafts_and_strict_evidence_before_prediction(tmp_pa
     with pytest.raises(ValueError, match="provider"):
         amendment.draft_outcome(None, rows[0], None)
     assert amendment.draft_outcome("{}", rows[0], "length")["strict_annotation"] is None
+
+
+def test_published_complete_result_keeps_failures_and_does_not_promote():
+    run = amendment.run
+    old = run.shared._read_json(run.ANNOTATION_CONTRACT)
+    contract = run.shared._read_json(amendment.CONTRACT)
+    freeze = run.shared._read_json(run.FREEZE)
+    paid = run.shared._read_json(run.CONTRACT)
+    result = run.shared._read_json(run.RESULT)
+    assert {k: v for k, v in contract.items() if k not in {"run", "draft_amendment"}} == {
+        k: v for k, v in old.items() if k != "run"}
+    assert contract["draft_amendment"]["old_contract_sha256"] == run.canonical(old)
+    assert freeze["amendment_contract_sha256"] == run.canonical(contract)
+    assert paid["freeze_sha256"] == run.canonical(freeze)
+    assert result["contract_sha256"] == run.canonical(paid)
+    assert result["targets_sha256"] == paid["targets_sha256"] == freeze["targets_sha256"]
+    assert freeze["provider_calls"] == 50 and result["provider_calls"] == 100
+    assert freeze["counts"] == result["primary"]["target_counts"] == {
+        "SUFFICIENT": 39, "INSUFFICIENT": 11, "AMBIGUOUS": 0}
+    assert freeze["original_schema_failures"] == 23 and freeze["changes_from_raw_draft"]["target_class"] == 2
+    assert freeze["estimated_annotation_cost_cny"] + result["estimated_classification_cost_cny"] == pytest.approx(4.6080765)
+    for arm in result["primary"]["arms"].values():
+        assert sum(arm["confusion"].values()) + arm["binary_failures"] == 50
+        assert arm["valid_correct_binary"] == 43 and arm["binary_failures"] == 2
+        assert arm["binary_agreement_including_failures"] == .86
+    assert result["common_valid_binary"]["cases"] == 46
+    assert result["paired_binary_transitions"] == {"both_agree": 40, "baseline_only": 1,
+        "candidate_only": 3, "neither_agrees": 2}
+    assert not freeze["classifier_predictions_created"] and not result["dev_opened"]
+    assert not result["promotion_allowed"] and result["formal_pass_gate"] is None
+    for value in (contract, freeze, paid, result):
+        assert not any(key in json.dumps(value) for key in ('"question":', '"raw_response":', '"annotation":', '"api_key":'))
