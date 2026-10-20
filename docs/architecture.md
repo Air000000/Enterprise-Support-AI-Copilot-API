@@ -144,25 +144,26 @@ BM25 按请求重建、最多 5000 条可见 chunk；无额外持久索引或缓
 本路径不生成答案、不套用 Dense 拒答阈值。开启、外发说明和分数契约见 [README](../README.md#31-可选-hybrid-搜索)。
 SQL 复查缩小并发变更窗口，但不提供跨 SQL/Chroma 的原子快照。
 
-`/rag/ask` 另有默认关闭的实验路径：两个 Hybrid 开关均开启、请求显式指定 `retrieval_mode=hybrid` 和 `refusal_policy=v5_3_experimental`，且不传 `max_distance`：
+`/rag/ask` 另有默认关闭的实验路径：两个 Hybrid 开关均开启、请求显式指定 `retrieval_mode=hybrid` 和 `refusal_policy=v5_3_experimental` 或 `v5_3_1_experimental`，且不传 `max_distance`：
 
 ```text
 Hybrid Top14 prefix
 → current SQL visibility/content recheck
-→ v5.3 classifier + strict original-line selection/coverage validation
+→ selected v5.3 / v5.3.1 classifier + same strict original-line selection/coverage validation
 → INSUFFICIENT: fixed refusal (no generation)
 → SUFFICIENT: full-context generation → supporting-source ID validation
 → current SQL recheck → response + typed scores/gate audit
 ```
 
 实现位于 `rag_runtime/hybrid_ask.py`，复用冻结的纯提示词/校验函数，不运行评测或改写冻结源码。
+仅按策略选择已有消息构建函数，检索、解析、生成与可见性复查共用；响应及各类审计保留原策略名，不自动切换版本。v5.3.1 接线通过不代表真实模型质量已通过验收。
 无上下文为 `no_context`；gate 不足为 `refused_insufficient_evidence`；生成器拒答为 `refused_by_generator`。
 格式、截断、非法引用、提供方或可见性错误均返回脱敏 503、审计 `failed`，不会当作正确拒答或自动切换 Dense。
 分类使用强制专用 Phase B 配置，生成复用通用 chat 配置；两者无自动重试，完整上下文属于新增外发。
 Qwen3.5 Plus 生成与分类均显式关闭思考模式；生成仍为 1024 输出 tokens、30 秒超时。
 失败审计仅增加分类/生成/未细分服务阶段与有界异常类型链，不记录异常正文；验收脚本另记响应读取阶段、已知 usage 和结束原因，不记录隐藏思考。
 详细配置、输出上限与已知语义限制见 [实验问答说明](../README.md#32-实验-hybrid-问答默认关闭)。
-它不是 v5.3 正式晋级、生产可用性承诺或 Ticket Agent 逻辑替换。
+它不是 v5.3 / v5.3.1 正式晋级、生产可用性承诺或 Ticket Agent 逻辑替换。
 
 ## 5. 文档生命周期
 

@@ -49,10 +49,10 @@ def answer_question(
             "RAG_HYBRID_SEARCH_ENABLED", "RAG_HYBRID_ASK_ENABLED"
         )):
             raise RuntimeError("Experimental Hybrid ask is disabled")
-        if max_distance is not None or refusal_policy != "v5_3_experimental":
+        from rag_runtime.hybrid_ask import POLICY_BUILDERS, ask_hybrid
+        if max_distance is not None or refusal_policy not in POLICY_BUILDERS:
             raise ValueError("Hybrid ask requires explicit experimental policy and no distance threshold")
-        from rag_runtime.hybrid_ask import ask_hybrid
-        return ask_hybrid(question, top_k, tenant_id, category)
+        return ask_hybrid(question, top_k, tenant_id, category, refusal_policy=refusal_policy)
     if retrieval_mode != "dense" or refusal_policy is not None:
         raise ValueError("Unknown retrieval mode or unsupported Dense refusal policy")
     return ask_rag(

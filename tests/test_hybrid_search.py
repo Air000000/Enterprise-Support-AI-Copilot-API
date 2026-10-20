@@ -387,24 +387,25 @@ def ask_runtime(runtime, monkeypatch):
 ASK_BODY = {"question": "How to resolve VPN?", "retrieval_mode": "hybrid", "refusal_policy": "v5_3_experimental", "category": "it"}
 
 
-def test_hybrid_ask_admits_with_null_distance_and_audits_gate(ask_runtime, monkeypatch):
+@pytest.mark.parametrize("policy", ["v5_3_experimental", "v5_3_1_experimental"])
+def test_hybrid_ask_admits_with_null_distance_and_audits_gate(ask_runtime, monkeypatch, policy):
     engine, _, state, ask = ask_runtime
     good = add_document(engine, content="VPN guidance with necessary conditions.")
     add_document(engine, tenant="foreign", content="Never send foreign body")
     add_document(engine, category="hr", content="Never send other category")
     monkeypatch.setattr(hybrid, "get_collection", lambda: SimpleNamespace(query=lambda **_: {"ids": [[]], "distances": [[]]}))
     with TestClient(main.app) as api:
-        response = api.post("/rag/ask", json=ASK_BODY | {"tenant_id": "foreign"})
+        response = api.post("/rag/ask", json=ASK_BODY | {"tenant_id": "foreign", "refusal_policy": policy})
         assert response.status_code == 200, response.text
         body = response.json()
         assert body["retrieval_status"] == "ok" and body["top_distance"] is None
-        assert body["refusal_policy"] == ask.POLICY and body["retrieval_mode"] == "hybrid"
+        assert body["refusal_policy"] == policy and body["retrieval_mode"] == "hybrid"
         assert body["evidence_gate"]["decision"] == "SUFFICIENT"
         assert body["sources"][0]["distance"] is None and body["sources"][0]["document_id"] == good.id
         assert body["sources"][0]["bm25_rank"] == 1 and body["sources"][0]["rerank_score"] == 1
         logs = api.get("/agent-ops/retrieval-logs", params={"endpoint": "ask"}).json()
         audit = json.loads(logs[0]["scores_json"])
-        assert audit["refusal_policy"] == ask.POLICY and audit["evidence_gate"]["decision"] == "SUFFICIENT"
+        assert audit["refusal_policy"] == policy and audit["evidence_gate"]["decision"] == "SUFFICIENT"
         assert audit["score_type"] == "rerank_relevance" and logs[0]["top_distance"] is None
     assert [stage for stage, _ in state["events"]] == ["gate", "generation"]
     classifier, generation = [body for _, body in state["events"]]
@@ -413,7 +414,9 @@ def test_hybrid_ask_admits_with_null_distance_and_audits_gate(ask_runtime, monke
     assert generation["enable_thinking"] is False
     assert next(timeout for stage, timeout in state["timeouts"] if stage == "generation")["read"] == 30
     from experiments.evals.refusal_question_scoped_coverage import CLASSIFIER_SYSTEM_PROMPT_V5_3_DEV
-    assert classifier["messages"][0]["content"] == CLASSIFIER_SYSTEM_PROMPT_V5_3_DEV
+    from experiments.evals.refusal_version_audit_clarification import CLASSIFIER_SYSTEM_PROMPT_V5_3_1_DEV
+    expected_prompt = CLASSIFIER_SYSTEM_PROMPT_V5_3_DEV if policy == ask.POLICY else CLASSIFIER_SYSTEM_PROMPT_V5_3_1_DEV
+    assert classifier["messages"][0]["content"] == expected_prompt
     payload = json.loads(classifier["messages"][1]["content"])
     assert set(payload) == {"question", "sources"}
     assert payload["sources"][0]["segments"][0]["content"] == "VPN guidance with necessary conditions."
@@ -453,7 +456,8 @@ def test_hybrid_ask_insufficient_never_generates_and_is_filterable(ask_runtime, 
 
 
 @pytest.mark.parametrize("failure", ["bad_gate", "truncated_gate", "gate_provider", "generation_provider", "truncated_answer", "empty_answer", "no_citation", "unknown_citation", "uncited_support"])
-def test_hybrid_ask_failures_are_not_success_or_normal_refusal(ask_runtime, failure):
+@pytest.mark.parametrize("policy", ["v5_3_experimental", "v5_3_1_experimental"])
+def test_hybrid_ask_failures_are_not_success_or_normal_refusal(ask_runtime, failure, policy):
     engine, _, state, _ = ask_runtime
     add_document(engine)
     add_document(engine)  # Source 2 is present but not admitted by the gate.
@@ -469,27 +473,30 @@ def test_hybrid_ask_failures_are_not_success_or_normal_refusal(ask_runtime, fail
         state["answer"] = {"empty_answer": "", "no_citation": "Unsupported answer", "unknown_citation": "Try it. [Source 99]",
                            "uncited_support": "Try it. [Source 2]"}[failure]
     with TestClient(main.app) as api:
-        response = api.post("/rag/ask", json=ASK_BODY)
+        response = api.post("/rag/ask", json=ASK_BODY | {"refusal_policy": policy})
         assert response.status_code == 503
         logs = api.get("/agent-ops/retrieval-logs").json()
         assert logs[0]["retrieval_status"] == "failed"
         assert "private-provider-body" not in response.text + logs[0]["error_message"]
         assert "secret-key" not in response.text + logs[0]["error_message"]
-        assert json.loads(logs[0]["scores_json"])["refusal_policy"] == "v5_3_experimental"
+        assert json.loads(logs[0]["scores_json"])["refusal_policy"] == policy
     assert sum(stage == "gate" for stage, _ in state["events"]) == 1
     assert sum(stage == "generation" for stage, _ in state["events"]) == (failure not in {"bad_gate", "truncated_gate", "gate_provider"})
 
 
-def test_hybrid_ask_empty_and_generator_refusal_are_distinct(ask_runtime):
+@pytest.mark.parametrize("policy", ["v5_3_experimental", "v5_3_1_experimental"])
+def test_hybrid_ask_empty_and_generator_refusal_are_distinct(ask_runtime, policy):
     engine, calls, state, ask = ask_runtime
     with TestClient(main.app) as api:
-        response = api.post("/rag/ask", json=ASK_BODY)
+        response = api.post("/rag/ask", json=ASK_BODY | {"refusal_policy": policy})
         assert response.status_code == 200 and response.json()["retrieval_status"] == "no_context"
+        assert response.json()["refusal_policy"] == policy
         assert calls == state["events"] == []
         add_document(engine)
         state["answer"] = ask.REFUSAL
-        response = api.post("/rag/ask", json=ASK_BODY)
+        response = api.post("/rag/ask", json=ASK_BODY | {"refusal_policy": policy})
         assert response.json()["retrieval_status"] == "refused_by_generator"
+        assert response.json()["refusal_policy"] == policy
         assert response.json()["evidence_gate"]["decision"] == "SUFFICIENT"
 
 
@@ -519,20 +526,24 @@ def test_hybrid_ask_doc_mutation_blocks_stale_answer(ask_runtime, monkeypatch, s
     assert len(state["events"]) == {"before_gate": 0, "gate": 1, "generation": 2}[stage]
 
 
-def test_hybrid_ask_flags_policy_and_missing_config_stop_early(ask_runtime, monkeypatch):
+@pytest.mark.parametrize("policy", ["v5_3_experimental", "v5_3_1_experimental"])
+def test_hybrid_ask_flags_policy_and_missing_config_stop_early(ask_runtime, monkeypatch, policy):
     _, calls, state, ask = ask_runtime
+    body = ASK_BODY | {"refusal_policy": policy}
     with TestClient(main.app) as api:
-        for body in (ASK_BODY | {"max_distance": 0.9}, ASK_BODY | {"top_k": 15}, ASK_BODY | {"question": "  "},
-                     ASK_BODY | {"refusal_policy": None}, {"question": "x", "top_k": 11},
-                     {"question": "x", "refusal_policy": "v5_3_experimental"}):
-            assert api.post("/rag/ask", json=body).status_code == 422
+        for invalid in (body | {"max_distance": 0.9}, body | {"top_k": 15}, body | {"question": "  "},
+                        body | {"refusal_policy": None}, body | {"refusal_policy": "unknown"},
+                        {"question": "x", "top_k": 11}, {"question": "x", "refusal_policy": policy}):
+            assert api.post("/rag/ask", json=invalid).status_code == 422
         for flag in ("RAG_HYBRID_ASK_ENABLED", "RAG_HYBRID_SEARCH_ENABLED"):
             monkeypatch.setenv(flag, "false")
-            assert api.post("/rag/ask", json=ASK_BODY).status_code == 503
+            assert api.post("/rag/ask", json=body).status_code == 503
             monkeypatch.setenv(flag, "true")
         monkeypatch.setattr(ask, "get_classifier_client", state["real_classifier_factory"])
         monkeypatch.delenv("DASHSCOPE_PHASE_B_API_KEY", raising=False)
-        assert api.post("/rag/ask", json=ASK_BODY).status_code == 503
+        assert api.post("/rag/ask", json=body).status_code == 503
+    with pytest.raises(ValueError, match="Unknown experimental refusal policy"):
+        ask.ask_hybrid("x", 14, "tenant_demo", refusal_policy="unknown")
     assert calls == state["events"] == []
 
 
@@ -654,7 +665,8 @@ def test_transport_distinguishes_header_and_body_timeout(phase):
     assert "private-provider-body" not in json.dumps(records) and "secret-key" not in json.dumps(records)
 
 
-def test_nonempty_hybrid_over_real_uvicorn_tcp(ask_runtime, monkeypatch):
+@pytest.mark.parametrize("policy", ["v5_3_experimental", "v5_3_1_experimental"])
+def test_nonempty_hybrid_over_real_uvicorn_tcp(ask_runtime, monkeypatch, policy):
     """Real TCP/JWT/SQL/Chroma; external models stay mocked, not quality evidence."""
     from auth import get_current_user
     from scripts.smoke_hybrid_runtime import live_http_client
@@ -678,9 +690,10 @@ def test_nonempty_hybrid_over_real_uvicorn_tcp(ask_runtime, monkeypatch):
             login = api.post("/auth/token", json={"username": "support", "password": "support"})
             assert login.status_code == 200
             api.headers["Authorization"] = "Bearer " + login.json()["access_token"]
-            body = ASK_BODY | {"tenant_id": "tenant_other"}
+            body = ASK_BODY | {"tenant_id": "tenant_other", "refusal_policy": policy}
             answer = api.post("/rag/ask", json=body)
             assert answer.status_code == 200 and answer.json()["retrieval_status"] == "ok"
+            assert answer.json()["refusal_policy"] == policy
             assert answer.json()["answer"] == state["answer"]
             assert [s["document_id"] for s in answer.json()["sources"]] == [own.id]
             assert [stage for stage, _ in state["events"]] == ["gate", "generation"]
@@ -703,6 +716,7 @@ def test_nonempty_hybrid_over_real_uvicorn_tcp(ask_runtime, monkeypatch):
             assert before == (len(rerank_calls), len(state["events"]))
             logs = api.get("/agent-ops/retrieval-logs").json()
             assert len(logs) == 5 and all(row["tenant_id"] == "tenant_demo" for row in logs)
+            assert all(json.loads(row["scores_json"])["refusal_policy"] == policy for row in logs)
             assert api.get("/agent-ops/metrics/retrieval").json()["retrieval_status_counts"] == {
                 "ok": 1, "refused_insufficient_evidence": 1, "failed": 2, "no_context": 1}
             assert "private-provider-body" not in json.dumps(logs) and "secret-key" not in json.dumps(logs)
