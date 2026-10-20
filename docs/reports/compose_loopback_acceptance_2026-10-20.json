@@ -1,0 +1,65 @@
+{
+  "date": "2026-10-20",
+  "scope": "Original Compose plus disposable overlay; actual Windows host-loopback HTTP, not TestClient",
+  "status": "PASS_SCOPED",
+  "base_commit": "38df33fcfb79afb42d091e7263b1e55ffee8c197",
+  "runtime": {
+    "docker_engine": "29.6.2",
+    "compose": "5.3.1",
+    "image": "copilot-compose-acceptance:local",
+    "tested_image_id": "sha256:c07a3b6cde08aa7a864507f434a468db834408348d25027074294534053f681c",
+    "project": "copilot-acceptance-20261020",
+    "container": "copilot-acceptance-20261020-api-1",
+    "http": "http://127.0.0.1:18080",
+    "build": "Original Dockerfile; dependency install layer cached; no image push",
+    "entrypoint": "Original Alembic upgrade head and Uvicorn command",
+    "network": "Project-scoped ordinary bridge; NOT an outbound network firewall",
+    "ports": "Actual NetworkSettings.Ports and HostConfig.PortBindings both exactly 127.0.0.1:18080 -> 8000/tcp",
+    "volumes": ["copilot-acceptance-20261020_sql", "copilot-acceptance-20261020_storage", "copilot-acceptance-20261020_chroma"],
+    "bind_mounts": 0,
+    "real_env_loaded": false,
+    "provider_calls": 0,
+    "provider_guard": "All three provider configurations use dummy keys and http://127.0.0.1:9/v1; no index, Dense, classification or generation requests",
+    "hybrid_search_enabled": false,
+    "hybrid_ask_enabled": false
+  },
+  "observations": [
+    "Initial internal:true network accepted ports in merged config but actual NetworkSettings.Ports was empty; host health polling did not succeed and was interrupted. This phase is NOT a PASS.",
+    "Replaced internal network with ordinary project bridge; did not add a proxy sidecar, firewall framework or dependency. Fake loopback provider configuration remained unchanged.",
+    "Native Compose merge contract passed using explicit public --env-file .env.example, with service env_file reset, environment fully replaced and no inherited proxy variables.",
+    "Actual container labels, mount names/targets/types, network, dummy provider settings, disabled dotenv and both port-binding representations were checked before host HTTP calls.",
+    "GET /health and /openapi.json passed; /rag/ask appears in OpenAPI. No real prompt was sent.",
+    "Demo JWT logins passed; unauthenticated document listing returned 401, employee returned 403, both support tenants saw zero documents.",
+    "Explicit Hybrid search and v5_3_experimental ask each returned expected disabled 503 and wrote one scoped failed retrieval audit record. Other tenant's retrieval logs stayed empty.",
+    "SQLite migration matched Alembic head and integrity_check returned ok in every successful phase. Documents, ticket, agent_runs, approval_requests and tool_calls all stayed empty.",
+    "No uploads, indexing or Chroma canary in this phase; component data persistence was covered separately in the 2026-10-18 report. A Chroma mount alone is not proof that Chroma was exercised."
+  ],
+  "successful_phases": [
+    {"phase": "initial ordinary-bridge startup", "status": "PASS", "audit_ids": [1, 2]},
+    {"phase": "compose restart api completed before recheck", "status": "PASS", "audit_ids": [1, 2, 3, 4]},
+    {"phase": "compose up --no-build --pull never --force-recreate -d completed before recheck", "status": "PASS", "audit_ids": [1, 2, 3, 4, 5, 6]}
+  ],
+  "verification": {
+    "focused": "4 passed in 3.62s",
+    "full_final_configuration": "660 passed in 47.58s; temporary SQLite, dummy credentials, external-network Python audit guard, no private data reads",
+    "ruff": "All checks passed",
+    "regression_check": "tests/test_docker_build_context.py uses native docker compose config; no engine needed; skipped only when Docker CLI absent"
+  },
+  "cleanup": {
+    "verified": "Compose ownership labels checked on exact container, network and all three volumes before down --volumes; post-cleanup project-filtered inventories were empty",
+    "removed": "Only this project's disposable container, network and three volumes containing synthetic retrieval audits",
+    "retained": "Dedicated local acceptance image and existing user resources; no global prune",
+    "primary_checkout": "Existing dirty files and all business-data directories unchanged"
+  },
+  "pending": [
+    "Non-empty indexing/retrieval/answer through a running server with a separately bounded real-provider authorization",
+    "Functional Dense answer behavior through a running server",
+    "Independent semantic-quality acceptance and decision whether any candidate merits promotion"
+  ],
+  "non_claims": [
+    "Not production or public deployment; no real .env or business data and no Ticket Agent calls",
+    "No candidate activation; v5.3.1 stays offline; ordinary Hybrid defaults remain off",
+    "No new refusal-quality result; earlier classifier warnings and NO_PROMOTION conclusions remain unchanged",
+    "No claim that normal bridge blocks outbound network or that disabled 503 is a successful answer/refusal"
+  ]
+}

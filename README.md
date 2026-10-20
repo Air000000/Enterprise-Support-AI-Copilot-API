@@ -674,6 +674,21 @@ Docker Compose 用于本地可复现运行与核心链路验证，不作为生�
 
 镜像构建排除 `.env`/其变体、开发及 Docker 的数据库/上传文件/Chroma 目录，保留公开 `.env.example`。Git 忽略不等于 Docker 构建忽略；不要把日常运行数据复制进镜像。
 
+零模型调用的隔离 Compose 启动验收（Compose ≥ 2.24.4）：
+
+```bash
+docker compose --env-file .env.example -p copilot-acceptance -f docker-compose.yml -f docker-compose.acceptance.yml up --build --pull never -d
+curl http://127.0.0.1:18080/health
+```
+
+该覆盖配置移除真实 `.env`、代理和业务目录挂载，使用假凭据、容器回环不可用模型地址与项目专属命名卷，Hybrid 两个开关保持关闭。普通桥接网络用于宿主机端口访问，不提供网络层外连阻断。它验证运行接线，不验证模型质量。不要用于正常问答或公网部署。完成后仅清理该独立项目：
+
+```bash
+docker compose --env-file .env.example -p copilot-acceptance -f docker-compose.yml -f docker-compose.acceptance.yml down --volumes
+```
+
+实际宿主机回环、重启及容器重建结果与未覆盖范围见 [Compose 验收记录](docs/reports/compose_loopback_acceptance_2026-10-20.json)。
+
 ---
 
 # 10. 测试 / CI
