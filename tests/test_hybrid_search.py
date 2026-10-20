@@ -932,6 +932,36 @@ def test_ticket_hybrid_document_to_decision_over_real_http(runtime, tmp_path, mo
         chroma.delete_collection(collection.name)
 
 
+@pytest.mark.parametrize("message_length", [600, 2000])
+def test_ticket_hybrid_top14_keeps_full_message_within_draft_limit(runtime, monkeypatch, message_length):
+    import services.agent_ops_service as ops
+    from models.agent_ops import AgentRun, ApprovalRequest, ToolCall
+    from models.ticket import Ticket
+
+    engine, calls = runtime
+    monkeypatch.setattr(ops, "engine", engine)
+    expected_ids = {add_document(engine, content="VPN needle guide").id for _ in range(14)}
+    message = "VPN 连不上 " + "请协助排查。" * 334
+    message = message[:message_length]
+    with TestClient(main.app) as api:
+        response = api.post("/agent/ticket/preview", json={"message": message, "category": "it",
+            "retrieval_mode": "hybrid"})
+    assert response.status_code == 200, response.text
+    preview = response.json()
+    assert preview["should_create_ticket"] and preview["draft"]["description"] == message
+    assert len(preview["draft"]["description"]) == message_length
+    assert {s["document_id"] for s in preview["sources"]} == expected_ids
+    assert len(calls) == 1 and len(calls[0]["documents"]) == 14
+    with Session(engine) as session:
+        run = session.get(AgentRun, preview["agent_run_id"])
+        assert run.status == "completed"
+        assert set(json.loads(run.retrieval_summary_json)["source_document_ids"]) == expected_ids
+        approval = session.get(ApprovalRequest, preview["approval_request_id"])
+        assert approval.status == "pending" and json.loads(approval.draft_json) == preview["draft"]
+        assert all(t.status == "success" for t in session.exec(select(ToolCall)).all())
+        assert session.exec(select(Ticket)).all() == []
+
+
 @pytest.mark.parametrize("failure", ["disabled", "provider"])
 def test_ticket_hybrid_failure_is_audited_without_approval_or_fallback(runtime, monkeypatch, failure):
     import services.agent_ops_service as ops
