@@ -818,6 +818,120 @@ def test_ticket_preview_reuses_hybrid_and_preserves_confirm_boundary(runtime, mo
     assert len(calls) == 1  # Confirm never reruns retrieval.
 
 
+@pytest.mark.parametrize("decision", ["confirm", "reject", "cancel"])
+def test_ticket_hybrid_document_to_decision_over_real_http(runtime, tmp_path, monkeypatch, decision):
+    """Real HTTP/JWT/document indexing/Chroma/AgentOps; model transports stay offline."""
+    from auth import get_current_user
+    from scripts.smoke_hybrid_runtime import live_http_client
+    import routers.documents as document_router
+    import services.agent_ops_service as ops
+    import services.ticket_agent_service as agent
+    import services.ticket_service as tickets
+
+    engine, calls = runtime
+    monkeypatch.setattr(ops, "engine", engine)
+    monkeypatch.setattr(tickets, "engine", engine)
+    monkeypatch.setattr(agent, "search_chroma", lambda **_: pytest.fail("No implicit Dense fallback"))
+    monkeypatch.setenv("DOCUMENT_STORAGE_ROOT", str(tmp_path / "uploads"))
+    monkeypatch.setenv("RAG_HYBRID_ASK_ENABLED", "false")
+    monkeypatch.delitem(main.app.dependency_overrides, get_current_user)
+    chroma = chromadb.EphemeralClient(settings=chromadb.Settings(anonymized_telemetry=False))
+    collection = chroma.create_collection("ticket_tcp_" + uuid4().hex, embedding_function=None)
+    monkeypatch.setattr(hybrid, "get_collection", lambda: collection)
+    monkeypatch.setattr(document_router, "index_document_service", lambda **kwargs: documents.index_document(
+        **kwargs, embedding_function=hybrid.embed_texts, chroma_collection=collection))
+    try:
+        with live_http_client(main.app) as api:
+            body = {"message": "VPN 连不上", "category": "it", "retrieval_mode": "hybrid",
+                    "tenant_id": "tenant_other"}
+            assert api.post("/agent/ticket/preview", json=body).status_code == 401
+            headers = {}
+            for username in ("support", "support_other", "employee"):
+                login = api.post("/auth/token", json={"username": username,
+                    "password": "employee" if username == "employee" else "support"})
+                assert login.status_code == 200
+                headers[username] = {"Authorization": "Bearer " + login.json()["access_token"]}
+            own = None
+            for username, category, text in (("support", "it", "VPN needle authorized guide"),
+                    ("support", "hr", "FORBIDDEN other-category VPN"),
+                    ("support_other", "it", "FORBIDDEN foreign VPN")):
+                upload = api.post("/documents/upload", files={"file": ("vpn.md", text.encode(), "text/markdown")},
+                    data={"category": category}, headers=headers[username])
+                assert upload.status_code == 201, upload.text
+                doc_id = upload.json()["id"]
+                indexed = api.post(f"/documents/{doc_id}/index", headers=headers[username])
+                assert indexed.status_code == 200 and indexed.json()["status"] == "indexed"
+                if username == "support" and category == "it":
+                    own = doc_id
+            assert collection.count() == 3
+            api.headers.update(headers["support"])
+            response = api.post("/agent/ticket/preview", json=body)
+            assert response.status_code == 200, response.text
+            preview = response.json()
+            assert preview["should_create_ticket"] and preview["retrieval_mode"] == "hybrid"
+            assert [s["document_id"] for s in preview["sources"]] == [own]
+            source = preview["sources"][0]
+            assert source["dense_rank"] == source["bm25_rank"] == 1
+            assert source["rerank_score"] == 1 and source["distance"] is not None
+            assert len(calls) == 1 and calls[0]["documents"] == ["VPN needle authorized guide"]
+            assert api.get("/tickets").json() == []
+            run_id, approval_id = preview["agent_run_id"], preview["approval_request_id"]
+            trace_url = f"/agent-ops/runs/{run_id}/trace"
+            trace_response = api.get(trace_url)
+            assert trace_response.status_code == 200
+            trace = trace_response.json()
+            assert trace["agent_run"]["tenant_id"] == "tenant_demo"
+            summary = json.loads(trace["agent_run"]["retrieval_summary_json"])
+            assert summary["retrieval_mode"] == "hybrid" and summary["top_k"] == 14
+            assert summary["top_distance"] is None and summary["rerank_scores"] == [1]
+            assert {t["tool_name"] for t in trace["tool_calls"]} == {"search_kb", "classify_ticket"}
+            search = next(t for t in trace["tool_calls"] if t["tool_name"] == "search_kb")
+            output = json.loads(search["tool_output_json"])
+            assert output["score_type"] == "rerank_relevance" and output["larger_is_better"] is True
+            assert output["top_distance"] is None and output["rerank_scores"] == [1]
+            assert trace["approval_requests"][0]["status"] == "pending"
+            assert json.loads(trace["approval_requests"][0]["draft_json"]) == preview["draft"]
+            assert api.get(trace_url, headers=headers["support_other"]).status_code == 404
+            assert api.get(trace_url, headers=headers["employee"]).status_code == 403
+            confirm = {key: preview[key] for key in ("agent_run_id", "approval_request_id", "draft")}
+            if decision == "confirm":
+                result = api.post("/agent/ticket/confirm", json=confirm)
+                assert result.status_code == 201, result.text  # Disposable database only.
+                ticket = result.json()["ticket"]
+                assert ticket["tenant_id"] == "tenant_demo" and ticket["created_by"] == "support_demo"
+                assert all(ticket[key] == value for key, value in preview["draft"].items())
+                assert api.get(f"/tickets/{ticket['id']}", headers=headers["support_other"]).status_code == 404
+                expected_status = "approved"
+            else:
+                url = f"/agent-ops/approval-requests/{approval_id}/{decision}"
+                assert api.post(url, json={"reason": "Fictional test decision"},
+                    headers=headers["support_other"]).status_code == 404
+                result = api.post(url, json={"reason": "Fictional test decision"})
+                assert result.status_code == 200, result.text
+                expected_status = "rejected" if decision == "reject" else "cancelled"
+                assert result.json()["decision_reason"] == "Fictional test decision"
+                assert result.json()["approved_by"] == "support_demo"
+                assert api.post(url, json={"reason": "Repeated decision"}).status_code == 400
+            assert api.post("/agent/ticket/confirm", json=confirm).status_code == 400
+            final = api.get(trace_url).json()
+            assert final["approval_requests"][0]["status"] == expected_status
+            assert final["approval_requests"][0]["decided_at"] is not None
+            assert all(t["status"] == "success" for t in final["tool_calls"])
+            assert sum(t["tool_name"] == "create_ticket" for t in final["tool_calls"]) == (decision == "confirm")
+            assert len(api.get("/tickets").json()) == (decision == "confirm")
+            metrics = api.get("/agent-ops/metrics/summary").json()
+            assert metrics["total_agent_runs"] == metrics["total_approval_requests"] == 1
+            assert metrics[f"{expected_status}_approval_requests"] == 1
+            assert metrics["pending_approval_requests"] == metrics["failed_tool_calls"] == 0
+            assert metrics["total_tool_calls"] == (3 if decision == "confirm" else 2)
+            assert api.get("/agent-ops/runs", headers=headers["support_other"]).json() == []
+            assert api.get("/tickets", headers=headers["support_other"]).json() == []
+            assert api.get("/agent-ops/metrics/summary", headers=headers["support_other"]).json()["total_agent_runs"] == 0
+            assert len(calls) == 1  # Decisions and read APIs never re-run retrieval.
+    finally:
+        chroma.delete_collection(collection.name)
+
+
 @pytest.mark.parametrize("failure", ["disabled", "provider"])
 def test_ticket_hybrid_failure_is_audited_without_approval_or_fallback(runtime, monkeypatch, failure):
     import services.agent_ops_service as ops
