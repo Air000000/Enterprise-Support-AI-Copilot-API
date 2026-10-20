@@ -702,6 +702,14 @@ docker compose --env-file .env.example -p copilot-acceptance -f docker-compose.y
 
 非空 Hybrid 的真实 HTTP 回归见 `tests/test_hybrid_search.py::test_nonempty_hybrid_over_real_uvicorn_tcp`：启动仅回环的 Uvicorn，使用真实 JWT、临时 SQL 和 Chroma，验证回答、证据不足、提供方错误、空范围及开关关闭的状态与审计。外部模型响应使用测试替身，不调用付费模型；这不是同次 Docker + 真实提供方端到端验证，也不证明模型语义质量或 Dense 答案质量。
 
+同一有界冒烟脚本可用 `--live-http` 将 TestClient 换成真实回环 Uvicorn/TCP；以下仍只输出零调用计划：
+
+```bash
+python -m scripts.smoke_hybrid_runtime --ask --live-http
+```
+
+真实执行另需单独授权及 `--execute`，原有固定 7 文档/8 用例、28 次调用及请求体守卫不变。该模式使用临时 Alembic 数据库和真实临时 Chroma；容器执行时可不发布任何宿主机端口。`--env-file -` 只接受标准输入中三个提供方配置的六项 JSON 字段（`DASHSCOPE` / `DASHSCOPE_RERANK` / `DASHSCOPE_PHASE_B` 的 `_API_KEY`、`_BASE_URL`），不把凭据放进 Docker 环境或命令行。它运行验收入口，不是原 Compose 启动命令或持久化/重启测试的替代。
+
 ---
 
 # 10. 测试 / CI
