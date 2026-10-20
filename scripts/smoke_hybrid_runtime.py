@@ -1,7 +1,7 @@
-"""Isolated ASGI/SQL/Chroma smoke; default is a zero-call plan, not a live server."""
+"""Isolated ASGI or loopback HTTP smoke; default is a zero-call plan."""
 
 import argparse
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 import json
 import logging
 import os
@@ -162,7 +162,38 @@ def run_flow(client):
             "default Dense", "Hybrid VPN ranking", "category", "delete", "empty corpus", "typed audit"]}
 
 
-def execute(env_file, *, ask=False):
+@contextmanager
+def live_http_client(app):
+    """Real Uvicorn/TCP, OS-assigned loopback port, no external listener."""
+    import socket
+    from threading import Thread
+    import uvicorn
+
+    # ponytail: reuse the installed server and one socket, not a proxy stack.
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        server = uvicorn.Server(uvicorn.Config(app, loop="asyncio", http="h11", ws="none",
+            lifespan="on", log_config=None, access_log=False))
+        worker = Thread(target=server.run, kwargs={"sockets": [listener]}, daemon=True)
+        worker.start()
+        try:
+            deadline = time.monotonic() + 10
+            while not server.started:
+                if not worker.is_alive() or time.monotonic() >= deadline:
+                    raise RuntimeError("Uvicorn startup failed")
+                time.sleep(.02)
+            # One ask may contain embedding + rerank + classifier + generation.
+            with httpx.Client(base_url=f"http://127.0.0.1:{listener.getsockname()[1]}",
+                              trust_env=False, timeout=120, follow_redirects=False) as client:
+                yield client
+        finally:
+            server.should_exit = True
+            worker.join(timeout=10)
+            if worker.is_alive():
+                raise RuntimeError("Uvicorn did not stop before data cleanup")
+
+
+def execute(env_file, *, ask=False, live_http=False):
     from dotenv import dotenv_values
     from openai import OpenAI
     import chromadb
@@ -170,7 +201,14 @@ def execute(env_file, *, ask=False):
 
     if "database" in sys.modules:
         raise RuntimeError("Execute in a fresh process to isolate the database")
-    config = dotenv_values(env_file)
+    if str(env_file) == "-":
+        config = json.load(sys.stdin)  # Selected credentials over stdin, never Docker env/argv or image files.
+        allowed = {prefix + suffix for prefix in ("DASHSCOPE", "DASHSCOPE_RERANK", "DASHSCOPE_PHASE_B")
+                   for suffix in ("_API_KEY", "_BASE_URL")}
+        if not isinstance(config, dict) or set(config) != allowed or any(not isinstance(v, str) for v in config.values()):
+            raise RuntimeError("Only the six selected credential settings are accepted on stdin")
+    else:
+        config = dotenv_values(env_file)
     embed_url = config.get("DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
     rerank_url = config.get("DASHSCOPE_RERANK_BASE_URL", "")
     rerank_host = urlsplit(rerank_url).hostname or ""
@@ -202,7 +240,12 @@ def execute(env_file, *, ask=False):
         import rag_runtime.hybrid_search as hybrid
         import rag_runtime.query_chroma as dense
         import services.document_service as documents
-        database.create_db_and_tables()
+        if live_http:
+            from alembic import command
+            from alembic.config import Config
+            command.upgrade(Config("alembic.ini"), "head")
+        else:
+            database.create_db_and_tables()
         stack.callback(database.engine.dispose)
         stack.callback(main.llm_client.close)
         for name in ("httpx", "httpx2", "openai", "bm25s"):
@@ -229,13 +272,22 @@ def execute(env_file, *, ask=False):
         for module, attr in ((dense, "get_collection"), (hybrid, "get_collection"), (documents, "get_document_chroma_collection")):
             stack.enter_context(patch.object(module, attr, lambda **_: collection))
         try:
-            with TestClient(main.app) as client:
+            with (live_http_client(main.app) if live_http else TestClient(main.app)) as client:
                 if ask:
                     from scripts.hybrid_ask_cases import run_flow as run_ask_flow
                     result = run_ask_flow(client, records, progress)
                 else:
                     result = run_flow(client)
             result["calls"] = records
+            result["http_transport"] = "uvicorn_loopback_tcp" if live_http else "asgi_testclient"
+            with database.engine.connect() as connection:
+                result["action_row_counts"] = {table: connection.exec_driver_sql(
+                    f"select count(*) from {table}").scalar_one()
+                    for table in ("ticket", "agent_runs", "approval_requests", "tool_calls")}
+                if live_http:
+                    result["migration_revision"] = connection.exec_driver_sql("select version_num from alembic_version").scalar_one()
+            if any(result["action_row_counts"].values()):
+                raise RuntimeError("Unexpected ticket or Agent action")
             return result
         finally:
             print(json.dumps({"provider_attempts": records, "cases": progress}, ensure_ascii=False))
@@ -244,12 +296,14 @@ def execute(env_file, *, ask=False):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--execute", action="store_true", help="Real paid calls; requires prior human authorization, not granted by this flag")
-    parser.add_argument("--env-file", type=Path)
+    parser.add_argument("--env-file", type=Path, help="Credential file, or '-' for six-setting JSON on stdin")
     parser.add_argument("--ask", action="store_true", help="Use the separately authorized 7-document, 8-case ask acceptance plan")
+    parser.add_argument("--live-http", action="store_true", help="Use real loopback Uvicorn/TCP instead of TestClient")
     args = parser.parse_args()
     if not args.execute:
         from scripts import hybrid_ask_cases as cases
         print(json.dumps({"mode": "PLAN_ONLY", "limits": cases.LIMITS if args.ask else LIMITS,
+                          "http_transport": "uvicorn_loopback_tcp" if args.live_http else "asgi_testclient",
                           "max_total_request_bytes": cases.MAX_TOTAL_BYTES if args.ask else MAX_TOTAL_BYTES,
                           "documents": cases.DOCS if args.ask else DOCS,
                           "queries": sorted(cases.QUERIES if args.ask else QUERIES)}, ensure_ascii=False, indent=2))
@@ -257,7 +311,7 @@ def main():
         parser.error("--execute requires --env-file")
     else:
         try:
-            print(json.dumps(execute(args.env_file, ask=args.ask), ensure_ascii=False, indent=2))
+            print(json.dumps(execute(args.env_file, ask=args.ask, live_http=args.live_http), ensure_ascii=False, indent=2))
         except Exception as exc:
             print(f"Smoke failed ({type(exc).__name__}); no automatic rerun. Provider error bodies are not printed.", file=sys.stderr)
             raise SystemExit(1) from None

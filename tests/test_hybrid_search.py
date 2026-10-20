@@ -656,11 +656,8 @@ def test_transport_distinguishes_header_and_body_timeout(phase):
 
 def test_nonempty_hybrid_over_real_uvicorn_tcp(ask_runtime, monkeypatch):
     """Real TCP/JWT/SQL/Chroma; external models stay mocked, not quality evidence."""
-    import socket
-    from threading import Thread
-    import time
-    import uvicorn
     from auth import get_current_user
+    from scripts.smoke_hybrid_runtime import live_http_client
 
     engine, rerank_calls, state, _ = ask_runtime
     own = add_document(engine, content="VPN guide: reconnect the client.")
@@ -674,59 +671,67 @@ def test_nonempty_hybrid_over_real_uvicorn_tcp(ask_runtime, monkeypatch):
             metadatas=[{"tenant_id": doc.tenant_id, "category": doc.category}])
     monkeypatch.setattr(hybrid, "get_collection", lambda: collection)
     monkeypatch.delitem(main.app.dependency_overrides, get_current_user)  # Exercise actual JWT dependency.
-    # ponytail: one OS-assigned loopback socket, not a new server/proxy framework.
-    with socket.socket() as listener:
-        listener.bind(("127.0.0.1", 0))
-        server = uvicorn.Server(uvicorn.Config(main.app, loop="asyncio", http="h11", ws="none",
-            lifespan="on", log_config=None, access_log=False))
-        worker = Thread(target=server.run, kwargs={"sockets": [listener]}, daemon=True)
-        worker.start()
-        try:
-            deadline = time.monotonic() + 10
-            while not server.started:
-                assert worker.is_alive() and time.monotonic() < deadline, "Uvicorn startup failed"
-                time.sleep(.02)
-            with httpx.Client(base_url=f"http://127.0.0.1:{listener.getsockname()[1]}",
-                              trust_env=False, timeout=10) as api:
-                assert api.get("/health").status_code == 200
-                assert api.post("/rag/ask", json=ASK_BODY).status_code == 401
-                login = api.post("/auth/token", json={"username": "support", "password": "support"})
-                assert login.status_code == 200
-                api.headers["Authorization"] = "Bearer " + login.json()["access_token"]
-                body = ASK_BODY | {"tenant_id": "tenant_other"}
-                answer = api.post("/rag/ask", json=body)
-                assert answer.status_code == 200 and answer.json()["retrieval_status"] == "ok"
-                assert answer.json()["answer"] == state["answer"]
-                assert [s["document_id"] for s in answer.json()["sources"]] == [own.id]
-                assert [stage for stage, _ in state["events"]] == ["gate", "generation"]
-                assert "Never send" not in json.dumps(state["events"]) + json.dumps(rerank_calls)
+    try:
+        with live_http_client(main.app) as api:
+            assert api.get("/health").status_code == 200
+            assert api.post("/rag/ask", json=ASK_BODY).status_code == 401
+            login = api.post("/auth/token", json={"username": "support", "password": "support"})
+            assert login.status_code == 200
+            api.headers["Authorization"] = "Bearer " + login.json()["access_token"]
+            body = ASK_BODY | {"tenant_id": "tenant_other"}
+            answer = api.post("/rag/ask", json=body)
+            assert answer.status_code == 200 and answer.json()["retrieval_status"] == "ok"
+            assert answer.json()["answer"] == state["answer"]
+            assert [s["document_id"] for s in answer.json()["sources"]] == [own.id]
+            assert [stage for stage, _ in state["events"]] == ["gate", "generation"]
+            assert "Never send" not in json.dumps(state["events"]) + json.dumps(rerank_calls)
 
-                state["gate"]["requirements"][0].update(status="MISSING", evidence=[])
-                refused = api.post("/rag/ask", json=body)
-                assert refused.status_code == 200
-                assert refused.json()["retrieval_status"] == "refused_insufficient_evidence"
-                assert [stage for stage, _ in state["events"]] == ["gate", "generation", "gate"]
-                state["error_stage"] = "gate"
-                failed = api.post("/rag/ask", json=body)
-                assert failed.status_code == 503 and "private-provider-body" not in failed.text
-                assert [stage for stage, _ in state["events"]] == ["gate", "generation", "gate", "gate"]
-                before = (len(rerank_calls), len(state["events"]))
-                empty = api.post("/rag/ask", json=body | {"category": "other"})
-                assert empty.status_code == 200 and empty.json()["retrieval_status"] == "no_context"
-                monkeypatch.setenv("RAG_HYBRID_ASK_ENABLED", "false")
-                assert api.post("/rag/ask", json=body).status_code == 503
-                assert before == (len(rerank_calls), len(state["events"]))
-                logs = api.get("/agent-ops/retrieval-logs").json()
-                assert len(logs) == 5 and all(row["tenant_id"] == "tenant_demo" for row in logs)
-                assert api.get("/agent-ops/metrics/retrieval").json()["retrieval_status_counts"] == {
-                    "ok": 1, "refused_insufficient_evidence": 1, "failed": 2, "no_context": 1}
-                assert "private-provider-body" not in json.dumps(logs) and "secret-key" not in json.dumps(logs)
-                login = api.post("/auth/token", json={"username": "support_other", "password": "support"})
-                assert login.status_code == 200
-                api.headers["Authorization"] = "Bearer " + login.json()["access_token"]
-                assert api.get("/agent-ops/retrieval-logs").json() == []
-        finally:
-            server.should_exit = True
-            worker.join(timeout=10)
-            chroma.delete_collection(collection.name)
-            assert not worker.is_alive(), "Uvicorn did not stop before fixture teardown"
+            state["gate"]["requirements"][0].update(status="MISSING", evidence=[])
+            refused = api.post("/rag/ask", json=body)
+            assert refused.status_code == 200
+            assert refused.json()["retrieval_status"] == "refused_insufficient_evidence"
+            assert [stage for stage, _ in state["events"]] == ["gate", "generation", "gate"]
+            state["error_stage"] = "gate"
+            failed = api.post("/rag/ask", json=body)
+            assert failed.status_code == 503 and "private-provider-body" not in failed.text
+            assert [stage for stage, _ in state["events"]] == ["gate", "generation", "gate", "gate"]
+            before = (len(rerank_calls), len(state["events"]))
+            empty = api.post("/rag/ask", json=body | {"category": "other"})
+            assert empty.status_code == 200 and empty.json()["retrieval_status"] == "no_context"
+            monkeypatch.setenv("RAG_HYBRID_ASK_ENABLED", "false")
+            assert api.post("/rag/ask", json=body).status_code == 503
+            assert before == (len(rerank_calls), len(state["events"]))
+            logs = api.get("/agent-ops/retrieval-logs").json()
+            assert len(logs) == 5 and all(row["tenant_id"] == "tenant_demo" for row in logs)
+            assert api.get("/agent-ops/metrics/retrieval").json()["retrieval_status_counts"] == {
+                "ok": 1, "refused_insufficient_evidence": 1, "failed": 2, "no_context": 1}
+            assert "private-provider-body" not in json.dumps(logs) and "secret-key" not in json.dumps(logs)
+            login = api.post("/auth/token", json={"username": "support_other", "password": "support"})
+            assert login.status_code == 200
+            api.headers["Authorization"] = "Bearer " + login.json()["access_token"]
+            assert api.get("/agent-ops/retrieval-logs").json() == []
+    finally:
+        chroma.delete_collection(collection.name)
+
+
+def test_live_http_cli_is_plan_only_without_execute():
+    import subprocess
+    import sys
+    result = subprocess.run([sys.executable, "-B", "-X", "utf8", "-m", "scripts.smoke_hybrid_runtime", "--ask",
+                             "--live-http", "--env-file", "-"], input="not credentials", text=True,
+                            encoding="utf-8", capture_output=True, timeout=30)
+    assert result.returncode == 0
+    plan = json.loads(result.stdout)
+    assert plan["mode"] == "PLAN_ONLY" and plan["http_transport"] == "uvicorn_loopback_tcp"
+    assert sum(plan["limits"].values()) == 28 and len(plan["documents"]) == 7
+
+
+def test_live_http_cli_rejects_unselected_stdin_settings_without_leaking_values():
+    import subprocess
+    import sys
+    result = subprocess.run([sys.executable, "-B", "-X", "utf8", "-m", "scripts.smoke_hybrid_runtime", "--execute",
+                             "--ask", "--live-http", "--env-file", "-"],
+                            input=json.dumps({"BUSINESS_SETTING": "private-key-must-not-print"}),
+                            text=True, encoding="utf-8", capture_output=True, timeout=30)
+    assert result.returncode == 1 and "Smoke failed (RuntimeError)" in result.stderr
+    assert "private-key-must-not-print" not in result.stdout + result.stderr

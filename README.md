@@ -340,7 +340,11 @@ python -m scripts.smoke_hybrid_runtime --ask --execute --env-file .env
 
 该次验收不发布宿主机端口、不加载真实 `.env`；Chroma 预制向量不是文档索引/检索质量验证，空范围 `no_context` 不是非空问答验证。其范围不含完整 Compose、宿主机访问或非空问答。固定检查入口为 `python -m scripts.smoke_local_persistence`，首次全新验收卷加 `--seed`；**只允许规定假凭据/数据库路径、Docker 无网络环境，拒绝 `-O`，不能直接针对日常服务运行**。临时容器和仅含虚构数据的卷已清理，专用镜像保留供复现。Ticket Agent 仍使用 Dense，默认 Hybrid 开关和 v5.3.1 候选接线均未改变。
 
-后续已分别补充 [Compose / 宿主机回环、重启与容器重建验收](docs/reports/compose_loopback_acceptance_2026-10-20.json)，以及 `tests/test_hybrid_search.py::test_nonempty_hybrid_over_real_uvicorn_tcp` 的非空真实 HTTP 检查（模型使用测试替身）。这些证据不能拼成同一次 Docker + 真实提供方端到端通过；该组合验收、真实服务 Dense 答案及独立语义质量仍未完成。
+后续已分别补充 [Compose / 宿主机回环、重启与容器重建验收](docs/reports/compose_loopback_acceptance_2026-10-20.json)，以及 `tests/test_hybrid_search.py::test_nonempty_hybrid_over_real_uvicorn_tcp` 的非空真实 HTTP 检查（模型使用测试替身）。这两项证据本身不能拼成同一次 Docker + 真实提供方端到端通过。
+
+2026-10-20 经单独授权完成一次[容器内真实 HTTP + 真实提供方联测](docs/reports/container_real_http_acceptance_2026-10-20.json)：调用前提交固定协议，使用同一镜像的 Alembic、Uvicorn 回环 TCP、临时 SQL/上传目录与真实临时 Chroma，运行原 7 篇虚构文档、8 类用例。28 次调用全部 HTTP 200（14 embedding / 6 rerank / 6 分类 / 2 生成），8 类流程检查通过；模型 usage 合计 14507 tokens，请求体 63541 bytes，不代表账单金额。回答 2 类、证据不足拒答 4 类、空/删除范围 2 类，工单与 Agent 动作表均为零。未发布宿主机端口，临时容器和合成运行数据已清理，未重跑或改持久开关。
+
+该次使用有界验收入口，不是原 Compose 启动命令；没有把宿主机发布、持久化重启、Dense 答案或工单整链加入本次付费运行。版本 2.0 问题仍被错误标成版本覆盖 `SUPPORTED`（来源仅有 1.0），最终由其他缺证检查拒答。因此结论仍是**限定范围的集成通过，不是独立拒答质量晋级或生产发布**；v5.3.1 未采用。
 
 ---
 
@@ -701,6 +705,14 @@ docker compose --env-file .env.example -p copilot-acceptance -f docker-compose.y
 实际宿主机回环、重启及容器重建结果与未覆盖范围见 [Compose 验收记录](docs/reports/compose_loopback_acceptance_2026-10-20.json)。
 
 非空 Hybrid 的真实 HTTP 回归见 `tests/test_hybrid_search.py::test_nonempty_hybrid_over_real_uvicorn_tcp`：启动仅回环的 Uvicorn，使用真实 JWT、临时 SQL 和 Chroma，验证回答、证据不足、提供方错误、空范围及开关关闭的状态与审计。外部模型响应使用测试替身，不调用付费模型；这不是同次 Docker + 真实提供方端到端验证，也不证明模型语义质量或 Dense 答案质量。
+
+同一有界冒烟脚本可用 `--live-http` 将 TestClient 换成真实回环 Uvicorn/TCP；以下仍只输出零调用计划：
+
+```bash
+python -m scripts.smoke_hybrid_runtime --ask --live-http
+```
+
+真实执行另需单独授权及 `--execute`，原有固定 7 文档/8 用例、28 次调用及请求体守卫不变。该模式使用临时 Alembic 数据库和真实临时 Chroma；容器执行时可不发布任何宿主机端口。`--env-file -` 只接受标准输入中三个提供方配置的六项 JSON 字段（`DASHSCOPE` / `DASHSCOPE_RERANK` / `DASHSCOPE_PHASE_B` 的 `_API_KEY`、`_BASE_URL`），不把凭据放进 Docker 环境或命令行。它运行验收入口，不是原 Compose 启动命令或持久化/重启测试的替代。
 
 ---
 
