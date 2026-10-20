@@ -201,3 +201,16 @@ def test_final_evaluation_waits_for_all_outcomes_and_keeps_case_labels_private(t
     assert "target_class" not in json.dumps(value) and "private_transitions" not in value
     with pytest.raises(RuntimeError, match="overwrite"):
         run.evaluate()
+
+
+def test_actual_annotation_stop_is_not_a_quality_result_or_retry_permission():
+    value = run.shared._read_json(run.REPORT / "v5_3_1_prospective_annotation_stop.json")
+    assert value["status"] == "ANNOTATION_STOPPED_MISSING_CITATION_NO_CLASSIFICATION"
+    assert value["provider_calls"] == value["annotation_calls"] == value["original_schema_failures"] == 3
+    assert value["format_only_recoveries"] == value["accounted_valid_or_format_recovered_annotations"] == 2
+    assert value["unattempted_annotation_cases"] == 47 and value["classification_calls"] == 0
+    assert value["estimated_cost_cny"] == pytest.approx(.0748575)
+    assert value["usage"] == {"prompt_tokens": 14112, "completion_tokens": 975, "total_tokens": 15087}
+    assert value["missing_evidence_locators_for_supporting_source_ids"] == ["Source 5"]
+    assert not any(value[k] for k in ("labels_frozen", "quality_metrics_available", "promotion_allowed", "dev_opened", "paid_retries", "pending_exists", "runner_lock_exists"))
+    assert '"question":' not in json.dumps(value) and "raw_response\":" not in json.dumps(value)
