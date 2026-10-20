@@ -749,3 +749,105 @@ def test_live_http_cli_rejects_unselected_stdin_settings_without_leaking_values(
                             text=True, encoding="utf-8", capture_output=True, timeout=30)
     assert result.returncode == 1 and "Smoke failed (RuntimeError)" in result.stderr
     assert "private-key-must-not-print" not in result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("category", ["it", "other"])
+def test_ticket_preview_reuses_hybrid_and_preserves_confirm_boundary(runtime, monkeypatch, category):
+    import services.agent_ops_service as ops
+    import services.ticket_agent_service as agent
+    import services.ticket_service as tickets
+    from auth import get_current_user
+    from models.agent_ops import AgentRun, ApprovalRequest, ToolCall
+    from models.ticket import Ticket
+
+    engine, calls = runtime
+    monkeypatch.setattr(ops, "engine", engine)
+    monkeypatch.setattr(tickets, "engine", engine)
+    monkeypatch.setattr(agent, "search_chroma", lambda **_: pytest.fail("No implicit Dense fallback"))
+    monkeypatch.setenv("RAG_HYBRID_ASK_ENABLED", "false")
+    monkeypatch.delenv("DASHSCOPE_PHASE_B_API_KEY", raising=False)
+    monkeypatch.delitem(main.app.dependency_overrides, get_current_user)
+    own = add_document(engine, content="VPN needle authorized guide")
+    add_document(engine, tenant="tenant_other", content="FORBIDDEN foreign VPN")
+    if category == "it":
+        add_document(engine, category="hr", content="FORBIDDEN other-category VPN")
+    monkeypatch.setattr(hybrid, "get_collection", lambda: SimpleNamespace(
+        query=lambda **_: {"ids": [[]], "distances": [[]]}))  # Exercise BM25-only null distance.
+    with TestClient(main.app) as api:
+        login = api.post("/auth/token", json={"username": "support", "password": "support"})
+        assert login.status_code == 200
+        api.headers["Authorization"] = "Bearer " + login.json()["access_token"]
+        response = api.post("/agent/ticket/preview", json={"message": "VPN 连不上", "category": category,
+            "retrieval_mode": "hybrid", "tenant_id": "tenant_other"})
+        assert response.status_code == 200, response.text
+        preview = response.json()
+        assert preview["retrieval_mode"] == "hybrid" and preview["should_create_ticket"] is True
+        assert [s["document_id"] for s in preview["sources"]] == [own.id]
+        assert preview["sources"][0]["distance"] is None and preview["sources"][0]["rerank_score"] == 1
+        assert preview["sources"][0]["dense_rank"] is None and preview["sources"][0]["bm25_rank"] == 1
+        assert len(calls) == 1 and calls[0]["documents"] == ["VPN needle authorized guide"]
+        with Session(engine) as session:
+            run = session.get(AgentRun, preview["agent_run_id"])
+            summary = json.loads(run.retrieval_summary_json)
+            assert run.tenant_id == "tenant_demo" and run.user_id == "support_demo"
+            assert summary["retrieval_mode"] == "hybrid"
+            assert summary["top_k"] == 14 and summary["top_distance"] is None
+            assert summary["rag_category"] == ("it" if category == "it" else None)
+            assert summary["score_type"] == "rerank_relevance" and summary["rerank_scores"] == [1]
+            assert session.exec(select(Ticket)).all() == []
+            approval = session.get(ApprovalRequest, preview["approval_request_id"])
+            assert approval.status == "pending" and json.loads(approval.draft_json) == preview["draft"]
+            tools = session.exec(select(ToolCall)).all()
+            assert {t.tool_name for t in tools} == {"search_kb", "classify_ticket"}
+            search = next(t for t in tools if t.tool_name == "search_kb")
+            assert json.loads(search.tool_input_json)["retrieval_mode"] == "hybrid"
+            output = json.loads(search.tool_output_json)
+            assert output["top_distance"] is None and output["rerank_scores"] == [1]
+        confirm = {key: preview[key] for key in ("agent_run_id", "approval_request_id", "draft")}
+        foreign = api.post("/auth/token", json={"username": "support_other", "password": "support"})
+        assert foreign.status_code == 200
+        assert api.post("/agent/ticket/confirm", json=confirm, headers={
+            "Authorization": "Bearer " + foreign.json()["access_token"]}).status_code == 404
+        assert api.post("/agent/ticket/confirm", json=confirm | {
+            "draft": preview["draft"] | {"title": "tampered"}}).status_code == 400
+        assert api.post("/agent/ticket/confirm", json=confirm).status_code == 201  # Temporary test DB only.
+        assert api.post("/agent/ticket/confirm", json=confirm).status_code == 400
+    with Session(engine) as session:
+        assert len(session.exec(select(Ticket)).all()) == 1
+        assert len(session.exec(select(ToolCall).where(ToolCall.tool_name == "create_ticket")).all()) == 1
+    assert len(calls) == 1  # Confirm never reruns retrieval.
+
+
+@pytest.mark.parametrize("failure", ["disabled", "provider"])
+def test_ticket_hybrid_failure_is_audited_without_approval_or_fallback(runtime, monkeypatch, failure):
+    import services.agent_ops_service as ops
+    import services.ticket_agent_service as agent
+    from models.agent_ops import AgentRun, ApprovalRequest, ToolCall
+    from models.ticket import Ticket
+
+    engine, calls = runtime
+    monkeypatch.setattr(ops, "engine", engine)
+    monkeypatch.setattr(agent, "search_chroma", lambda **_: pytest.fail("No implicit Dense fallback"))
+    add_document(engine)
+    if failure == "disabled":
+        monkeypatch.setenv("RAG_HYBRID_SEARCH_ENABLED", "false")
+    else:
+        def fail(request):
+            calls.append("one failed provider attempt")
+            return httpx.Response(500, json={"error": {"message": "private-provider-body secret-key"}})
+        monkeypatch.setattr(hybrid, "get_rerank_client", lambda: OpenAI(
+            api_key="offline", base_url="https://rerank.invalid/v1", max_retries=0,
+            http_client=httpx.Client(transport=httpx.MockTransport(fail))))
+    with TestClient(main.app) as api:
+        assert api.post("/agent/ticket/preview", json={"message": "VPN", "retrieval_mode": "unknown"}).status_code == 422
+        response = api.post("/agent/ticket/preview", json={"message": "VPN", "retrieval_mode": "hybrid"})
+        assert response.status_code == 503 and "secret-key" not in response.text
+    with Session(engine) as session:
+        run = session.exec(select(AgentRun)).one()
+        tool = session.exec(select(ToolCall)).one()
+        assert run.status == tool.status == "failed" and tool.tool_name == "search_kb"
+        assert json.loads(tool.tool_input_json)["retrieval_mode"] == "hybrid"
+        assert "private-provider-body" not in run.result_summary + tool.error_message
+        assert "secret-key" not in run.result_summary + tool.error_message
+        assert session.exec(select(ApprovalRequest)).all() == session.exec(select(Ticket)).all() == []
+    assert len(calls) == (0 if failure == "disabled" else 1)

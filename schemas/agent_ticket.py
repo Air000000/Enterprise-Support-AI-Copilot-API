@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
+from typing import Literal
 
 from schemas.ticket import TicketCategory, TicketPriority, TicketResponse
 
@@ -11,6 +12,7 @@ class TicketAgentPreviewRequest(BaseModel):
     """
     message: str = Field(..., min_length=1, max_length=2000)
     category: TicketCategory | None = None
+    retrieval_mode: Literal["dense", "hybrid"] = "dense"
 
 
 class TicketDraft(BaseModel):
@@ -31,7 +33,11 @@ class TicketAgentSource(BaseModel):
     chunk_id: str
     title: str
     source_path: str
-    distance: float
+    distance: float | None
+    rerank_score: float | None = None
+    fusion_score: float | None = None
+    dense_rank: int | None = None
+    bm25_rank: int | None = None
     preview: str
     category: str | None = None
 
@@ -46,6 +52,7 @@ class TicketAgentPreviewResponse(BaseModel):
     reason: str
     draft: TicketDraft | None = None
     sources: list[TicketAgentSource] = Field(default_factory=list)
+    retrieval_mode: Literal["dense", "hybrid"] = "dense"
 
 
 class TicketAgentConfirmRequest(BaseModel):

@@ -126,7 +126,7 @@ POST /rag/ask
 → RetrievalLog
 ```
 
-默认 serving、`/rag/ask` 和 Ticket Agent 仍是 Dense Chroma。`/rag/search` 增加默认关闭的 `retrieval_mode=hybrid` 路径：
+默认 serving、`/rag/ask` 和 Ticket Agent 仍是 Dense Chroma；Ticket preview 另可显式复用 Hybrid 搜索，见 §6。`/rag/search` 增加默认关闭的 `retrieval_mode=hybrid` 路径：
 
 ```text
 CurrentUser tenant + category
@@ -191,6 +191,10 @@ DELETE /documents/{document_id}
 SQLite 与 Chroma 是两个独立存储，目前没有跨存储分布式事务，因此异常中断时存在状态不一致风险。
 
 ## 6. 工单 Agent
+
+`preview` 新增可选 `retrieval_mode=hybrid`（默认 `dense`），复用 `services.rag_service.search_documents`，受现有搜索开关控制，默认 Top14；无需实验 ask 开关。来源距离可为空，独立保留重排/融合分数与通道排名；Hybrid 的 `search_kb` 输出及运行摘要不把距离冒充最终分数。Hybrid 失败脱敏为 503，运行/工具均记失败，不继续产生审批或暗中切回 Dense。
+
+此处只共享检索；工单建议仍由原规则生成，不运行 v5.x 证据分类或答案生成。`confirm` 不重检索，保留 pending、租户、草稿匹配及条件消费约束，只有显式确认才创建工单。
 
 ```text
 POST /agent/ticket/preview
