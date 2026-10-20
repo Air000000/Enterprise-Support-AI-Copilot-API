@@ -1,0 +1,49 @@
+{
+  "status": "ANNOTATION_STOPPED_MISSING_CITATION_NO_CLASSIFICATION",
+  "run": "prospective_v5_3_1_annotation_v1",
+  "planned_annotation_cases": 50,
+  "provider_calls": 3,
+  "annotation_calls": 3,
+  "classification_calls": 0,
+  "original_schema_failures": 3,
+  "format_only_recoveries": 2,
+  "accounted_valid_or_format_recovered_annotations": 2,
+  "unresolved_annotation_cases": 1,
+  "unattempted_annotation_cases": 47,
+  "labels_frozen": false,
+  "estimated_cost_cny": 0.0748575,
+  "usage": {
+    "prompt_tokens": 14112,
+    "completion_tokens": 975,
+    "total_tokens": 15087
+  },
+  "usage_known_for_all_attempts": true,
+  "finish_reasons": [
+    "stop",
+    "stop",
+    "stop"
+  ],
+  "stopped_question_id": "TRAIN_Q014",
+  "stopped_call_index": 2,
+  "parser_error": "SUFFICIENT needs valid evidence line references",
+  "missing_evidence_locators_for_supporting_source_ids": [
+    "Source 5"
+  ],
+  "reason": "Source 5 is in supporting_source_ids but has no source-local locator in the saved rationale. No line number can be recovered by mechanical format conversion. Raw response and class/source IDs were not repaired or retried.",
+  "checkpoint_root": "data/refusal_v5_3_1_prospective_train",
+  "pending_exists": false,
+  "runner_lock_exists": false,
+  "runner_code_commit": "14f73d890f71f467f4ab98e66689094f47f5853e",
+  "annotation_contract_sha256": "a0dfc6fca48ac511f9ec04db67ab2bd3f80f0837bef55876a6deaedf912312e1",
+  "journal_sha256": "419a5cf12dd2c3d4914993f2e19bf0393d1e36106a20a3145d8d9d422b226e5d",
+  "citation_recoveries_sha256": "e742856730654de47cb51088dff779f7580f352cd3b9b6338ebf4c6e69486823",
+  "stopped_raw_response_sha256": "6211cf5824a9310f01b1d5a33b1d6bfc95c6568d7536389f8b937ebfda33e436",
+  "next_gate": "Explicitly amend the annotation protocol before continuing: keep charged raw failures as draft outcomes, review every item against original evidence, freeze separate reviewed targets before classification; no paid retry or duplicate request. Do not infer this amendment from this report.",
+  "dev_opened": false,
+  "paid_retries": 0,
+  "answers_generated": 0,
+  "tickets_created": 0,
+  "promotion_allowed": false,
+  "quality_metrics_available": false,
+  "accounting_caveat": "Fixed PR99 rates/FX; provider usage is known, accounting estimate is not an invoice guarantee."
+}
