@@ -1,0 +1,34 @@
+{
+  "status": "AI_PROXY_TARGETS_FROZEN_BEFORE_CLASSIFIER",
+  "cases": 50,
+  "counts": {
+    "SUFFICIENT": 39,
+    "INSUFFICIENT": 11,
+    "AMBIGUOUS": 0
+  },
+  "changes_from_raw_draft": {
+    "target_class": 2,
+    "supporting_source_ids": 32,
+    "notes": 50
+  },
+  "provider_calls": 50,
+  "estimated_annotation_cost_cny": 1.1950425,
+  "usage": {
+    "prompt_tokens": 236976,
+    "completion_tokens": 13617,
+    "total_tokens": 250593
+  },
+  "original_schema_failures": 23,
+  "inputs_sha256": "6dd5fe2bfb3b6b35a7df377183b484b8579a2c4b9a45e0c3f8888609812660e7",
+  "targets_sha256": "8f77a9db2fbe466fcd9704227e16c380d421b78b7b657e67bed801ec658aa746",
+  "review_sha256": "2701e2c2b64d17d8bd8b7027fc5219cfbe210611cf7a26adeb0ec97563fe1fbc",
+  "journal_sha256": "8a5b25ec867a2962f938a9676d51cc4868d0af7156851d4fd97bcc1c45d41d50",
+  "amendment_contract_sha256": "5191384752ee08f03e562baa4068492f8c38baeba477780f3d286262b77c9ab4",
+  "original_journal_sha256": "419a5cf12dd2c3d4914993f2e19bf0393d1e36106a20a3145d8d9d422b226e5d",
+  "review_depth": "Current assistant reviewed every question/raw draft and original evidence before predictions; not independent expert adjudication",
+  "class_support_at_least_five_each": true,
+  "classifier_predictions_created": false,
+  "dev_opened": false,
+  "promotion_allowed": false,
+  "provenance": "Fresh relative to earlier refusal selections/known family proxy only; all TRAIN already used in project retrieval/automated analysis; exact-question/leading-document proxy is not semantic-family independence; Qwen annotation plus current-assistant review remains AI proxy, not independent expert gold or unseen DEV acceptance"
+}

@@ -1,0 +1,184 @@
+{
+  "status": "PROSPECTIVE_TRAIN_AI_PROXY_COMPLETE_NO_PROMOTION",
+  "provider_calls": 100,
+  "estimated_classification_cost_cny": 3.413034,
+  "primary": {
+    "cases": 50,
+    "binary_cases": 50,
+    "ambiguous_cases": 0,
+    "target_counts": {
+      "SUFFICIENT": 39,
+      "INSUFFICIENT": 11,
+      "AMBIGUOUS": 0
+    },
+    "arms": {
+      "v5_3": {
+        "confusion": {
+          "sufficient_as_sufficient": 37,
+          "sufficient_as_insufficient": 1,
+          "insufficient_as_sufficient": 4,
+          "insufficient_as_insufficient": 6
+        },
+        "valid_correct_binary": 43,
+        "all_case_failures": 2,
+        "binary_failures": 2,
+        "class_failures": {
+          "SUFFICIENT": 1,
+          "INSUFFICIENT": 1
+        },
+        "binary_agreement_including_failures": 0.86,
+        "binary_agreement_possible_bounds": [
+          0.86,
+          0.9
+        ],
+        "sufficient_proxy_recall": 0.9487179487179487,
+        "insufficient_proxy_recall": 0.5454545454545454,
+        "admitted_all": 41,
+        "admission_coverage": 0.82,
+        "admitted_binary": 41,
+        "admitted_binary_proxy_agreement": 0.9024390243902439,
+        "ambiguous_outcomes": {
+          "SUFFICIENT": 0,
+          "INSUFFICIENT": 0,
+          "FAILURE": 0
+        }
+      },
+      "v5_3_1": {
+        "confusion": {
+          "sufficient_as_sufficient": 35,
+          "sufficient_as_insufficient": 2,
+          "insufficient_as_sufficient": 3,
+          "insufficient_as_insufficient": 8
+        },
+        "valid_correct_binary": 43,
+        "all_case_failures": 2,
+        "binary_failures": 2,
+        "class_failures": {
+          "SUFFICIENT": 2,
+          "INSUFFICIENT": 0
+        },
+        "binary_agreement_including_failures": 0.86,
+        "binary_agreement_possible_bounds": [
+          0.86,
+          0.9
+        ],
+        "sufficient_proxy_recall": 0.8974358974358975,
+        "insufficient_proxy_recall": 0.7272727272727273,
+        "admitted_all": 38,
+        "admission_coverage": 0.76,
+        "admitted_binary": 38,
+        "admitted_binary_proxy_agreement": 0.9210526315789473,
+        "ambiguous_outcomes": {
+          "SUFFICIENT": 0,
+          "INSUFFICIENT": 0,
+          "FAILURE": 0
+        }
+      }
+    }
+  },
+  "common_valid_binary": {
+    "cases": 46,
+    "binary_cases": 46,
+    "ambiguous_cases": 0,
+    "target_counts": {
+      "SUFFICIENT": 36,
+      "INSUFFICIENT": 10,
+      "AMBIGUOUS": 0
+    },
+    "arms": {
+      "v5_3": {
+        "confusion": {
+          "sufficient_as_sufficient": 35,
+          "sufficient_as_insufficient": 1,
+          "insufficient_as_sufficient": 4,
+          "insufficient_as_insufficient": 6
+        },
+        "valid_correct_binary": 41,
+        "all_case_failures": 0,
+        "binary_failures": 0,
+        "class_failures": {
+          "SUFFICIENT": 0,
+          "INSUFFICIENT": 0
+        },
+        "binary_agreement_including_failures": 0.8913043478260869,
+        "binary_agreement_possible_bounds": [
+          0.8913043478260869,
+          0.8913043478260869
+        ],
+        "sufficient_proxy_recall": 0.9722222222222222,
+        "insufficient_proxy_recall": 0.6,
+        "admitted_all": 39,
+        "admission_coverage": 0.8478260869565217,
+        "admitted_binary": 39,
+        "admitted_binary_proxy_agreement": 0.8974358974358975,
+        "ambiguous_outcomes": {
+          "SUFFICIENT": 0,
+          "INSUFFICIENT": 0,
+          "FAILURE": 0
+        }
+      },
+      "v5_3_1": {
+        "confusion": {
+          "sufficient_as_sufficient": 35,
+          "sufficient_as_insufficient": 1,
+          "insufficient_as_sufficient": 2,
+          "insufficient_as_insufficient": 8
+        },
+        "valid_correct_binary": 43,
+        "all_case_failures": 0,
+        "binary_failures": 0,
+        "class_failures": {
+          "SUFFICIENT": 0,
+          "INSUFFICIENT": 0
+        },
+        "binary_agreement_including_failures": 0.9347826086956522,
+        "binary_agreement_possible_bounds": [
+          0.9347826086956522,
+          0.9347826086956522
+        ],
+        "sufficient_proxy_recall": 0.9722222222222222,
+        "insufficient_proxy_recall": 0.8,
+        "admitted_all": 37,
+        "admission_coverage": 0.8043478260869565,
+        "admitted_binary": 37,
+        "admitted_binary_proxy_agreement": 0.9459459459459459,
+        "ambiguous_outcomes": {
+          "SUFFICIENT": 0,
+          "INSUFFICIENT": 0,
+          "FAILURE": 0
+        }
+      }
+    }
+  },
+  "paired_binary_transitions": {
+    "both_agree": 40,
+    "baseline_only": 1,
+    "candidate_only": 3,
+    "neither_agrees": 2
+  },
+  "usage": {
+    "v5_3": {
+      "calls": 50,
+      "prompt_tokens": 325629,
+      "completion_tokens": 38638,
+      "latency_p50_ms": 11964.672149999387
+    },
+    "v5_3_1": {
+      "calls": 50,
+      "prompt_tokens": 337479,
+      "completion_tokens": 40457,
+      "latency_p50_ms": 12385.92829999834
+    }
+  },
+  "contract_sha256": "2830df13631a306b097d12ce4ae51dd2fe9badefff828c6b162e75be69f14fb0",
+  "targets_sha256": "8f77a9db2fbe466fcd9704227e16c380d421b78b7b657e67bed801ec658aa746",
+  "journal_sha256": {
+    "v5_3": "6a5a26d50692bbe0f3a2dd2c562009d364663823eacf339d9d01f68c544c384f",
+    "v5_3_1": "f6bd966383824be04d42b16074871a2eabb53dfd423fd4cdfce0f1352a4971f6"
+  },
+  "class_support_at_least_five_each": true,
+  "formal_pass_gate": null,
+  "dev_opened": false,
+  "promotion_allowed": false,
+  "provenance": "Fresh relative to earlier refusal selections/known family proxy only; all TRAIN already used in project retrieval/automated analysis; exact-question/leading-document proxy is not semantic-family independence; Qwen annotation plus current-assistant review remains AI proxy, not independent expert gold or unseen DEV acceptance"
+}
