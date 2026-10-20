@@ -14,10 +14,14 @@ from experiments.evals.refusal_question_scoped_coverage import (
     build_classifier_messages_v5_3_dev,
     validate_requirement_coverage_response,
 )
+from experiments.evals.refusal_version_audit_clarification import build_classifier_messages_v5_3_1_dev
 from rag_runtime.hybrid_search import HybridSearchResult, load_visible_chunks, search_hybrid
 from rag_runtime.query_rag_chroma import get_llm_client
 
 POLICY = "v5_3_experimental"
+# ponytail: two explicit builders share retrieval, validation and generation.
+POLICY_BUILDERS = {POLICY: build_classifier_messages_v5_3_dev,
+                   "v5_3_1_experimental": build_classifier_messages_v5_3_1_dev}
 CLASSIFIER_MODEL = "qwen3.5-plus-2026-04-20"
 REFUSAL = "我在已提供资料中没有找到足够依据。"
 
@@ -70,12 +74,14 @@ def completed_text(response):
     return choice.message.content.strip()
 
 
-def ask_hybrid(question, top_k, tenant_id, category=None):
+def ask_hybrid(question, top_k, tenant_id, category=None, *, refusal_policy=POLICY):
+    if refusal_policy not in POLICY_BUILDERS:
+        raise ValueError("Unknown experimental refusal policy")
     # Validate classifier configuration before spending on retrieval. No credential fallback.
     with get_classifier_client() as classifier:
         results = search_hybrid(question, top_k, tenant_id, category)
         if not results:
-            return HybridRagResponse(question, REFUSAL, "no_context", [])
+            return HybridRagResponse(question, REFUSAL, "no_context", [], refusal_policy=refusal_policy)
         expected = {r.chunk_id: replace(r, distance=None, rerank_score=None, fusion_score=None,
                                         dense_rank=None, bm25_rank=None) for r in results}
 
@@ -90,11 +96,11 @@ def ask_hybrid(question, top_k, tenant_id, category=None):
             response = classifier.chat.completions.create(
                 model=CLASSIFIER_MODEL, temperature=0, response_format={"type": "json_object"},
                 extra_body={"enable_thinking": False}, max_tokens=2048,
-                messages=build_classifier_messages_v5_3_dev(classifier_input))
+                messages=POLICY_BUILDERS[refusal_policy](classifier_input))
             gate = validate_requirement_coverage_response(completed_text(response), classifier_input)
     require_current_visibility()
     if gate["decision"] != "SUFFICIENT":
-        return HybridRagResponse(question, REFUSAL, "refused_insufficient_evidence", results, gate)
+        return HybridRagResponse(question, REFUSAL, "refused_insufficient_evidence", results, gate, refusal_policy)
 
     # ponytail: reuse the existing chat configuration, not another provider abstraction.
     # Full ordered context preserves conditions; citations below check IDs, not entailment.
@@ -118,8 +124,8 @@ def ask_hybrid(question, top_k, tenant_id, category=None):
             answer = completed_text(response)
     require_current_visibility()
     if answer == REFUSAL:
-        return HybridRagResponse(question, REFUSAL, "refused_by_generator", results, gate)
+        return HybridRagResponse(question, REFUSAL, "refused_by_generator", results, gate, refusal_policy)
     citations = set(re.findall(r"\[(source\b[^\]]*)\]", answer, flags=re.IGNORECASE))
     if not citations or not citations <= set(gate["supporting_source_ids"]):
         raise RuntimeError("Missing or unapproved answer citation")
-    return HybridRagResponse(question, answer, "ok", results, gate)
+    return HybridRagResponse(question, answer, "ok", results, gate, refusal_policy)

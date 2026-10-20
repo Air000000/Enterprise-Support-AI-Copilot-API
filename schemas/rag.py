@@ -69,7 +69,7 @@ class RagAskRequest(BaseModel): # 用户问问题时传进来的请求体
     # tenant_id: Optional[str] = None
     category: Optional[str] = None
     retrieval_mode: Literal["dense", "hybrid"] = "dense"
-    refusal_policy: Literal["v5_3_experimental"] | None = None
+    refusal_policy: Literal["v5_3_experimental", "v5_3_1_experimental"] | None = None
 
     @field_validator("question")
     @classmethod
@@ -84,8 +84,8 @@ class RagAskRequest(BaseModel): # 用户问问题时传进来的请求体
             if self.top_k > 10 or self.refusal_policy is not None:
                 raise ValueError("Dense top_k must not exceed 10 and uses the existing distance policy")
         else:
-            if "max_distance" in self.model_fields_set or self.refusal_policy != "v5_3_experimental":
-                raise ValueError("Hybrid requires explicit v5_3_experimental policy and no max_distance")
+            if "max_distance" in self.model_fields_set or self.refusal_policy is None:
+                raise ValueError("Hybrid requires an explicit experimental policy and no max_distance")
             if "top_k" not in self.model_fields_set:
                 self.top_k = 14
         return self
@@ -101,5 +101,5 @@ class RagAskResponse(BaseModel):    # 整个问答接口返回体
     top_distance: Optional[float] = None
     sources: list[RagSourceResponse]
     retrieval_mode: Literal["dense", "hybrid"] = "dense"
-    refusal_policy: Literal["dense_distance", "v5_3_experimental"] = "dense_distance"
+    refusal_policy: Literal["dense_distance", "v5_3_experimental", "v5_3_1_experimental"] = "dense_distance"
     evidence_gate: dict | None = None
