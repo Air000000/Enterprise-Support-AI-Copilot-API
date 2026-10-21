@@ -54,6 +54,8 @@ R4 C1 Hybrid + rerank 的正式历史结论仍然是 **FAIL**：三项 TRAIN 聚
 
 2026-10-21 已准备 [v5.4 单一输出契约离线候选](reports/refusal_evidence_sufficiency/v5_4_single_contract_candidate.md)：官方严格 JSON Schema 名单未列当前 Qwen3.5-Plus，故不假定支持、不换模型；只整理为一个完整模板并澄清必要路径，复用完整消息和严格门。无真实预测/付费入口/线上注册，不能宣称格式或语义改善，也不修改旧冻结实验。
 
+已冻结 [v5.3.1/v5.4 的12个虚构案例小探针](reports/refusal_evidence_sufficiency/v5_4_synthetic_protocol.md)：6充分/6不足、最多24次新加坡分类，拟记账限额¥2，未授权/未执行。只新增零调用计划与消息边界测试，不复用旧150次授权，不接入线上；合成预期与理由复核不等于专家金标或独立验收。
+
 历史拒答开发探针（2026-10-02）：v3 盲标 AI 代理标签上的 50 条 TRAIN 评测仍为
 **FAIL**，平衡准确率 0.76、充分召回率 0.76、误拒 6 条，不能进入 Phase C。
 这些标签不是独立人工金标；完整指标与证据边界见
