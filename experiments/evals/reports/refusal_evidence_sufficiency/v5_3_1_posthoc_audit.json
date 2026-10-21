@@ -1,0 +1,92 @@
+{
+  "status": "POST_HOC_DIAGNOSTIC_NOT_RESCORING",
+  "selected_cases": 10,
+  "inspected_arm_outcomes": 20,
+  "population_outcomes": 100,
+  "binary_disagreement_cases": 8,
+  "common_valid_binary_disagreements": 4,
+  "common_valid_both_wrong_cases": 2,
+  "wrong_valid_outcomes": 10,
+  "schema_failures": 4,
+  "schema_families": {
+    "duplicate_fields_inside_citation_object": {
+      "responses": 2,
+      "affected_citation_objects": 3,
+      "arm": "v5_3"
+    },
+    "ambiguities_nested_under_coverage_checks": {
+      "responses": 2,
+      "arm": "v5_3_1"
+    }
+  },
+  "failed_finish_reasons": {
+    "stop": 4
+  },
+  "failed_completion_tokens_range": [
+    651,
+    1099
+  ],
+  "failed_usage_all_known": true,
+  "semantic_primary_hypotheses": {
+    "facet_status_reason_inconsistency": {
+      "cases": 1,
+      "wrong_valid_outcomes": 1,
+      "arms": {
+        "v5_3": 0,
+        "v5_3_1": 1
+      }
+    },
+    "missing_requested_actionable_procedure": {
+      "cases": 1,
+      "wrong_valid_outcomes": 1,
+      "arms": {
+        "v5_3": 1,
+        "v5_3_1": 0
+      }
+    },
+    "optional_alternative_promoted_to_requirement": {
+      "cases": 2,
+      "wrong_valid_outcomes": 2,
+      "arms": {
+        "v5_3": 1,
+        "v5_3_1": 1
+      }
+    },
+    "unsupported_scope_or_causal_bridge": {
+      "cases": 4,
+      "wrong_valid_outcomes": 6,
+      "arms": {
+        "v5_3": 3,
+        "v5_3_1": 3
+      }
+    }
+  },
+  "reason_issue_counterexamples_in_binary_agreeing_candidate_outputs": 2,
+  "bindings": {
+    "original_result_sha256": "6dee4d3d79bb2dd7baa0936c327f9b622daf95cc096d69198b94e7339c9b80e4",
+    "classification_contract_sha256": "2830df13631a306b097d12ce4ae51dd2fe9badefff828c6b162e75be69f14fb0",
+    "targets_sha256": "8f77a9db2fbe466fcd9704227e16c380d421b78b7b657e67bed801ec658aa746",
+    "reviewed_annotations_sha256": "2701e2c2b64d17d8bd8b7027fc5219cfbe210611cf7a26adeb0ec97563fe1fbc",
+    "classification_journal_sha256": {
+      "v5_3": "6a5a26d50692bbe0f3a2dd2c562009d364663823eacf339d9d01f68c544c384f",
+      "v5_3_1": "f6bd966383824be04d42b16074871a2eabb53dfd423fd4cdfce0f1352a4971f6"
+    },
+    "private_case_audit_sha256": "2d2b1d64928fda07e8e8ce3cfbd4c1759582ef35cbe93e132667b798b557692b",
+    "private_review_sha256": "0f703a63b5b72334cd13d929e4da787c4283d7077dd3f099d67ba03e8fdc21de"
+  },
+  "original_primary_agreement": {
+    "v5_3": 0.86,
+    "v5_3_1": 0.86
+  },
+  "new_provider_calls": 0,
+  "raw_repaired": false,
+  "labels_changed": false,
+  "metrics_changed": false,
+  "frozen_prompts_changed": false,
+  "validator_changed": false,
+  "dev_opened": false,
+  "gold_or_qrels_opened": false,
+  "external_document_links_opened": false,
+  "promotion_allowed": false,
+  "selection": "Union of null outcomes and disagreements with frozen AI-proxy labels; 10 cases/20 arm outcomes, not random or independent facet adjudication. Hypotheses are post-hoc current-assistant attribution, not new labels, causal prompt proof or population facet accuracy."
+}
