@@ -52,6 +52,8 @@ R4 C1 Hybrid + rerank 的正式历史结论仍然是 **FAIL**：三项 TRAIN 聚
 
 2026-10-21 完成[零调用事后归因](reports/refusal_evidence_sufficiency/v5_3_1_prospective_execution.md#2026-10-21-离线归因不是单纯版本过严)：检查10题/20份输出，4次格式失败是重复引用字段或歧义字段层级错误，均非截断；10份有效错误涉及未证实的适用/因果桥接、缺步骤、可选分支升为必要条件及facet状态/理由矛盾。二元判断符合标签也不证明审计理由正确。保留全部原始失败、标签和86%/86%分数；仅补合成严格门回归，无新运行器/依赖、不修改线上策略。下一步先核实结构输出能力并准备独立离线候选，不直接扩大付费评测。聚合计数/原始摘要见[审计JSON](reports/refusal_evidence_sufficiency/v5_3_1_posthoc_audit.json)。
 
+2026-10-21 已准备 [v5.4 单一输出契约离线候选](reports/refusal_evidence_sufficiency/v5_4_single_contract_candidate.md)：官方严格 JSON Schema 名单未列当前 Qwen3.5-Plus，故不假定支持、不换模型；只整理为一个完整模板并澄清必要路径，复用完整消息和严格门。无真实预测/付费入口/线上注册，不能宣称格式或语义改善，也不修改旧冻结实验。
+
 历史拒答开发探针（2026-10-02）：v3 盲标 AI 代理标签上的 50 条 TRAIN 评测仍为
 **FAIL**，平衡准确率 0.76、充分召回率 0.76、误拒 6 条，不能进入 Phase C。
 这些标签不是独立人工金标；完整指标与证据边界见
