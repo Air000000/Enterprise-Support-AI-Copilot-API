@@ -1,0 +1,169 @@
+{
+  "status": "COMPLETED_FICTIONAL_DIAGNOSTIC_STOP_EXPANSION_NO_PROMOTION",
+  "provider_calls": 24,
+  "completed": 24,
+  "format_failures": 0,
+  "unknown_usage": 0,
+  "estimated_cost_cny": 0.307584,
+  "pricing_not_actual_invoice": true,
+  "run_code_commit": "308c0ee9fcef3b22183f01b3c20bd775bb7d694e",
+  "plan_sha256": "803eca9901216e7436066a0412721770aaa1bca4d3c3ae3ca0a476fe734a8a8d",
+  "protocol_sha256": "ae01a09561b97c27162367b2ba681cb5d410b7821d5f6d1e52013f5bd4423e24",
+  "execution_contract_canonical_sha256": "9a07befe41f38be4dffc54d6a17c1b4edbb20bcb248ebfacf6de72c112987412",
+  "execution_contract_engine_sha256": "9a07befe41f38be4dffc54d6a17c1b4edbb20bcb248ebfacf6de72c112987412",
+  "input_snapshot_sha256": "cccfa7b7849994f03216901e74963e474823ca6794ed9e404ea3f86399efde27",
+  "cases_sha256": "268c6b59a6be48d13fc18ba8b457dc843b1177e11ac35ff728669f6af8da093a",
+  "prompt_sha256": {
+    "v5_3_1": "5c7bd3a937ccf38bc7617855cf91629b445ce761ba9e347cd7716ae0dde81474",
+    "v5_4": "bcaf363d0fc74be6e6908155c550889104cae67a391e97a184c5ca8c5baf666e"
+  },
+  "adapter_source_sha256": "fa6b97ee240123e762aad9605ba5d38e7036724f5386e360d9793dad461fca9a",
+  "journal_sha256": {
+    "v5_3_1": "f1d4836eda7b391fadd11889e0ca2c28881c36a1f6b10ac819666af4501019ef",
+    "v5_4": "57fb4cacd38778be5e43956b8fbaf9fe7fbd491c922ac7e322c8c6fecf4b4900"
+  },
+  "usage": {
+    "v5_3_1": {
+      "calls": 12,
+      "prompt_tokens": 25599,
+      "completion_tokens": 5093,
+      "total_tokens": 30692,
+      "estimated_cost_cny": 0.168471,
+      "latency_p50_ms": 7316,
+      "completion_tokens_range": [
+        290,
+        500
+      ],
+      "binary_matches": 12,
+      "facet_cells_matching_frozen_checklist": 34,
+      "cases_all_facets_match": 10
+    },
+    "v5_4": {
+      "calls": 12,
+      "prompt_tokens": 14367,
+      "completion_tokens": 5334,
+      "total_tokens": 19701,
+      "estimated_cost_cny": 0.139113,
+      "latency_p50_ms": 7295.4,
+      "completion_tokens_range": [
+        306,
+        675
+      ],
+      "binary_matches": 12,
+      "facet_cells_matching_frozen_checklist": 31,
+      "cases_all_facets_match": 7
+    }
+  },
+  "finish_reasons": [
+    "stop"
+  ],
+  "pending_exists": false,
+  "runner_lock_exists": false,
+  "raw_stage_exists": false,
+  "paid_retries": 0,
+  "dev_opened": false,
+  "labels_changed": false,
+  "prompts_changed": false,
+  "promotion_allowed": false,
+  "case_denominator": 12,
+  "facet_checklist_denominator_per_arm": 36,
+  "frozen_target_counts": {
+    "SUFFICIENT": 6,
+    "INSUFFICIENT": 6
+  },
+  "total_usage": {
+    "prompt_tokens": 39966,
+    "completion_tokens": 10427,
+    "total_tokens": 50393
+  },
+  "paired_binary": {
+    "both_match": 12,
+    "baseline_only": 0,
+    "candidate_only": 0,
+    "neither_matches": 0
+  },
+  "paired_facet_cells": {
+    "both_match": 30,
+    "baseline_only": 4,
+    "candidate_only": 1,
+    "neither_matches": 1
+  },
+  "candidate_fixed_version_not_required_cases": [
+    "F03",
+    "F04",
+    "F09",
+    "F10"
+  ],
+  "expansion_criteria_met": false,
+  "default_policy_changed": false,
+  "manual_review": {
+    "status": "ALL24_REVIEWED_AGAINST_FROZEN_SYNTHETIC_CHECKLIST_NOT_EXPERT_GOLD",
+    "rubrics_changed": false,
+    "raw_repaired": false,
+    "notes": [
+      {
+        "case": "F01",
+        "finding": "Both preserve the complete browser path and do not invent a CLI prerequisite. Both include the optional CLI source alongside the steps citation, but explicitly explain its exclusion. Record as nonessential contrast, not fabricated evidence or a new hard-error label."
+      },
+      {
+        "case": "F02",
+        "finding": "Both correctly refuse because account entitlement is unknown, but applicability only audits product/UI matching and is SUPPORTED instead of the frozen MISSING/CONDITIONAL set. A facet-granularity mismatch does not imply a binary unsafe admission."
+      },
+      {
+        "case": "F03",
+        "finding": "Both accept the information branch of OR. Candidate version audit is NOT_REQUIRED despite the explicitly fixed 2.0 version; baseline SUPPORTED matches the checklist."
+      },
+      {
+        "case": "F04",
+        "finding": "Both refuse the missing URL under AND. Candidate again uses NOT_REQUIRED for fixed 2.0; baseline retains SUPPORTED. The missing URL is not a missing version."
+      },
+      {
+        "case": "F05",
+        "finding": "Both combine the two explicitly linked steps and keep their citations in separate source objects; no new material gap observed."
+      },
+      {
+        "case": "F06",
+        "finding": "Both recognize that availability and a promised section are not actionable enabling steps; no invented instructions."
+      },
+      {
+        "case": "F07",
+        "finding": "Both accept under the constructed diagnostic/condition match. This checks the fictional premise-to-procedure relation, not real incident causal accuracy."
+      },
+      {
+        "case": "F08",
+        "finding": "Both preserve the unknown adapter/compression prerequisite and refuse with CONDITIONAL; no unsupported definitive remedy."
+      },
+      {
+        "case": "F09",
+        "finding": "Both accept the explicit migration commands. Candidate drops fixed 4.0-to-5.0 versions from its audit via NOT_REQUIRED; baseline retains SUPPORTED."
+      },
+      {
+        "case": "F10",
+        "finding": "Both refuse the excluded migration range. Baseline applicability is SUPPORTED despite a reason explicitly excluding the requested scope; candidate fixes that applicability cell but sets version NOT_REQUIRED. Candidate reason itself concludes the version status should be MISSING; do not rewrite its actual field."
+      },
+      {
+        "case": "F11",
+        "finding": "Both preserve the equal-authority same-version conflict in requirements/outcomes, while correctly establishing the common scope/version."
+      },
+      {
+        "case": "F12",
+        "finding": "Both exclude the explicitly irrelevant 4.0-only value and support the requested 3.2 value without inventing a conflict."
+      }
+    ]
+  },
+  "provenance": "Current-assistant-authored fictional expectations and current-assistant review; not independent expert labels, real-data accuracy, causal ablation or quality acceptance.",
+  "outcomes": [
+    {"case":"F01","family":"optional_path","expected_decision":"SUFFICIENT","arms":{"v5_3_1":{"decision":"SUFFICIENT","binary_matches":true,"facet_statuses":{"requested_outcomes":"SUPPORTED","applicability":"SUPPORTED","version_and_time":"NOT_REQUIRED"},"facet_mismatches":{}},"v5_4":{"decision":"SUFFICIENT","binary_matches":true,"facet_statuses":{"requested_outcomes":"SUPPORTED","applicability":"SUPPORTED","version_and_time":"NOT_REQUIRED"},"facet_mismatches":{}}}},
+    {"case":"F02","family":"optional_path","expected_decision":"INSUFFICIENT","arms":{"v5_3_1":{"decision":"INSUFFICIENT","binary_matches":true,"facet_statuses":{"requested_outcomes":"CONDITIONAL","applicability":"SUPPORTED","version_and_time":"NOT_REQUIRED"},"facet_mismatches":{"applicability":{"expected":["MISSING","CONDITIONAL"],"observed":"SUPPORTED"}}},"v5_4":{"decision":"INSUFFICIENT","binary_matches":true,"facet_statuses":{"requested_outcomes":"CONDITIONAL","applicability":"SUPPORTED","version_and_time":"NOT_REQUIRED"},"facet_mismatches":{"applicability":{"expected":["MISSING","CONDITIONAL"],"observed":"SUPPORTED"}}}}},
+    {"case":"F03","family":"or_vs_and","expected_decision":"SUFFICIENT","arms":{"v5_3_1":{"decision":"SUFFICIENT","binary_matches":true,"facet_statuses":{"requested_outcomes":"SUPPORTED","applicability":"SUPPORTED","version_and_time":"SUPPORTED"},"facet_mismatches":{}},"v5_4":{"decision":"SUFFICIENT","binary_matches":true,"facet_statuses":{"requested_outcomes":"SUPPORTED","applicability":"SUPPORTED","version_and_time":"NOT_REQUIRED"},"facet_mismatches":{"version_and_time":{"expected":["SUPPORTED"],"observed":"NOT_REQUIRED"}}}}},
+    {"case":"F04","family":"or_vs_and","expected_decision":"INSUFFICIENT","arms":{"v5_3_1":{"decision":"INSUFFICIENT","binary_matches":true,"facet_statuses":{"requested_outcomes":"MISSING","applicability":"SUPPORTED","version_and_time":"SUPPORTED"},"facet_mismatches":{}},"v5_4":{"decision":"INSUFFICIENT","binary_matches":true,"facet_statuses":{"requested_outcomes":"MISSING","applicability":"SUPPORTED","version_and_time":"NOT_REQUIRED"},"facet_mismatches":{"version_and_time":{"expected":["SUPPORTED"],"observed":"NOT_REQUIRED"}}}}},
+    {"case":"F05","family":"actionable_steps","expected_decision":"SUFFICIENT","arms":{"v5_3_1":{"decision":"SUFFICIENT","binary_matches":true,"facet_statuses":{"requested_outcomes":"SUPPORTED","applicability":"SUPPORTED","version_and_time":"NOT_REQUIRED"},"facet_mismatches":{}},"v5_4":{"decision":"SUFFICIENT","binary_matches":true,"facet_statuses":{"requested_outcomes":"SUPPORTED","applicability":"SUPPORTED","version_and_time":"NOT_REQUIRED"},"facet_mismatches":{}}}},
+    {"case":"F06","family":"actionable_steps","expected_decision":"INSUFFICIENT","arms":{"v5_3_1":{"decision":"INSUFFICIENT","binary_matches":true,"facet_statuses":{"requested_outcomes":"MISSING","applicability":"SUPPORTED","version_and_time":"NOT_REQUIRED"},"facet_mismatches":{}},"v5_4":{"decision":"INSUFFICIENT","binary_matches":true,"facet_statuses":{"requested_outcomes":"MISSING","applicability":"SUPPORTED","version_and_time":"NOT_REQUIRED"},"facet_mismatches":{}}}},
+    {"case":"F07","family":"incident_bridge","expected_decision":"SUFFICIENT","arms":{"v5_3_1":{"decision":"SUFFICIENT","binary_matches":true,"facet_statuses":{"requested_outcomes":"SUPPORTED","applicability":"SUPPORTED","version_and_time":"NOT_REQUIRED"},"facet_mismatches":{}},"v5_4":{"decision":"SUFFICIENT","binary_matches":true,"facet_statuses":{"requested_outcomes":"SUPPORTED","applicability":"SUPPORTED","version_and_time":"NOT_REQUIRED"},"facet_mismatches":{}}}},
+    {"case":"F08","family":"incident_bridge","expected_decision":"INSUFFICIENT","arms":{"v5_3_1":{"decision":"INSUFFICIENT","binary_matches":true,"facet_statuses":{"requested_outcomes":"CONDITIONAL","applicability":"CONDITIONAL","version_and_time":"NOT_REQUIRED"},"facet_mismatches":{}},"v5_4":{"decision":"INSUFFICIENT","binary_matches":true,"facet_statuses":{"requested_outcomes":"CONDITIONAL","applicability":"CONDITIONAL","version_and_time":"NOT_REQUIRED"},"facet_mismatches":{}}}},
+    {"case":"F09","family":"migration_scope","expected_decision":"SUFFICIENT","arms":{"v5_3_1":{"decision":"SUFFICIENT","binary_matches":true,"facet_statuses":{"requested_outcomes":"SUPPORTED","applicability":"SUPPORTED","version_and_time":"SUPPORTED"},"facet_mismatches":{}},"v5_4":{"decision":"SUFFICIENT","binary_matches":true,"facet_statuses":{"requested_outcomes":"SUPPORTED","applicability":"SUPPORTED","version_and_time":"NOT_REQUIRED"},"facet_mismatches":{"version_and_time":{"expected":["SUPPORTED"],"observed":"NOT_REQUIRED"}}}}},
+    {"case":"F10","family":"migration_scope","expected_decision":"INSUFFICIENT","arms":{"v5_3_1":{"decision":"INSUFFICIENT","binary_matches":true,"facet_statuses":{"requested_outcomes":"MISSING","applicability":"SUPPORTED","version_and_time":"MISSING"},"facet_mismatches":{"applicability":{"expected":["MISSING"],"observed":"SUPPORTED"}}},"v5_4":{"decision":"INSUFFICIENT","binary_matches":true,"facet_statuses":{"requested_outcomes":"MISSING","applicability":"MISSING","version_and_time":"NOT_REQUIRED"},"facet_mismatches":{"version_and_time":{"expected":["MISSING"],"observed":"NOT_REQUIRED"}}}}},
+    {"case":"F11","family":"conflict_scope","expected_decision":"INSUFFICIENT","arms":{"v5_3_1":{"decision":"INSUFFICIENT","binary_matches":true,"facet_statuses":{"requested_outcomes":"CONFLICTING","applicability":"SUPPORTED","version_and_time":"SUPPORTED"},"facet_mismatches":{}},"v5_4":{"decision":"INSUFFICIENT","binary_matches":true,"facet_statuses":{"requested_outcomes":"CONFLICTING","applicability":"SUPPORTED","version_and_time":"SUPPORTED"},"facet_mismatches":{}}}},
+    {"case":"F12","family":"conflict_scope","expected_decision":"SUFFICIENT","arms":{"v5_3_1":{"decision":"SUFFICIENT","binary_matches":true,"facet_statuses":{"requested_outcomes":"SUPPORTED","applicability":"SUPPORTED","version_and_time":"SUPPORTED"},"facet_mismatches":{}},"v5_4":{"decision":"SUFFICIENT","binary_matches":true,"facet_statuses":{"requested_outcomes":"SUPPORTED","applicability":"SUPPORTED","version_and_time":"SUPPORTED"},"facet_mismatches":{}}}}
+  ]
+}

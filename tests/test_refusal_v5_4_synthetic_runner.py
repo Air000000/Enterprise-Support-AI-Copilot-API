@@ -189,3 +189,33 @@ def test_wire_guard_pins_body_order_endpoint_timeout_and_24_call_cap(tmp_path, m
     assert sent == [body for _, _, body in calls]
     with pytest.raises(RuntimeError, match="endpoint changed"):
         run.bounded_client(contract | {"endpoint_sha256": "changed"}, env)
+
+
+def test_published_result_keeps_binary_and_facet_checklists_separate_without_private_data():
+    result = json.loads(run.prep.CASES_PATH.with_name("v5_4_synthetic_result.json").read_text(encoding="utf-8"))
+    cases = json.loads(run.prep.CASES_PATH.read_text(encoding="utf-8"))
+    assert result["plan_sha256"] == run.checked_plan()["plan_sha256"] == run.PLAN_SHA256
+    assert result["cases_sha256"] == run.prep.canonical(cases)
+    assert result["provider_calls"] == result["completed"] == 24 and result["format_failures"] == result["unknown_usage"] == 0
+    assert [o["case"] for o in result["outcomes"]] == [c["id"] for c in cases]
+    for arm, matches in (("v5_3_1", 34), ("v5_4", 31)):
+        cells, full_cases = 0, 0
+        for case, observation in zip(cases, result["outcomes"]):
+            actual = observation["arms"][arm]
+            assert observation["expected_decision"] == case["expected"]["decision"] == actual["decision"]
+            mismatch = {f: {"expected": allowed, "observed": actual["facet_statuses"][f]}
+                for f, allowed in case["expected"]["coverage_statuses"].items() if actual["facet_statuses"][f] not in allowed}
+            assert actual["facet_mismatches"] == mismatch
+            cells += 3 - len(mismatch)
+            full_cases += not mismatch
+        usage = result["usage"][arm]
+        assert cells == usage["facet_cells_matching_frozen_checklist"] == matches
+        assert full_cases == usage["cases_all_facets_match"]
+        assert usage["calls"] == usage["binary_matches"] == 12
+    assert sum(u["total_tokens"] for u in result["usage"].values()) == result["total_usage"]["total_tokens"] == 50393
+    assert sum(u["estimated_cost_cny"] for u in result["usage"].values()) == pytest.approx(result["estimated_cost_cny"]) == .307584
+    assert result["candidate_fixed_version_not_required_cases"] == ["F03", "F04", "F09", "F10"]
+    assert result["paired_facet_cells"] == {"both_match": 30, "baseline_only": 4, "candidate_only": 1, "neither_matches": 1}
+    assert len(result["manual_review"]["notes"]) == 12
+    assert not any(result[k] for k in ("pending_exists", "runner_lock_exists", "raw_stage_exists", "paid_retries",
+        "labels_changed", "prompts_changed", "default_policy_changed", "expansion_criteria_met", "promotion_allowed"))
