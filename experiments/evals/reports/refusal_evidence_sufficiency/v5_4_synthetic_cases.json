@@ -1,0 +1,152 @@
+[
+  {
+    "id": "F01", "family": "optional_path",
+    "question": "Is browser log export available to my HarborDesk account, and how do I export now?",
+    "sources": [
+      {"source_id":"Source 1","content":"HarborDesk browser log export is enabled for every account. Open Logs, select Export, then download the archive."},
+      {"source_id":"Source 2","content":"An optional command-line export requires installing HarborCLI. The user's HarborCLI installation is unknown."}
+    ],
+    "expected": {
+      "decision": "SUFFICIENT",
+      "coverage_statuses": {"requested_outcomes":["SUPPORTED"],"applicability":["SUPPORTED"],"version_and_time":["NOT_REQUIRED"]},
+      "review": "Browser steps are complete. Do not make the unused CLI installation a necessary condition."
+    }
+  },
+  {
+    "id": "F02", "family": "optional_path",
+    "question": "Is browser log export available to my HarborDesk account, and how do I export now?",
+    "sources": [
+      {"source_id":"Source 1","content":"HarborDesk browser console: open Logs, select Export, then download the archive. Export requires the Archive entitlement; whether the user has it is unknown."},
+      {"source_id":"Source 2","content":"An optional command-line export requires installing HarborCLI. The user's HarborCLI installation is unknown."}
+    ],
+    "expected": {
+      "decision": "INSUFFICIENT",
+      "coverage_statuses": {"requested_outcomes":["MISSING","CONDITIONAL"],"applicability":["MISSING","CONDITIONAL"],"version_and_time":["NOT_REQUIRED"]},
+      "review": "The chosen browser path has an unresolved necessary entitlement. Calling the CLI optional cannot remove that gap."
+    }
+  },
+  {
+    "id": "F03", "family": "or_vs_and",
+    "question": "For HarborQueue 2.0, give its retry limit or a documentation URL.",
+    "sources": [
+      {"source_id":"Source 1","content":"HarborQueue 2.0 permits at most five retries per job. This passage supplies no URL."}
+    ],
+    "expected": {
+      "decision": "SUFFICIENT",
+      "coverage_statuses": {"requested_outcomes":["SUPPORTED"],"applicability":["SUPPORTED"],"version_and_time":["SUPPORTED"]},
+      "review": "Visible retry information satisfies OR; a URL is not additionally required. Fixed version is audited."
+    }
+  },
+  {
+    "id": "F04", "family": "or_vs_and",
+    "question": "For HarborQueue 2.0, give both its retry limit and a documentation URL.",
+    "sources": [
+      {"source_id":"Source 1","content":"HarborQueue 2.0 permits at most five retries per job. This passage supplies no URL."}
+    ],
+    "expected": {
+      "decision": "INSUFFICIENT",
+      "coverage_statuses": {"requested_outcomes":["MISSING"],"applicability":["SUPPORTED"],"version_and_time":["SUPPORTED"]},
+      "review": "URL is a requested deliverable under AND. That gap does not erase supported version/applicability."
+    }
+  },
+  {
+    "id": "F05", "family": "actionable_steps",
+    "question": "How do I enable HarborPanel audit logging using its settings panel?",
+    "sources": [
+      {"source_id":"Source 1","content":"HarborPanel settings procedure: open Settings, then Audit."},
+      {"source_id":"Source 2","content":"In the Audit panel, enable Record events and press Save. This procedure applies to the settings panel in Source 1."}
+    ],
+    "expected": {
+      "decision": "SUFFICIENT",
+      "coverage_statuses": {"requested_outcomes":["SUPPORTED"],"applicability":["SUPPORTED"],"version_and_time":["NOT_REQUIRED"]},
+      "review": "Both steps are visible across two explicitly linked sources; preserve their separate citation objects."
+    }
+  },
+  {
+    "id": "F06", "family": "actionable_steps",
+    "question": "How do I enable HarborPanel audit logging using its settings panel?",
+    "sources": [
+      {"source_id":"Source 1","content":"HarborPanel documentation: audit logging is available in its settings panel."},
+      {"source_id":"Source 2","content":"The next section will explain how to enable audit logging. No enabling steps are present in this passage."}
+    ],
+    "expected": {
+      "decision": "INSUFFICIENT",
+      "coverage_statuses": {"requested_outcomes":["MISSING"],"applicability":["SUPPORTED"],"version_and_time":["NOT_REQUIRED"]},
+      "review": "Availability and a promised section are not the requested procedure. Do not invent the toggle or Save button."
+    }
+  },
+  {
+    "id": "F07", "family": "incident_bridge",
+    "question": "HarborSync reports E17. Is disabling compression the documented remedy for this incident? Its built-in diagnostic says adapter C is active and compression is enabled.",
+    "sources": [
+      {"source_id":"Source 1","content":"For HarborSync E17 caused by adapter C with compression enabled, disable compression. This is the documented remedy for that combination."}
+    ],
+    "expected": {
+      "decision": "SUFFICIENT",
+      "coverage_statuses": {"requested_outcomes":["SUPPORTED"],"applicability":["SUPPORTED"],"version_and_time":["NOT_REQUIRED"]},
+      "review": "The incident independently establishes both documented prerequisites. Do not demand all conceivable alternative causes be excluded."
+    }
+  },
+  {
+    "id": "F08", "family": "incident_bridge",
+    "question": "HarborSync reports E17. Is disabling compression the documented remedy for this incident? The active adapter and compression setting are unknown.",
+    "sources": [
+      {"source_id":"Source 1","content":"For HarborSync E17 caused by adapter C with compression enabled, disable compression. This is the documented remedy for that combination."}
+    ],
+    "expected": {
+      "decision": "INSUFFICIENT",
+      "coverage_statuses": {"requested_outcomes":["MISSING","CONDITIONAL"],"applicability":["MISSING","CONDITIONAL"],"version_and_time":["NOT_REQUIRED"]},
+      "review": "Matching E17 alone does not establish adapter C and compression. Conditional guidance is not confirmation of the incident remedy."
+    }
+  },
+  {
+    "id": "F09", "family": "migration_scope",
+    "question": "Can I migrate HarborStore 4.0 directly to 5.0, and how?",
+    "sources": [
+      {"source_id":"Source 1","content":"HarborStore 4.0-to-5.0 direct migration is supported. Run harbor-migrate --from 4.0 --to 5.0, then run harbor-check."}
+    ],
+    "expected": {
+      "decision": "SUFFICIENT",
+      "coverage_statuses": {"requested_outcomes":["SUPPORTED"],"applicability":["SUPPORTED"],"version_and_time":["SUPPORTED"]},
+      "review": "Both endpoints and actionable migration steps are explicit. Never mark the fixed migration constraint NOT_REQUIRED."
+    }
+  },
+  {
+    "id": "F10", "family": "migration_scope",
+    "question": "Can I migrate HarborStore 4.0 directly to 5.0, and how?",
+    "sources": [
+      {"source_id":"Source 1","content":"This procedure covers HarborStore 3.0-to-4.0 only: run harbor-migrate --from 3.0 --to 4.0, then run harbor-check. It does not cover 4.0-to-5.0."}
+    ],
+    "expected": {
+      "decision": "INSUFFICIENT",
+      "coverage_statuses": {"requested_outcomes":["MISSING"],"applicability":["MISSING"],"version_and_time":["MISSING"]},
+      "review": "A clearly stated excluded version range is not support for the requested migration. Do not substitute the older command."
+    }
+  },
+  {
+    "id": "F11", "family": "conflict_scope",
+    "question": "What is the request timeout for HarborNet 3.2?",
+    "sources": [
+      {"source_id":"Source 1","content":"Current official HarborNet 3.2 policy: request timeout is 40 seconds."},
+      {"source_id":"Source 2","content":"Current official HarborNet 3.2 policy: request timeout is 70 seconds. This has equal authority to Source 1; neither supersedes the other."}
+    ],
+    "expected": {
+      "decision": "INSUFFICIENT",
+      "coverage_statuses": {"requested_outcomes":["CONFLICTING"],"applicability":["SUPPORTED"],"version_and_time":["SUPPORTED"]},
+      "review": "Both sources apply to 3.2 and conflict on the outcome; version/applicability themselves are established. Keep the unresolved value conflict visible."
+    }
+  },
+  {
+    "id": "F12", "family": "conflict_scope",
+    "question": "What is the request timeout for HarborNet 3.2?",
+    "sources": [
+      {"source_id":"Source 1","content":"Current official HarborNet 3.2 policy: request timeout is 40 seconds."},
+      {"source_id":"Source 2","content":"Current official HarborNet 4.0-only policy: request timeout is 70 seconds. This policy does not apply to HarborNet 3.2."}
+    ],
+    "expected": {
+      "decision": "SUFFICIENT",
+      "coverage_statuses": {"requested_outcomes":["SUPPORTED"],"applicability":["SUPPORTED"],"version_and_time":["SUPPORTED"]},
+      "review": "The explicit 4.0-only statement is not a conflict for 3.2. Do not invent a requirement to reconcile both versions."
+    }
+  }
+]
