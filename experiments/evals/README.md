@@ -50,6 +50,8 @@ R4 C1 Hybrid + rerank 的正式历史结论仍然是 **FAIL**：三项 TRAIN 聚
 
 上述停止状态保留为PR100历史记录。用户随后明确批准[草稿/复核分离追加协议](reports/refusal_evidence_sufficiency/v5_3_1_draft_amendment.md)，已继承原3次调用，从第4题补齐50次标注；助手逐题证据复核并在分类前冻结充分39/不足11/歧义0的代理标签。随后100次配对分类全部完成：[聚合结果](reports/refusal_evidence_sufficiency/v5_3_1_prospective_result.json)显示全部50题口径两版均43/50一致（86%），各2次格式失败；v5.3.1有效误放行4→3、有效误拒1→2，不能宣称整体更优。两阶段共150次，固定费率估算 ¥4.6080765，无重试/未知计费，不打开DEV、不改默认策略、不自动晋级。23条标注草稿格式失败与4次分类格式失败分别保留；不是专家金标或正式PASS，完整边界见[执行报告](reports/refusal_evidence_sufficiency/v5_3_1_prospective_execution.md)。
 
+2026-10-21 完成[零调用事后归因](reports/refusal_evidence_sufficiency/v5_3_1_prospective_execution.md#2026-10-21-离线归因不是单纯版本过严)：检查10题/20份输出，4次格式失败是重复引用字段或歧义字段层级错误，均非截断；10份有效错误涉及未证实的适用/因果桥接、缺步骤、可选分支升为必要条件及facet状态/理由矛盾。二元判断符合标签也不证明审计理由正确。保留全部原始失败、标签和86%/86%分数；仅补合成严格门回归，无新运行器/依赖、不修改线上策略。下一步先核实结构输出能力并准备独立离线候选，不直接扩大付费评测。聚合计数/原始摘要见[审计JSON](reports/refusal_evidence_sufficiency/v5_3_1_posthoc_audit.json)。
+
 历史拒答开发探针（2026-10-02）：v3 盲标 AI 代理标签上的 50 条 TRAIN 评测仍为
 **FAIL**，平衡准确率 0.76、充分召回率 0.76、误拒 6 条，不能进入 Phase C。
 这些标签不是独立人工金标；完整指标与证据边界见
