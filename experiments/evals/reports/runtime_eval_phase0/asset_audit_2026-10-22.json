@@ -1,0 +1,90 @@
+{
+  "audit_date": "2026-10-22",
+  "runtime_base_commit": "e76d159d595d4ca76acff5a340c9f8319b85ad76",
+  "status": "PHASE0_ASSET_AUDIT_COMPLETE_RUNTIME_COMPATIBILITY_PENDING",
+  "provider_calls": 0,
+  "dev_examples_opened": false,
+  "source_index_modified": false,
+  "live_runtime_changed": false,
+  "asset_audit": {
+    "collection": "techqa_e0_dense",
+    "documents": 28481,
+    "chunks": 172614,
+    "dimension": 1024,
+    "invalid_chunk_records": 0,
+    "sqlite_quick_check": "ok",
+    "declared_corpus_sha256": "3c4c4fe05204efa99101a402dc4d1c6206bcd160eb20be28e6a0b594415b3edb",
+    "declared_chunk_strategy": "paragraph_aware_character",
+    "checks_passed": [
+      "declared_corpus_sha_matches",
+      "declared_benchmark_matches",
+      "declared_chunk_strategy_matches",
+      "chunk_count_matches",
+      "document_count_matches",
+      "chunk_ids_unique",
+      "chunk_id_content_metadata_consistent",
+      "persisted_vector_files_present",
+      "positive_recorded_dimension"
+    ],
+    "embedding_model_metadata": null,
+    "embedding_endpoint_metadata": null,
+    "fingerprints": {
+      "chroma.sqlite3": "d1b3641eaaeb9a6b9fcbb6ceb03145bbc9eaa294a11656500bbc7fbcbd1103b0",
+      "data_level0.bin": "37bcd67735ad4cc817d29e62d67d35bbade0264ba4752ceab6134f8cb25e093b",
+      "header.bin": "2969827baea8cf54f1049c81d811d51568026ba5e6479de382279de1edd54ef9",
+      "index_metadata.pickle": "bc6bfbc99b2c73cd67f3cfbc2c35f8688218ad6149e9dac8ba201942a63b0035",
+      "length.bin": "8b4df40839ba78d1ea9190a9c792039d122b220d33711b98d6e7aaf97b6bf247",
+      "link_lists.bin": "18ee085f02dbc3078b597e5847900d374d06e95cf4c0ce52731a697251dcdedf"
+    },
+    "runtime_source_sha256": "f61c30540dc4b0bd436867157e26c5e79a9b677e17d649763d5553d8a91d8bcf",
+    "metadata_not_independent_body_or_vector_provenance": true
+  },
+  "isolated_probe": {
+    "status": "PASS_BINARY_READ_AND_SELF_VECTOR_ONLY",
+    "chromadb": "1.5.9",
+    "network": "none",
+    "collection_count": 172614,
+    "sample_vectors": 3,
+    "sample_dimension": 1024,
+    "self_vector_query": true,
+    "text_queries": 0,
+    "provider_calls": 0,
+    "historical_embedding_model_proven": false,
+    "original_six_file_hashes_verified_unchanged_after_probe": true,
+    "snapshot_retained_locally": true,
+    "snapshot_bytes_after_probe": 1602533264,
+    "limitation": "Chroma may update only the isolated copy. Three sample vectors/self-query do not validate every vector, semantic retrieval, historical model identity or serving SQL visibility."
+  },
+  "compatibility": {
+    "runtime_visible_chunk_limit": 5000,
+    "full_corpus_fits": false,
+    "historical_embedding_input": "chunk content",
+    "managed_upload_embedding_input": "filename stem + two newlines + chunk content",
+    "ordinary_upload_index_equivalent": false,
+    "runtime_quality_evaluation_ready": false,
+    "complete_phase0": false,
+    "remaining_work": [
+      "Choose and freeze archival benchmark snapshot versus normal-upload rebuilt index; no retroactive model attestation.",
+      "For archival reuse, bind copied index hashes and actual query embedding configuration; report the limits rather than claiming historical provider identity.",
+      "Implement managed SQL/chunk/version mapping and bounded full-corpus search without simply raising the 5000 limit or weakening visibility checks.",
+      "Keep full-ranking document IR metrics separate from returned chunk/context metrics and preserve historical FAIL/NO_PROMOTION.",
+      "Bound all evaluation transports, including Dense generation/embedding retries, timeout and output limits, before deriving payable-call ceilings.",
+      "Quote fees only after index profile, input sizes and current prices are known; obtain new DEV/data-externalization/call-budget consent."
+    ]
+  },
+  "controls": {
+    "audit_driver_network_denied": true,
+    "audit_driver_dotenv_and_raw_dataset_reads_denied": true,
+    "source_sqlite_mode": "ro",
+    "source_sqlite_query_only": true,
+    "source_pickle_not_deserialized_by_auditor": true,
+    "public_raw_documents_or_dev_examples": false,
+    "default_switches_unchanged": true
+  },
+  "verification": {
+    "focused": "9 passed",
+    "full_offline": "750 passed; 7 existing Alembic config deprecation warnings",
+    "new_dependencies": 0
+  },
+  "proposed_next_step": "Finish zero-call runtime/index compatibility work before final paid protocol. No quality scores, paid adapter or default promotion in this change."
+}
