@@ -1,0 +1,66 @@
+{
+  "date": "2026-10-22",
+  "status": "EVALUATION_TRANSPORT_COMPONENT_TESTED_NO_DEV_EXECUTOR_OR_PAID_AUTHORIZATION",
+  "code_commit": "a7925d9ee7528c04496cd267dcb0a5252ffc20b6",
+  "source_sha256": "7b286c15fd22b0a0fc049e57978a27be84b757bfadfc166086b895cd3499c802",
+  "provider_calls": 0,
+  "dev_examples_opened": false,
+  "ordinary_runtime_clients_prompts_thresholds_modified": false,
+  "live_runtime_changed": false,
+  "new_dependencies": 0,
+  "component": "experiments.evals.runtime_transport",
+  "entrypoint": "Explicit make_client API only; no CLI, credential loader or dataset loader",
+  "authorization_reference_is_not_human_authorization": true,
+  "request_limits": {
+    "models": {
+      "embedding": "text-embedding-v4",
+      "rerank": "qwen3-rerank",
+      "classifier": "qwen3.5-plus-2026-04-20",
+      "generation": "qwen3.5-plus"
+    },
+    "http_phase_timeouts_seconds": {"embedding": 30, "rerank": 15, "classifier": 30, "generation": 30},
+    "strict_total_wall_clock_deadline": false,
+    "sdk_and_default_http_retries": 0,
+    "follow_redirects": false,
+    "trust_proxy_environment": false,
+    "sdk_environment_credential_fallback": false,
+    "test_delegate": "Only offline httpx.MockTransport injection allowed by factory",
+    "embedding": "Exactly one query, explicit dimensions=1024 and encoding_format=float",
+    "rerank": "1-100 passages, top_n equals passage count",
+    "classifier": "Two messages, JSON object, temperature=0, enable_thinking=false, max_tokens=2048",
+    "generation": "Two messages, temperature=0.2, enable_thinking=false, max_tokens=1024",
+    "pinned_endpoints_methods_models_and_fields": true,
+    "per_request_and_total_request_byte_caps": "Required in future frozen contract; checked before send",
+    "call_count_ceiling": "Each preallocated contract call ID can be sent at most once with intact checkpoints",
+    "active_credential_in_request_or_raw_response": "Reject before send or retain pending with digest only, never persist the echoed credential"
+  },
+  "checkpoint": {
+    "reused_helpers": ["refusal_v5_paired_runner.write_json", "refusal_phase_b_runner._append_jsonl"],
+    "exclusive_fsync_pending_before_delegate": true,
+    "private_request_and_http200_response_bodies_saved": true,
+    "http_errors_or_credential_echo_bodies_headers_not_logged": true,
+    "usage_and_finish_checked_before_completion": true,
+    "pending_retained_on_timeout_http_failure_missing_usage_truncation_token_or_io_failure": true,
+    "no_automatic_pending_lock_removal_or_checkpoint_repair": true,
+    "completed_call_ids_not_resent": true,
+    "restart_bindings": ["contract hash", "fixed stage profile", "transport/helper source hashes", "OpenAI/HTTPX versions", "request/response hashes and usage", "complete request-ID history and file inventory"],
+    "not_vendor_billing_atomicity_or_a_complete_case_resume_scheduler": true
+  },
+  "verification": {
+    "new_focused": "25 passed using real SDK/HTTPX and synthetic MockTransport only",
+    "full_offline": "792 passed; 7 existing Alembic config deprecation warnings",
+    "ruff_and_diff_checks": "passed",
+    "external_network_and_private_project_data_reads_denied_in_full_suite": true,
+    "new_cases": ["Four model stages", "Real Dense generate_answer and embedding integration", "Timeout/redirect/HTTP failure", "Missing or inconsistent usage/output overrun", "Truncated or unfinished output", "Journal write failure", "Endpoint/model/field/byte/timeout overrides", "Duplicate/restart/contract/profile/response/orphan changes", "No implicit credentials or retrying delegate injection", "Credential payload/echo protection"]
+  },
+  "remaining_work": [
+    "Freeze actual DEV/index/query configuration, input/source authorization and payload scope before assembling an isolated serial HTTP evaluation executor.",
+    "Compute current model prices and conservative token/call reservations in a separately approved CNY execution protocol; this component is not an invoice cap.",
+    "Freeze full-ranking IR versus Top14 context metrics, output/failure denominator policy, raw-response case restoration and unknown-charge audit procedure.",
+    "The bounded Dense generation profile differs from its ordinary uncapped client; bind it explicitly for both comparison arms and do not rewrite historical metrics.",
+    "Historical embedding identity/semantic compatibility remain unattested by explicit 1024 dimensions.",
+    "Obtain fresh DEV/data-externalization/budget consent before any real model call."
+  ],
+  "complete_phase0": false,
+  "runtime_quality_evaluation_ready": false
+}

@@ -96,6 +96,8 @@ Dense评测client显式补充输出上限/关闭思考；Hybrid沿用其已有�
 不修改普通Dense提示词/距离阈值/默认工厂，也不回填历史质量指标或证明历史embedding身份。
 该守卫只约束请求与token记账，不检查来源语义授权、不提供人民币价格或账单硬保证，也不是完整断点评测调度器；
 仍需冻结输入/来源白名单与payload、索引/模型配置、指标/失败口径、人民币估算及计费未知审计流程，并取得新DEV/外发/预算授权后再整合执行。
+本轮[零调用验证记录](reports/runtime_eval_phase0/transport_readiness_2026-10-22.json)：25项新测试与792项全量离线测试通过，
+原运行时工厂/提示词/阈值及日常服务未改；没有DEV执行器、人民币报价或新的付费授权。
 
 2026-10-20 已准备 [v5.3 / v5.3.1 新 TRAIN 对照协议](reports/refusal_evidence_sufficiency/v5_3_1_prospective_protocol.md)及[零调用 manifest](reports/refusal_evidence_sufficiency/v5_3_1_prospective_preparation.json)：复用已有 prospective50 的相同问题、顺序和完整 Top14，不覆盖旧 v5.2.1/v5.3 协议。先最多50次盲标注并由当前助手复核冻结，再最多100次配对分类；规划估算约 ¥18.97，拟分阶段记账额度 ¥10 / ¥15、合计 ¥25，并非账单硬保证。当前无标注、预测、付费执行契约或新运行器；AI proxy 与既有 TRAIN 暴露不能当独立专家验收。`python -m experiments.evals.refusal_v5_3_1_preparation` 只计算计划，`--write-manifest` 只独占保存元数据，无付费入口；真实外发与费用需新授权，不打开 DEV、不重跑检索、不生成答案、不晋级策略。
 
