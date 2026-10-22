@@ -43,7 +43,10 @@ def runtime(tmp_path, monkeypatch):
     monkeypatch.setattr(hybrid, "embed_texts", lambda texts: [[1.0, 0.0] for _ in texts])
 
     def query(**kwargs):
-        ids = kwargs["ids"][:kwargs["n_results"]]
+        assert "ids" not in kwargs
+        where = kwargs["where"]["$and"][0]
+        scope = {key: value for item in where.get("$and", [where]) for key, value in item.items()}
+        ids = list(hybrid.load_visible_chunks(scope["tenant_id"], scope.get("category")))[:kwargs["n_results"]]
         return {"ids": [ids], "distances": [[0.1] * len(ids)]}
 
     monkeypatch.setattr(hybrid, "get_collection", lambda: SimpleNamespace(query=query))
@@ -103,8 +106,10 @@ def test_sql_visibility_scopes_both_channels_before_provider(runtime, monkeypatc
     expected = [f"doc:{good.id}:v1:chunk:0"]
 
     def query(**kwargs):
-        assert kwargs["ids"] == expected
-        assert kwargs["where"] == {"$and": [{"tenant_id": "tenant_demo"}, {"category": "it"}]}
+        assert "ids" not in kwargs
+        assert kwargs["where"] == {"$and": [
+            {"$and": [{"tenant_id": "tenant_demo"}, {"category": "it"}]},
+            {"source_type": {"$in": ["uploaded_document", "archival_benchmark"]}}]}
         return {"ids": [expected], "distances": [[0.2]]}
 
     monkeypatch.setattr(hybrid, "get_collection", lambda: SimpleNamespace(query=query))
@@ -121,6 +126,67 @@ def test_empty_and_oversize_corpus_never_embed(runtime, monkeypatch):
     with pytest.raises(RuntimeError, match="exceeds"):
         hybrid.search_hybrid("VPN", 14, "tenant_demo")
     assert calls == []
+
+
+@pytest.mark.parametrize("limit", ["0", "200001", "invalid"])
+def test_invalid_capacity_fails_before_embedding(runtime, monkeypatch, limit):
+    monkeypatch.setenv("RAG_HYBRID_MAX_VISIBLE_CHUNKS", limit)
+    monkeypatch.setattr(hybrid, "embed_texts", lambda _: pytest.fail("No embedding with invalid capacity"))
+    with pytest.raises(ValueError):
+        hybrid.search_hybrid("needle", 14, "tenant_demo")
+    assert runtime[1] == []
+
+
+def test_explicit_capacity_and_search_slot_release(runtime, monkeypatch):
+    engine, _ = runtime
+    add_document(engine, count=2)
+    monkeypatch.setattr(hybrid, "MAX_VISIBLE_CHUNKS", 1)
+    monkeypatch.setenv("RAG_HYBRID_MAX_VISIBLE_CHUNKS", "2")
+    assert hybrid._SEARCH_SLOT.acquire(blocking=False)
+    try:
+        with pytest.raises(RuntimeError, match="capacity busy"):
+            hybrid.search_hybrid("needle", 14, "tenant_demo")
+    finally:
+        hybrid._SEARCH_SLOT.release()
+    with pytest.raises(ValueError):
+        hybrid.search_hybrid("needle", 15, "tenant_demo")
+    assert len(hybrid.search_hybrid("needle", 14, "tenant_demo")) == 2
+
+
+def test_cache_uses_fresh_contents_not_parent_timestamps(runtime):
+    engine, calls = runtime
+    doc = add_document(engine, content="needle before")
+    hybrid._bm25_index.cache_clear()
+    first = hybrid.search_hybrid("needle", 14, "tenant_demo")
+    second = hybrid.search_hybrid("needle", 14, "tenant_demo")
+    assert first == second
+    assert hybrid._bm25_index.cache_info().hits == 1
+    with Session(engine) as session:
+        chunk = session.exec(select(DocumentChunk).where(DocumentChunk.document_id == doc.id)).one()
+        chunk.content = "needle after direct SQL change"
+        session.add(chunk)
+        session.commit()  # Deliberately no parent timestamp/version update.
+    assert hybrid.search_hybrid("needle", 14, "tenant_demo")[0].content == "needle after direct SQL change"
+    assert hybrid._bm25_index.cache_info().misses == 2
+    assert calls[-1]["documents"] == ["needle after direct SQL change"]
+    assert hybrid.search_hybrid("needle", 14, "foreign") == []
+    assert hybrid.search_hybrid("needle", 14, "tenant_demo", "hr") == []
+
+
+def test_native_filtered_orphan_vectors_fail_closed(runtime, monkeypatch):
+    engine, calls = runtime
+    add_document(engine, content="needle managed")
+    client = chromadb.EphemeralClient(settings=chromadb.Settings(anonymized_telemetry=False))
+    collection = client.create_collection("orphan_" + uuid4().hex, embedding_function=None)
+    monkeypatch.setattr(hybrid, "get_collection", lambda: collection)
+    try:
+        collection.add(ids=["unmanaged-leftover"], embeddings=[[1.0, 0.0]],
+                       metadatas=[{"tenant_id": "tenant_demo", "category": "it", "source_type": "uploaded_document"}])
+        with pytest.raises(RuntimeError, match="out-of-scope dense ranking"):
+            hybrid.search_hybrid("needle", 14, "tenant_demo", "it")
+        assert calls == []  # No orphan body reaches the external reranker.
+    finally:
+        client.delete_collection(collection.name)
 
 
 @pytest.mark.parametrize("invalid", ["foreign", "duplicate", "nan"])
@@ -191,6 +257,8 @@ def test_real_chroma_upload_reindex_failure_delete_lifecycle(runtime, tmp_path, 
         documents.index_document(**options)
         collection.add(ids=["foreign-vector"], embeddings=[[1.0, 0.0]],
                        metadatas=[{"tenant_id": "foreign", "category": "it"}])
+        collection.add(ids=["same-tenant-legacy-static"], embeddings=[[1.0, 0.0]],
+                       metadatas=[{"tenant_id": "tenant_demo", "category": "it"}])
         assert hybrid.search_hybrid("needle", 14, "tenant_demo")[0].document_id == doc.id
         documents.index_document(**options)
         assert len(hybrid.search_hybrid("needle", 14, "tenant_demo")) == 1

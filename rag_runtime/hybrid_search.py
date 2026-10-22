@@ -1,8 +1,11 @@
 """Opt-in managed-document search; no answer generation or refusal-score reuse."""
 
 import math
+import os
 from dataclasses import dataclass, replace
+from functools import lru_cache
 from pathlib import Path
+from threading import Lock
 
 from sqlmodel import Session, select
 
@@ -20,6 +23,14 @@ from rag_runtime.query_chroma import ChromaSearchResult, build_where_filter, emb
 
 CANDIDATE_K, RRF_K, CONTEXT_K = 100, 60, 14
 MAX_VISIBLE_CHUNKS = 5000
+_SEARCH_SLOT = Lock()
+
+
+@lru_cache(maxsize=1)
+def _bm25_index(tenant_id, category, chunks):
+    # ponytail: one process-local entry, keyed by exact fresh SQL chunk contents,
+    # not timestamps/TTL. Tenant switching evicts it; no persisted second index.
+    return TechQAChunkBM25Retriever(chunks)
 
 
 @dataclass
@@ -36,33 +47,51 @@ class HybridSearchResult(ChromaSearchResult):
 
 
 def load_visible_chunks(tenant_id, category, *, embedding_ids=None):
-    statement = select(DocumentChunk, Document).join(Document, DocumentChunk.document_id == Document.id).where(
+    limit = int(os.getenv("RAG_HYBRID_MAX_VISIBLE_CHUNKS", str(MAX_VISIBLE_CHUNKS)))
+    if not 1 <= limit <= 200000:
+        raise ValueError("Hybrid visible chunk limit must be between 1 and 200000")
+    statement = select(DocumentChunk.embedding_id, DocumentChunk.chunk_index, DocumentChunk.content,
+                       Document.id, Document.version, Document.tenant_id, Document.category,
+                       Document.filename, Document.source_path).join(Document, DocumentChunk.document_id == Document.id).where(
         Document.tenant_id == tenant_id, Document.status == "indexed",
         DocumentChunk.tenant_id == tenant_id, DocumentChunk.category == Document.category)
     if category is not None:
         statement = statement.where(Document.category == category)
     if embedding_ids is not None:
         statement = statement.where(DocumentChunk.embedding_id.in_(embedding_ids))
-    statement = statement.order_by(Document.id, DocumentChunk.chunk_index, DocumentChunk.embedding_id).limit(MAX_VISIBLE_CHUNKS + 1)
-    with Session(engine) as session:
-        rows = session.exec(statement).all()
-    if len(rows) > MAX_VISIBLE_CHUNKS:
-        raise RuntimeError("Hybrid demo corpus exceeds 5000 visible chunks")
+    statement = statement.order_by(Document.id, DocumentChunk.chunk_index, DocumentChunk.embedding_id).limit(limit + 1)
     corpus = {}
-    for chunk, document in rows:
-        expected = f"doc:{document.id}:v{document.version}:chunk:{chunk.chunk_index}"
-        if chunk.embedding_id != expected or not chunk.content.strip():
-            continue  # Stale versions never enter either channel or the external reranker.
-        if expected in corpus:
-            raise RuntimeError("Duplicate managed chunk identity")
-        corpus[expected] = HybridSearchResult(
-            chunk_id=expected, document_id=document.id, chunk_index=chunk.chunk_index,
-            content=chunk.content, tenant_id=document.tenant_id, category=document.category,
-            title=Path(document.filename).stem, source_path=document.source_path, distance=None)
+    with Session(engine) as session:
+        # Select only retrieval columns, not every repeated ORM object/metadata JSON.
+        for position, (cid, index, content, did, version, tenant, cat, filename, path) in enumerate(
+            session.exec(statement.execution_options(yield_per=1000)), 1
+        ):
+            if position > limit:
+                raise RuntimeError(f"Hybrid corpus exceeds {limit} visible chunks")
+            expected = f"doc:{did}:v{version}:chunk:{index}"
+            if cid != expected or not content.strip():
+                continue  # Stale versions never enter either channel or the external reranker.
+            if expected in corpus:
+                raise RuntimeError("Duplicate managed chunk identity")
+            corpus[expected] = HybridSearchResult(
+                chunk_id=expected, document_id=did, chunk_index=index,
+                content=content, tenant_id=tenant, category=cat,
+                title=Path(filename).stem, source_path=path, distance=None)
     return corpus
 
 
 def search_hybrid(query: str, top_k: int, tenant_id: str, category: str | None = None):
+    # ponytail: fail-fast single search per process bounds cold-build memory.
+    # Multiple workers each own an index; remeasure before increasing concurrency.
+    if not _SEARCH_SLOT.acquire(blocking=False):
+        raise RuntimeError("Hybrid search capacity busy")
+    try:
+        return _search_hybrid(query, top_k, tenant_id, category)
+    finally:
+        _SEARCH_SLOT.release()
+
+
+def _search_hybrid(query, top_k, tenant_id, category):
     if not isinstance(tenant_id, str) or not tenant_id.strip() or not query.strip():
         raise ValueError("Hybrid requires a tenant and nonempty query")
     if type(top_k) is not int or not 1 <= top_k <= CONTEXT_K:
@@ -73,8 +102,11 @@ def search_hybrid(query: str, top_k: int, tenant_id: str, category: str | None =
         return []  # No embedding or rerank request for an empty authorized corpus.
 
     raw = get_collection().query(
-        ids=list(corpus), query_embeddings=embed_texts([query]),
-        n_results=min(CANDIDATE_K, len(corpus)), where=build_where_filter(tenant_id, category),
+        # SQL eligibility is checked below and again before external rerank.
+        # Passing every managed ID here exceeds SQLite's variable limit on full corpora.
+        query_embeddings=embed_texts([query]),
+        n_results=min(CANDIDATE_K, len(corpus)), where={"$and": [build_where_filter(tenant_id, category),
+            {"source_type": {"$in": ["uploaded_document", "archival_benchmark"]}}]},
         include=["distances"])
     dense, distances = raw["ids"][0], raw["distances"][0]
     if (len(dense) != len(distances) or len(set(dense)) != len(dense)
@@ -83,12 +115,10 @@ def search_hybrid(query: str, top_k: int, tenant_id: str, category: str | None =
         raise RuntimeError("Invalid or out-of-scope dense ranking")
     distance_by_id = dict(zip(dense, distances, strict=True))
 
-    # ponytail: rebuild a tenant-scoped BM25 index per request (<=5000 chunks); add
-    # versioned per-tenant caching only if measured latency justifies invalidation complexity.
     bm25 = []
     if tokenize_technical(query) and any(tokenize_technical(c.content) for c in corpus.values()):
-        chunks = [TechQAChunk(c.chunk_id, c.document_id, c.chunk_index, c.content) for c in corpus.values()]
-        bm25 = [c.chunk_id for c in TechQAChunkBM25Retriever(chunks).search(query, top_k=CANDIDATE_K)]
+        chunks = tuple(TechQAChunk(c.chunk_id, c.document_id, c.chunk_index, c.content) for c in corpus.values())
+        bm25 = [c.chunk_id for c in _bm25_index(tenant_id, category, chunks).search(query, top_k=CANDIDATE_K)]
     fused = fuse_rrf([dense, bm25], rrf_k=RRF_K, top_k=CANDIDATE_K)
     if not fused:
         return []

@@ -1,0 +1,110 @@
+{
+  "audit_date": "2026-10-22",
+  "status": "FULL_CORPUS_SEARCH_SERVICE_CAPACITY_PASS_WITH_STUBS_NOT_QUALITY",
+  "evaluation_code_commit": "c54a29dacf79b0eedb6768913439962443664080",
+  "hybrid_source_sha256": "40f6265fba2db3accd915fb01e125de47c9910d0ed0352152247fadb3583c29c",
+  "dependency_image_revision": "e76d159d595d4ca76acff5a340c9f8319b85ad76",
+  "source_profile_reference": "archival_import_2026-10-22.json",
+  "source_managed_records_sha256": "7ea91b0d516761bdf80e65397379c2e3a934e105a30ca956846e4a025e8e8fc5",
+  "documents": 28481,
+  "chunks": 172614,
+  "dimension": 1024,
+  "provider_calls": 0,
+  "dev_examples_opened": false,
+  "live_runtime_changed": false,
+  "default_switches_changed": false,
+  "capacity": {
+    "default_visible_chunks": 5000,
+    "probe_configured_visible_chunks": 200000,
+    "environment_key": "RAG_HYBRID_MAX_VISIBLE_CHUNKS",
+    "allowed_range": [1, 200000],
+    "source_asset_audit_reads_default_not_environment": true,
+    "active_searches_per_process": 1,
+    "busy_behavior": "Fail fast with sanitized 503; no queue or Dense fallback",
+    "bm25_cache": "One process-local LRU entry keyed by tenant/category and exact fresh SQL chunk contents",
+    "sql_loading": "Stream only retrieval columns; fresh full scope every request and selected-candidate checks before/after rerank",
+    "dense_filter": "Native tenant/category plus source_type uploaded_document or archival_benchmark; no all-visible-ID parameter",
+    "stale_or_orphan_managed_dense_id": "Fail closed before rerank, never silently skip invalid IDs",
+    "legacy_unmarked_static_vectors": "Excluded by native source_type filter"
+  },
+  "baseline_component_observation": {
+    "code_base": "46af971153ea8659c12ec9e8dbf82bf64c59c71f",
+    "diagnostic_only_limit_override": true,
+    "sql_full_orm_load_seconds": 6.256,
+    "bm25_build_seconds": 11.086,
+    "bm25_query_seconds": 0.018,
+    "peak_process_rss_bytes": 2069262336,
+    "not_a_controlled_end_to_end_comparison": true
+  },
+  "updated_service_probe": {
+    "query": "phase0 probe sentinel network configuration",
+    "query_embedding": "First stored vector from this archive; no text embedding request",
+    "rerank": "Offline HTTP MockTransport identity permutation with valid scores; not learned relevance",
+    "embedding_stub_requests": 2,
+    "rerank_stub_requests": 2,
+    "native_dense_queries": 2,
+    "native_dense_results_each": 100,
+    "fused_candidates_each": 100,
+    "returned_results_each": 14,
+    "same_chunk_ids_cold_warm": true,
+    "http_api_exercised": false,
+    "cold_scope": "Empty BM25 cache and first native dense query after reading a stored vector; OS caches not purged",
+    "runs": [
+      {
+        "name": "cold",
+        "search_service_seconds": 19.623,
+        "sql_full_load_seconds": 1.565,
+        "sql_candidate_rechecks_seconds": [0.096, 0.071],
+        "bm25_build_or_cache_lookup_seconds": 10.365,
+        "native_dense_seconds": 7.264,
+        "cache_hits": 0,
+        "cache_misses": 1,
+        "peak_process_rss_bytes": 2817122304
+      },
+      {
+        "name": "warm",
+        "search_service_seconds": 2.4,
+        "sql_full_load_seconds": 1.182,
+        "sql_candidate_rechecks_seconds": [0.069, 0.071],
+        "bm25_build_or_cache_lookup_seconds": 0.073,
+        "native_dense_seconds": 0.678,
+        "cache_hits": 1,
+        "cache_misses": 1,
+        "peak_process_rss_bytes": 2817122304
+      }
+    ],
+    "not_p50_p95_or_real_provider_end_to_end_latency": true,
+    "semantic_quality_or_retrieval_improvement_measured": false
+  },
+  "controls": {
+    "network": "none",
+    "cpu_limit": 4,
+    "memory_limit_bytes": 5368709120,
+    "code_and_verified_export_mounts": "readonly",
+    "sql_and_vectors_copied_to_independent_volume_and_sha256_compared": true,
+    "dotenv_reads_and_socket_connects_denied_by_python_audit_hook": true,
+    "fake_credentials_only": true,
+    "temporary_capacity_volume_removed": true,
+    "original_index_and_verified_host_export_retained": true,
+    "raw_corpus_vectors_or_questions_committed": false
+  },
+  "verification": {
+    "focused": "100 passed",
+    "full_offline": "767 passed; 7 existing Alembic config deprecation warnings",
+    "ruff_and_diff_check": "passed",
+    "regressions": ["Invalid capacity before embedding", "Search slot rejection/release", "Exact-content cache invalidation without parent timestamp change", "Foreign tenant/category/stale version checks", "Marked orphan dense vector fail-closed", "Unmarked legacy vectors excluded", "Existing real Uvicorn query/ask/Ticket Agent lifecycle"]
+  },
+  "limitations": [
+    "Only this archival corpus was profiled; no resource guarantee for arbitrary 200000 chunks or multiple workers/tenants.",
+    "A scope/content change evicts the single cached BM25 index. Full SQL reads remain per request; this is not a distributed cache.",
+    "Historical embedding identity remains unknown and body-only archival vectors are not ordinary-upload re-embedding.",
+    "Paid embedding/rerank, classifier, generation, full HTTP and formal latency/quality evaluation are not measured here."
+  ],
+  "remaining_work": [
+    "Bound all future evaluation transports including Dense retries/timeouts/output limits and request tracing.",
+    "Bind archival fingerprints and explicit query embedding configuration; freeze full-ranking IR versus returned-context metrics.",
+    "Recalculate and authorize DEV externalization/call budget before real quality evaluation. Preserve historical FAIL/NO_PROMOTION."
+  ],
+  "complete_phase0": false,
+  "runtime_quality_evaluation_ready": false
+}

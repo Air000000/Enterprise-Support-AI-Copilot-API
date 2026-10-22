@@ -67,6 +67,11 @@ checksum为明确的归档占位而非原文件校验值。HNSW使用保留向�
 原索引指纹未变、SQL租户/分类/版本/ID映射无异常。但把172,614个ID传入Chroma查询实际报`too many SQL variables`；
 因此不能只提高5000上限。归档导入PASS不等于全库运行时PASS；阶段0继续处理查询容量、性能与调用上限，不进入DEV/付费评测。
 
+随后完成[全库搜索服务容量探针](reports/runtime_eval_phase0/capacity_probe_2026-10-22.json)：修复全量ID参数限制，流式读取SQL，
+按完整新鲜分块内容缓存BM25；默认5000不变，隔离探针显式配置200000。172,614条的两次搜索服务调用均返回Top14，
+冷态约19.62秒、缓存命中约2.40秒，峰值进程RSS约2.62GiB。仅用存储向量及重排替身，零提供方调用；不是P50/P95、
+真实HTTP/模型延迟或检索质量提升。并发搜索每进程限1，忙时503；正常部署未改动，正式质量评测仍待调用上限与新授权。
+
 2026-10-20 已准备 [v5.3 / v5.3.1 新 TRAIN 对照协议](reports/refusal_evidence_sufficiency/v5_3_1_prospective_protocol.md)及[零调用 manifest](reports/refusal_evidence_sufficiency/v5_3_1_prospective_preparation.json)：复用已有 prospective50 的相同问题、顺序和完整 Top14，不覆盖旧 v5.2.1/v5.3 协议。先最多50次盲标注并由当前助手复核冻结，再最多100次配对分类；规划估算约 ¥18.97，拟分阶段记账额度 ¥10 / ¥15、合计 ¥25，并非账单硬保证。当前无标注、预测、付费执行契约或新运行器；AI proxy 与既有 TRAIN 暴露不能当独立专家验收。`python -m experiments.evals.refusal_v5_3_1_preparation` 只计算计划，`--write-manifest` 只独占保存元数据，无付费入口；真实外发与费用需新授权，不打开 DEV、不重跑检索、不生成答案、不晋级策略。
 
 上述为准备时快照。随后用户明确授权两阶段，完成复用旧持久化引擎的[独立执行适配器](refusal_v5_3_1_runner.py)与[执行记录](reports/refusal_evidence_sufficiency/v5_3_1_prospective_execution.md)：实际3次盲标注，usage共15087 tokens，估算 ¥0.0748575；2份只作可证明的引用记法恢复，第3份遗漏某个已列支持来源的行号，按现行协议停止。没有付费重试，其余47题未发送，标签未冻结、分类0次，不计算拒答效果。先明确同意“保留无效机器草稿、由助手独立证据复核生成最终标签”的追加协议后才继续，不靠重试或放宽分类校验通过。
