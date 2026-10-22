@@ -53,6 +53,20 @@ R4 C1 Hybrid + rerank 的正式历史结论仍然是 **FAIL**：三项 TRAIN 聚
 可复跑入口 `python -m experiments.evals.audit_runtime_compatibility --index-dir /path/to/quiescent/techqa_e0`
 只使用标准库只读SQLite/文件，不创建Chroma客户端、不读取`.env`或加载DEV；输出始终不授予质量评测就绪资格。
 
+阶段0的零调用导入入口：
+`python -m experiments.evals.import_runtime_snapshot --source-dir /readonly/techqa_e0 --output-dir /isolated/new-directory`。
+在**断网容器**中运行，原索引只读挂载，输出必须不存在且与源目录不嵌套；失败目录不续跑、不覆盖。
+它先审计并复制源，再将已有正文/向量转换为正常受管chunk ID，写入独立`runtime.db`和`chroma/local_doc_rag`，
+固定评测租户为`tenant_eval_techqa_archival`，逐批读回核对全部向量/正文/元数据，成功才写`import_receipt.json`。
+这是历史纯正文向量的**归档评测口径**，不是当前上传链路重建；历史模型/端点仍未知，文档名/路径为合成标识，
+checksum为明确的归档占位而非原文件校验值。HNSW使用保留向量重新建图，不能保证复现旧近似排名或同分顺序；
+后续对照必须共用该新快照。SQL只含文档/分块表，不是可直接启动的已迁移服务库；不改变运行时ID/租户/版本校验，
+不修改5000 chunk上限，不代表质量验收或付费就绪。输出保留工作副本与新索引，需要额外本地磁盘空间。
+
+[全库导入与重开实测](reports/runtime_eval_phase0/archival_import_2026-10-22.json)已完成，全部172,614条正文/元数据/向量读回一致，
+原索引指纹未变、SQL租户/分类/版本/ID映射无异常。但把172,614个ID传入Chroma查询实际报`too many SQL variables`；
+因此不能只提高5000上限。归档导入PASS不等于全库运行时PASS；阶段0继续处理查询容量、性能与调用上限，不进入DEV/付费评测。
+
 2026-10-20 已准备 [v5.3 / v5.3.1 新 TRAIN 对照协议](reports/refusal_evidence_sufficiency/v5_3_1_prospective_protocol.md)及[零调用 manifest](reports/refusal_evidence_sufficiency/v5_3_1_prospective_preparation.json)：复用已有 prospective50 的相同问题、顺序和完整 Top14，不覆盖旧 v5.2.1/v5.3 协议。先最多50次盲标注并由当前助手复核冻结，再最多100次配对分类；规划估算约 ¥18.97，拟分阶段记账额度 ¥10 / ¥15、合计 ¥25，并非账单硬保证。当前无标注、预测、付费执行契约或新运行器；AI proxy 与既有 TRAIN 暴露不能当独立专家验收。`python -m experiments.evals.refusal_v5_3_1_preparation` 只计算计划，`--write-manifest` 只独占保存元数据，无付费入口；真实外发与费用需新授权，不打开 DEV、不重跑检索、不生成答案、不晋级策略。
 
 上述为准备时快照。随后用户明确授权两阶段，完成复用旧持久化引擎的[独立执行适配器](refusal_v5_3_1_runner.py)与[执行记录](reports/refusal_evidence_sufficiency/v5_3_1_prospective_execution.md)：实际3次盲标注，usage共15087 tokens，估算 ¥0.0748575；2份只作可证明的引用记法恢复，第3份遗漏某个已列支持来源的行号，按现行协议停止。没有付费重试，其余47题未发送，标签未冻结、分类0次，不计算拒答效果。先明确同意“保留无效机器草稿、由助手独立证据复核生成最终标签”的追加协议后才继续，不靠重试或放宽分类校验通过。
