@@ -196,18 +196,19 @@ def chat(request: ChatRequest, _user: CurrentUser = Depends(get_current_user)):
     }
 
 @app.get("/todos", response_model=list[TodoResponse])
-def list_todos(_user: CurrentUser = Depends(get_current_user)):
+def list_todos(user: CurrentUser = Depends(get_current_user)):
     with Session(engine) as session:
-        statement = select(Todo)
+        statement = select(Todo).where(Todo.tenant_id == user.tenant_id)
         todos = session.exec(statement).all()
         return todos
 
 
 @app.post("/todos", response_model=TodoResponse, status_code=201)
-def create_todo(todo: TodoCreate, _user: CurrentUser = Depends(get_current_user)):
+def create_todo(todo: TodoCreate, user: CurrentUser = Depends(get_current_user)):
     logger.info("Creating todo: %s", todo.title)
     
     db_todo = Todo(
+        tenant_id=user.tenant_id,
         title=todo.title,
         completed=False,
         due_time=todo.due_time,
@@ -221,9 +222,9 @@ def create_todo(todo: TodoCreate, _user: CurrentUser = Depends(get_current_user)
 
 
 @app.get("/todos/{todo_id}", response_model=TodoResponse)
-def get_todo(todo_id: int, _user: CurrentUser = Depends(get_current_user)):
+def get_todo(todo_id: int, user: CurrentUser = Depends(get_current_user)):
     with Session(engine) as session:
-        todo = session.get(Todo, todo_id)   # session.get() 方法根据主键（这里是 id）查询数据库中的 Todo 记录
+        todo = session.exec(select(Todo).where(Todo.id == todo_id, Todo.tenant_id == user.tenant_id)).first()
 
         if todo is None:
             raise HTTPException(status_code=404, detail="Todo not found")
@@ -235,10 +236,10 @@ def get_todo(todo_id: int, _user: CurrentUser = Depends(get_current_user)):
 def update_todo(
     todo_id: int,
     update: TodoUpdate,
-    _user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(get_current_user),
 ):
     with Session(engine) as session:
-        todo = session.get(Todo, todo_id)   
+        todo = session.exec(select(Todo).where(Todo.id == todo_id, Todo.tenant_id == user.tenant_id)).first()
 
         if todo is None:
             raise HTTPException(status_code=404, detail="Todo not found")
@@ -260,10 +261,10 @@ def update_todo(
 
 
 @app.delete("/todos/{todo_id}", status_code=200)
-def delete_todo(todo_id: int, _user: CurrentUser = Depends(get_current_user)):
+def delete_todo(todo_id: int, user: CurrentUser = Depends(get_current_user)):
     logger.info("Deleting todo with ID: %d", todo_id)
     with Session(engine) as session:
-        todo = session.get(Todo, todo_id)
+        todo = session.exec(select(Todo).where(Todo.id == todo_id, Todo.tenant_id == user.tenant_id)).first()
 
         if todo is None:
             raise HTTPException(status_code=404, detail="Todo not found")
@@ -308,11 +309,11 @@ def ai_chat(request: ChatRequest, _user: CurrentUser = Depends(get_current_user)
         }
 
     except Exception as e:
-        logger.exception("LLM chat failed")
+        logger.error("LLM chat failed (%s)", type(e).__name__)
         raise HTTPException(
             status_code=500,
-            detail=f"LLM API error: {str(e)}",
-        )
+            detail="LLM service unavailable",
+        ) from None
 
 # 从用户输入的自然语言中提取出任务信息，返回给用户 
 @app.post("/ai/extract-tasks", response_model=TaskExtractResponse)
@@ -360,13 +361,14 @@ def extract_tasks_from_text(text: str) -> TaskExtractResponse:
         )
 
     except Exception as e:
+        logger.error("LLM task extraction failed (%s)", type(e).__name__)
         raise HTTPException(
             status_code=500,
-            detail=f"LLM API error: {str(e)}",
-        )
+            detail="LLM service unavailable",
+        ) from None
     
 @app.post("/ai/create-todos", response_model=AICreateTodosResponse, status_code=201)
-def ai_create_todos(request: TaskExtractRequest, _user: CurrentUser = Depends(get_current_user)):
+def ai_create_todos(request: TaskExtractRequest, user: CurrentUser = Depends(get_current_user)):
     logger.info("Creating todos from AI extraction")
 
     extracted = extract_tasks_from_text(request.text) 
@@ -376,6 +378,7 @@ def ai_create_todos(request: TaskExtractRequest, _user: CurrentUser = Depends(ge
     with Session(engine) as session:
         for task in extracted.tasks:
             db_todo = Todo(
+                tenant_id=user.tenant_id,
                 title=task.title,
                 completed=False,
                 due_time=task.time,

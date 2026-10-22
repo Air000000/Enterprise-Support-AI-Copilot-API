@@ -4,7 +4,7 @@
 
 This repository is being upgraded from a FastAPI Todo + RAG learning project into **Enterprise Support AI Copilot**.
 
-The current `learn-rag` branch now includes:
+The current `main` branch includes:
 
 ```text
 Enterprise RAG Core
@@ -75,7 +75,7 @@ python -m experiments.evals.eval_retrieval
 python -m experiments.evals.eval_chroma_retrieval
 ```
 
-## Current Stable Baselines
+## Historical Baselines (not current suite totals)
 
 ### RAG eval
 
@@ -137,11 +137,17 @@ AgentOps metrics summary API
 
 ```
 
-The current system uses mock tenant and user context:
+The current system resolves tenant and user context from Demo JWT Bearer tokens:
 
 ```text
-tenant_id = tenant_demo
-user_id = user_demo
+CurrentUser.user_id
+CurrentUser.tenant_id
+CurrentUser.role
 ```
 
-Future work should replace mock context with real authentication and tenant resolution.
+Document, RAG, Ticket and AgentOps paths use this server-side context; do not trust
+client-supplied tenant IDs. Legacy Todo paths are tenant-scoped too. Pre-migration
+Todo rows with unknown ownership remain stored but hidden until ownership is verified.
+Demo credentials/JWT defaults are not production IAM or database-level isolation.
+Hybrid is integrated as explicit opt-in; Dense remains the repository default.
+Refusal candidates remain experimental; do not rewrite frozen negative results.
