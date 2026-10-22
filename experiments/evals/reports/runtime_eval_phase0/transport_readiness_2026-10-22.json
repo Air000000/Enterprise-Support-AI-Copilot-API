@@ -51,7 +51,7 @@
     "full_offline": "792 passed; 7 existing Alembic config deprecation warnings",
     "ruff_and_diff_checks": "passed",
     "external_network_and_private_project_data_reads_denied_in_full_suite": true,
-    "new_cases": ["Four model stages", "Real Dense generate_answer and embedding integration", "Timeout/redirect/HTTP failure", "Missing or inconsistent usage/output overrun", "Truncated or unfinished output", "Journal write failure", "Endpoint/model/field/byte/timeout overrides", "Duplicate/restart/contract/profile/response/orphan changes", "No implicit credentials or retrying delegate injection", "Credential payload/echo protection"]
+    "new_cases": ["Four model stages", "Real Dense generate_answer and embedding integration", "Timeout/redirect/HTTP failure", "Missing usage/output overrun", "Truncated or unfinished output", "Journal write failure", "Endpoint/model/field/byte/timeout overrides", "Duplicate/restart/contract/profile/response/orphan changes", "No implicit credentials or retrying delegate injection", "Credential payload/echo protection"]
   },
   "remaining_work": [
     "Freeze actual DEV/index/query configuration, input/source authorization and payload scope before assembling an isolated serial HTTP evaluation executor.",
