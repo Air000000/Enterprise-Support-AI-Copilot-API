@@ -106,6 +106,18 @@ Dense评测client显式补充输出上限/关闭思考；Hybrid沿用其已有�
 阶段2的310题真实HTTP双臂最多1860次服务调用，满额预留¥136.80224608（拟服务额度¥150），**未含标注/答案评审且未申请执行**；
 其评审协议/费用须另行冻结。旧DEV已用于历史评测，新旧HNSW/向量身份边界不能省略，结果不能包装为全新独立盲测或自动上线资格。
 
+阶段1的[离线观测/记账适配](runtime_retrieval.py)复用现有`search_hybrid`、BM25/RRF、rerank客户端与wire守卫，
+捕获同一Dense100、BM25、融合及完整重排，验证服务Top14一致；qrel不进入输入API，只返回chunk/document排名供后续本地评分。
+`build_plan`仅接受160个显式`(DEV ID, question)`，固定480个调用ID与交替次序，绑定源码/协议/依赖/Python/问题投影及调用方提供的资产身份。
+`asset_identity`和授权参考字符串不是实际快照校验或人工同意的证明；本组件无DEV/凭据加载器、CLI、正式评分器或真实调用入口，
+`make_client`和`observe_case`只接受`httpx.MockTransport`。尚未验证真实DEV长度，未解决官方rerank限长冲突，**不能直接执行付费评测**。
+适配对每次新调用检查已记账+满额token预留，严格遵守冻结字节/调用上限；完整HTTP200响应按原始body恢复到SDK，不重发已完成ID。
+usage超预留、无效embedding/完整重排或Top14不一致会阻断；旧锁/pending不自动清理，源码/依赖/投影/响应变化时停止。
+私有wire账本保留足以重建排名的响应，但重启仍需调用方先核验同一不可变快照；本组件不代替资产预检、结果报告持久化或人民币账单硬保证。
+观测使用进程内临时patch，只能放在独占串行评测进程，不能挂进并发API服务；复用既有有界文件账本，不新增存储或依赖。
+本轮仅用虚构120篇受管文档测试实际SQL/BM25/RRF/SDK；没有读取真实DEV、调用提供方、修改日常服务或授予付费权限。
+验证结果：新增20项合成适配测试通过；拒绝外网连接与私有`data/`文件读取的全量测试812项通过，保留7条既有Alembic配置警告。
+
 2026-10-20 已准备 [v5.3 / v5.3.1 新 TRAIN 对照协议](reports/refusal_evidence_sufficiency/v5_3_1_prospective_protocol.md)及[零调用 manifest](reports/refusal_evidence_sufficiency/v5_3_1_prospective_preparation.json)：复用已有 prospective50 的相同问题、顺序和完整 Top14，不覆盖旧 v5.2.1/v5.3 协议。先最多50次盲标注并由当前助手复核冻结，再最多100次配对分类；规划估算约 ¥18.97，拟分阶段记账额度 ¥10 / ¥15、合计 ¥25，并非账单硬保证。当前无标注、预测、付费执行契约或新运行器；AI proxy 与既有 TRAIN 暴露不能当独立专家验收。`python -m experiments.evals.refusal_v5_3_1_preparation` 只计算计划，`--write-manifest` 只独占保存元数据，无付费入口；真实外发与费用需新授权，不打开 DEV、不重跑检索、不生成答案、不晋级策略。
 
 上述为准备时快照。随后用户明确授权两阶段，完成复用旧持久化引擎的[独立执行适配器](refusal_v5_3_1_runner.py)与[执行记录](reports/refusal_evidence_sufficiency/v5_3_1_prospective_execution.md)：实际3次盲标注，usage共15087 tokens，估算 ¥0.0748575；2份只作可证明的引用记法恢复，第3份遗漏某个已列支持来源的行号，按现行协议停止。没有付费重试，其余47题未发送，标签未冻结、分类0次，不计算拒答效果。先明确同意“保留无效机器草稿、由助手独立证据复核生成最终标签”的追加协议后才继续，不靠重试或放宽分类校验通过。
