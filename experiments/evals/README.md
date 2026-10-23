@@ -138,6 +138,71 @@ wire已完成但case尚未写入可无新增调用补存；截断JSON、缺凭�
 新增12项合成测试通过（参考计数/不截断、资产/版本/超限拦截、保存/恢复/损坏/缺凭证/旧锁）；
 全量离线测试824项通过，保留7条既有Alembic配置警告。另用已校验的官方参考文件完成纯虚构文本本地冒烟，未调用提供方。
 
+### 阶段1显式执行入口（代码就绪不等于获准执行）
+
+现已补齐 [prepare/execute入口](runtime_retrieval_runner.py) 与 [全160题评分器](runtime_retrieval_report.py)。
+上文“无真实入口/评分器”为此前提交状态；当前仍**未执行真实评测、未获得本阶段付费授权**。
+不增加依赖、不改普通服务、不自动晋级。私有输出包含问题/来源/响应，必须放在受控Git忽略目录。
+
+运行环境须是专用串行评测容器，固定代码/依赖/Python与挂载路径；不能复用日常API容器。
+自行准备包含现有评测依赖的镜像；该入口不下载模型/数据/分词器。原快照、冻结数据和分词文件只读挂载，
+只给新的私有输出父目录写权限，不挂载日常数据库、上传目录或`.env`。
+容器须设置 `--cpus=4 --memory=5g`；execute会检查cgroup-v2的CPU/内存限制，不兼容时停止，不修改系统。
+
+先在**无网络、无密钥**容器中prepare（路径为容器内显式挂载路径）：
+
+```bash
+python -B -m experiments.evals.runtime_retrieval_runner --prepare \
+  --dataset-root /assets/dataset --snapshot-root /assets/snapshot \
+  --tokenizer /assets/tokenizer.json --output /private/run
+```
+
+prepare核验冻结文件SHA、全部DEV160/qrel映射、归档导入receipt与SQL/Chroma身份、完整快照文件指纹及query参考长度，
+只保存`prepared.json`并输出哈希/上限，不检索、不外发、不产生质量分数。全库向量/正文一致性的依据仍是既有导入readback
+与获批快照指纹，不把再次SQL ID检查当成新的全向量读回。真实本地预检结果不提交公共仓库。
+
+操作员先核对当日价格、说明参考分词器非云端保证的风险，并取得用户对具体prepared SHA、
+最多160次北京embedding/320次新加坡rerank、记账限额¥35的明确授权，才能在私有目录创建：
+
+```json
+{
+  "human_approval_reference": "实际人工授权记录引用，不是自造授权",
+  "prepared_sha256": "prepare输出的SHA256",
+  "scope": "DEV160_RETRIEVAL_ONLY",
+  "max_provider_calls": 480,
+  "accounting_limit_cny": "35",
+  "accept_reference_estimate": true,
+  "current_prices_reconfirmed": true
+}
+```
+
+授权文件仅绑定范围，不证明真实同意。将其作为只读文件挂载，计算其SHA256；同一环境/路径启动新专用容器，
+仅在此时允许网络，并通过独立环境变量显式注入北京`DASHSCOPE_API_KEY`和新加坡`DASHSCOPE_RERANK_API_KEY`，
+不把Key写入命令、日志、授权文件或仓库。不使用`--env-file`/dotenv/代理继承。
+
+```bash
+python -B -m experiments.evals.runtime_retrieval_runner --execute \
+  --output /private/run --authorization /approval/authorization.json \
+  --authorization-sha256 ACTUAL_AUTHORIZATION_FILE_SHA256
+```
+
+execute复核全部身份后，只在自有临时副本打开Chroma/SQL，复用既有SQL可见性、Dense/BM25/RRF和rerank实现。
+每题完整100候选按参考口径检查，超限全局停止，不截断、缩池、跳题或重试。
+异常只打印类型与停止状态；详情留在私有持久化文件，避免SDK异常泄漏正文/凭据。
+正常退出清理自有临时副本，不动原快照；崩溃旧锁/pending须先人工审计，不能自动删除后重跑。
+明确无未知计费且授权仍有效时，可显式重新执行同一命令；完整响应重建已完成case、不重发，
+重开HNSW若同距排序变化造成payload不同也会停止，而不是放宽恢复校验。
+
+只有完整160题/480份完成凭证才独占生成`report.json`；已有报告拒绝再次执行。
+文档去重后的R@5/R@20/MRR@10、实际chunk14 context-hit、全部三组差值与固定配对bootstrap均保留；
+`delta_x100`为绝对差乘100，主要结论只按H−DR MRR区间，不挑最好结果。
+延迟是含本地响应持久化的wire attempt时间，首个attempt单列，不是端到端服务P95/吞吐；
+usage记账不是发票硬上限，合成报告明确标记，不能当真实模型结果。阶段1也不证明拒答/答案质量验收。
+
+离线检查使用虚构数据、MockTransport及真实小型SQL/Chroma副本，覆盖完整评分、授权/容器门、
+中断恢复与源文件不变；本提交不运行真实DEV、模型、部署或Ticket动作。
+验证：新增24项合成测试、全量848项离线测试通过；Ruff与diff检查通过，保留7条既有Alembic警告。
+
 2026-10-20 已准备 [v5.3 / v5.3.1 新 TRAIN 对照协议](reports/refusal_evidence_sufficiency/v5_3_1_prospective_protocol.md)及[零调用 manifest](reports/refusal_evidence_sufficiency/v5_3_1_prospective_preparation.json)：复用已有 prospective50 的相同问题、顺序和完整 Top14，不覆盖旧 v5.2.1/v5.3 协议。先最多50次盲标注并由当前助手复核冻结，再最多100次配对分类；规划估算约 ¥18.97，拟分阶段记账额度 ¥10 / ¥15、合计 ¥25，并非账单硬保证。当前无标注、预测、付费执行契约或新运行器；AI proxy 与既有 TRAIN 暴露不能当独立专家验收。`python -m experiments.evals.refusal_v5_3_1_preparation` 只计算计划，`--write-manifest` 只独占保存元数据，无付费入口；真实外发与费用需新授权，不打开 DEV、不重跑检索、不生成答案、不晋级策略。
 
 上述为准备时快照。随后用户明确授权两阶段，完成复用旧持久化引擎的[独立执行适配器](refusal_v5_3_1_runner.py)与[执行记录](reports/refusal_evidence_sufficiency/v5_3_1_prospective_execution.md)：实际3次盲标注，usage共15087 tokens，估算 ¥0.0748575；2份只作可证明的引用记法恢复，第3份遗漏某个已列支持来源的行号，按现行协议停止。没有付费重试，其余47题未发送，标签未冻结、分类0次，不计算拒答效果。先明确同意“保留无效机器草稿、由助手独立证据复核生成最终标签”的追加协议后才继续，不靠重试或放宽分类校验通过。

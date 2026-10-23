@@ -39,7 +39,9 @@ _SOURCE_FILES = tuple(Path(sys.modules[name].__file__) for name in (
     "experiments.evals.retrievers.bm25_techqa_chunks", "experiments.evals.retrievers.bm25_techqa",
     "rag_runtime.query_chroma", "rag_runtime.build_rag_index", "database", "models.document")) + (
     Path(__file__).parent / "reports/runtime_eval_phase0/evaluation_protocol_2026-10-23.md",
-    Path(__file__).parent / "datasets/techqa/manifest.json")
+    Path(__file__).parent / "datasets/techqa/manifest.json",
+    Path(__file__).parent / "runtime_retrieval_report.py",
+    Path(__file__).parent / "runtime_retrieval_runner.py")
 
 
 def _schedule(pairs):
@@ -48,12 +50,14 @@ def _schedule(pairs):
             for arm in (("E", "DR", "H") if index % 2 == 0 else ("E", "H", "DR"))}
 
 
-def build_plan(questions, asset_identity, authorization_reference, *, tokenizer_path=None):
+def build_plan(questions, asset_identity, authorization_reference, *, tokenizer_path=None, planned_mode="synthetic"):
     """Accept only 160 explicit (ID, question) pairs, never qrels/answers/labels.
 
     asset_identity binds an independently verified snapshot/preflight manifest;
     its presence and authorization_reference are NOT proof of those checks/consent.
     """
+    if planned_mode not in {"synthetic", "live"} or (planned_mode == "live" and tokenizer_path is None):
+        raise ValueError("Explicit mode and reference tokenizer required for live planning")
     pairs = [list(pair) for pair in questions]
     if (len(pairs) != 160 or any(len(pair) != 2 or not all(isinstance(s, str) for s in pair)
             or re.fullmatch(r"DEV_[A-Za-z0-9_]{1,90}", pair[0]) is None or not pair[1].strip() for pair in pairs)
@@ -63,7 +67,7 @@ def build_plan(questions, asset_identity, authorization_reference, *, tokenizer_
         raise ValueError("Require 160 unique DEV pairs, asset identity and explicit authorization reference")
     pairs = sorted([[cid, text.rstrip()] for cid, text in pairs])
     identity = {"questions": pairs, "asset_identity": asset_identity,
-                "python": sys.version,
+                "python": sys.version, "planned_mode": planned_mode,
                 "reference_tokenizer": None if tokenizer_path is None else inputs.reference_profile(tokenizer_path),
                 "sources": {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in _SOURCE_FILES},
                 "dependencies": {name: importlib.metadata.version(name) for name in (
@@ -157,13 +161,15 @@ class Phase1Transport(wire.RuntimeEvalTransport):
         return response
 
 
-def make_client(plan, root, cid, key, approved_body, *, delegate):
-    """Offline assembly only in this revision; real transport awaits input-limit preflight.
+def make_client(plan, root, cid, key, approved_body, *, delegate, allow_network=False):
+    """Only the reviewed runner enables networking after explicit scoped approval.
 
-    No default real HTTP delegate: the conflicting rerank limits are unresolved.
+    allow_network is an execution guard, never evidence of actual human consent.
     """
-    if not isinstance(delegate, httpx.MockTransport) or not isinstance(key, str) or not key.strip():
-        raise ValueError("Explicit key and offline MockTransport required; no paid entrypoint")
+    live = (delegate is None and allow_network is True and plan["identity"]["planned_mode"] == "live"
+            and plan["identity"]["reference_tokenizer"] is not None)
+    if (not live and not isinstance(delegate, httpx.MockTransport)) or not isinstance(key, str) or not key.strip():
+        raise ValueError("Explicit key and offline MockTransport required unless scoped live mode is explicitly enabled")
     identity = plan["identity"]
     if (not plan["contract"]["authorization_reference"].endswith(":" + wire.digest(identity))
             or list(plan["contract"]["calls"].items()) != list(_schedule(identity["questions"]).items())
@@ -180,14 +186,15 @@ def make_client(plan, root, cid, key, approved_body, *, delegate):
         estimate = inputs.estimate_input(stage, approved_body, identity["reference_tokenizer"])
         if not estimate["within_reference_profile"]:
             raise ValueError("Input exceeds local reference planning profile; not proof of provider rejection")
-    transport = Phase1Transport(plan["contract"], root, cid, delegate)
+    transport = Phase1Transport(plan["contract"], root, cid,
+                                httpx.HTTPTransport(retries=0, trust_env=False) if live else delegate)
     transport.approved_body = json.loads(json.dumps(approved_body))
     return OpenAI(api_key=key, base_url=ENDPOINTS[stage], organization="", project="", max_retries=0,
                   timeout=wire.STAGES[stage][2], http_client=httpx.Client(transport=transport,
                   trust_env=False, follow_redirects=False, timeout=wire.STAGES[stage][2]))
 
 
-def observe_case(plan, index, root, keys, delegates):
+def observe_case(plan, index, root, keys, delegates, *, allow_network=False):
     """Run existing Hybrid once; observe Dense/BM25/fusion/full rerank and DR arm.
 
     Returns raw rankings without reading qrels. Replaying reconstructs them from
@@ -214,7 +221,8 @@ def observe_case(plan, index, root, keys, delegates):
             if texts != [question] or "embedding" in observed:
                 raise RuntimeError("Query projection or embedding call count changed")
             body = {"model": "text-embedding-v4", "input": texts, "dimensions": 1024, "encoding_format": "float"}
-            with make_client(plan, root, cid + ":E", keys["embedding"], body, delegate=delegates["embedding"]) as client:
+            with make_client(plan, root, cid + ":E", keys["embedding"], body,
+                             delegate=delegates["embedding"], allow_network=allow_network) as client:
                 result = client.embeddings.create(**body)
             observed["embedding"] = [result.data[0].embedding]
             return observed["embedding"]
@@ -248,7 +256,8 @@ def observe_case(plan, index, root, keys, delegates):
                     raise RuntimeError("Candidates no longer visible before rerank")
                 body = {"model": "qwen3-rerank", "query": question, "documents": [row.content for row in pool],
                         "top_n": len(pool), "instruct": DEFAULT_RERANK_INSTRUCTION}
-                with make_client(plan, root, cid + ":" + arm, keys["rerank"], body, delegate=delegates["rerank"]) as client:
+                with make_client(plan, root, cid + ":" + arm, keys["rerank"], body,
+                                 delegate=delegates["rerank"], allow_network=allow_network) as client:
                     observed[arm] = original_rerank(question, pool, client=client)
                 if original_load(TENANT, CATEGORY, embedding_ids=list(expected)) != expected:
                     raise RuntimeError("Candidates changed after rerank")
@@ -277,7 +286,7 @@ def observe_case(plan, index, root, keys, delegates):
         _SLOT.release()
 
 
-def save_case(plan, index, root, keys, delegates):
+def save_case(plan, index, root, keys, delegates, *, allow_network=False):
     """Exclusive private case artifact, bound to plan and three raw wire responses.
 
     Existing artifacts are verified by zero-send reconstruction, never trusted
@@ -329,7 +338,7 @@ def save_case(plan, index, root, keys, delegates):
             if (saved.get("plan_sha256") != identity["plan_sha256"] or saved.get("index") != index
                     or not set(ids) <= {event["call_id"] for event in events if event.get("status") == "complete"}):
                 raise RuntimeError("Saved case lacks its complete wire history")
-        result = observe_case(plan, index, root / "wire", keys, delegates)
+        result = observe_case(plan, index, root / "wire", keys, delegates, allow_network=allow_network)
         events = wire._read_jsonl(root / "wire/attempts.jsonl")
         calls = [{"call_id": event["call_id"], "request_sha256": event["request_sha256"],
                   "response_sha256": event["response_sha256"]} for event in events if event["call_id"] in ids]
