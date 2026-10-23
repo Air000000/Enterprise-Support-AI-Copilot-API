@@ -118,6 +118,26 @@ usage超预留、无效embedding/完整重排或Top14不一致会阻断；旧锁
 本轮仅用虚构120篇受管文档测试实际SQL/BM25/RRF/SDK；没有读取真实DEV、调用提供方、修改日常服务或授予付费权限。
 验证结果：新增20项合成适配测试通过；拒绝外网连接与私有`data/`文件读取的全量测试812项通过，保留7条既有Alembic配置警告。
 
+随后补充[本地参考token计数](runtime_retrieval_inputs.py)与`runtime_retrieval.save_case`，仍无真实调用入口。
+仅加载调用方显式提供、SHA256固定为`aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4`的
+[Qwen3-Reranker-8B tokenizer.json](https://huggingface.co/Qwen/Qwen3-Reranker-8B/blob/5fa94080caafeaa45a15d11f969d7978e087a3db/tokenizer.json)，
+不自动下载、不加载权重/远程代码、不使用截断或padding；复用已安装的`tokenizers`，版本/文件/参考策略写入plan。
+每次发送前重新校验资产并统计完整query、指令和候选，query及指令按候选数量重复计入；规划值为参考tokens的125%再加每对64 tokens。
+参考检查为embedding 8192、rerank单文本4000/总量120000；超过就停，不截断、拆请求或跳题。
+**这些margin是明确的规划启发式，不是云端token上界证明；公开分词器与闭源接口的等价性未证实。**
+`within_reference_profile`不能改名为提供方验收PASS。应澄清：概览的30000标为模型输入/上下文长度，
+详细API的120000明确为query重复累计的批量请求总量，不能未经核实把两者当作同一口径的确定冲突。
+本轮按详细API区分单条4000与批量120000进行参考规划，不承诺特定账号/端点实测接受；旧协议的疑点保留，不据此宣称已证实不兼容。
+未来真实执行需明确接受该参考口径与剩余风险，不能据此扩大授权/自动启用网络。无参考资产的旧纯Mock测试路径保留，不能转为真实入口。
+
+`save_case`把完整chunk/document排名及三个wire请求/响应摘要独占保存到新私有运行目录，绑定plan和结果摘要；
+每次先核验已保存文件的连续顺序、摘要和wire凭证，再从同一快照/完整响应重建已有case并比较，恢复不重发。
+wire已完成但case尚未写入可无新增调用补存；截断JSON、缺凭证、旧锁、孤立case、内容/源码/plan变化停止，不覆盖/静默修复。
+此API不接收qrel或生成分数；不可变快照复核、正式聚合评分/报告、真实执行适配及新的外发/预算授权仍是后续关口。
+真实DEV的本地长度预检仅保存在Git忽略目录，不提交逐题信息或聚合结果到公开仓库；本轮外网仅获取公开分词文件，未外发数据或调用模型。
+新增12项合成测试通过（参考计数/不截断、资产/版本/超限拦截、保存/恢复/损坏/缺凭证/旧锁）；
+全量离线测试824项通过，保留7条既有Alembic配置警告。另用已校验的官方参考文件完成纯虚构文本本地冒烟，未调用提供方。
+
 2026-10-20 已准备 [v5.3 / v5.3.1 新 TRAIN 对照协议](reports/refusal_evidence_sufficiency/v5_3_1_prospective_protocol.md)及[零调用 manifest](reports/refusal_evidence_sufficiency/v5_3_1_prospective_preparation.json)：复用已有 prospective50 的相同问题、顺序和完整 Top14，不覆盖旧 v5.2.1/v5.3 协议。先最多50次盲标注并由当前助手复核冻结，再最多100次配对分类；规划估算约 ¥18.97，拟分阶段记账额度 ¥10 / ¥15、合计 ¥25，并非账单硬保证。当前无标注、预测、付费执行契约或新运行器；AI proxy 与既有 TRAIN 暴露不能当独立专家验收。`python -m experiments.evals.refusal_v5_3_1_preparation` 只计算计划，`--write-manifest` 只独占保存元数据，无付费入口；真实外发与费用需新授权，不打开 DEV、不重跑检索、不生成答案、不晋级策略。
 
 上述为准备时快照。随后用户明确授权两阶段，完成复用旧持久化引擎的[独立执行适配器](refusal_v5_3_1_runner.py)与[执行记录](reports/refusal_evidence_sufficiency/v5_3_1_prospective_execution.md)：实际3次盲标注，usage共15087 tokens，估算 ¥0.0748575；2份只作可证明的引用记法恢复，第3份遗漏某个已列支持来源的行号，按现行协议停止。没有付费重试，其余47题未发送，标签未冻结、分类0次，不计算拒答效果。先明确同意“保留无效机器草稿、由助手独立证据复核生成最终标签”的追加协议后才继续，不靠重试或放宽分类校验通过。

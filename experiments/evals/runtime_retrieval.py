@@ -21,6 +21,7 @@ import httpx
 from openai import OpenAI
 
 from experiments.evals import runtime_transport as wire
+from experiments.evals import runtime_retrieval_inputs as inputs
 from experiments.evals.ir.ranx_adapter import collapse_chunk_results_to_document_ranking
 from experiments.evals.rerankers.qwen3_reranker import DEFAULT_RERANK_INSTRUCTION, RerankCandidate
 from rag_runtime import hybrid_search as hybrid
@@ -33,7 +34,7 @@ RATES = {"embedding": Decimal(".5"), "rerank": Decimal(".74942")}
 BUDGET = Decimal("35")
 _SLOT = Lock()
 _SOURCE_FILES = tuple(Path(sys.modules[name].__file__) for name in (
-    __name__, wire.__name__, hybrid.__name__, "experiments.evals.ir.rrf",
+    __name__, wire.__name__, inputs.__name__, hybrid.__name__, "experiments.evals.ir.rrf",
     "experiments.evals.ir.ranx_adapter", "experiments.evals.rerankers.qwen3_reranker",
     "experiments.evals.retrievers.bm25_techqa_chunks", "experiments.evals.retrievers.bm25_techqa",
     "rag_runtime.query_chroma", "rag_runtime.build_rag_index", "database", "models.document")) + (
@@ -47,7 +48,7 @@ def _schedule(pairs):
             for arm in (("E", "DR", "H") if index % 2 == 0 else ("E", "H", "DR"))}
 
 
-def build_plan(questions, asset_identity, authorization_reference):
+def build_plan(questions, asset_identity, authorization_reference, *, tokenizer_path=None):
     """Accept only 160 explicit (ID, question) pairs, never qrels/answers/labels.
 
     asset_identity binds an independently verified snapshot/preflight manifest;
@@ -63,9 +64,10 @@ def build_plan(questions, asset_identity, authorization_reference):
     pairs = sorted([[cid, text.rstrip()] for cid, text in pairs])
     identity = {"questions": pairs, "asset_identity": asset_identity,
                 "python": sys.version,
+                "reference_tokenizer": None if tokenizer_path is None else inputs.reference_profile(tokenizer_path),
                 "sources": {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in _SOURCE_FILES},
                 "dependencies": {name: importlib.metadata.version(name) for name in (
-                    "openai", "httpx", "chromadb", "bm25s", "numpy", "sqlmodel", "ranx")},
+                    "openai", "httpx", "chromadb", "bm25s", "numpy", "sqlmodel", "ranx", "tokenizers")},
                 "rates": {key: str(value) for key, value in RATES.items()},
                 "token_reservations": TOKEN_RESERVATIONS, "budget": str(BUDGET)}
     contract = {"authorization_reference": authorization_reference + ":" + wire.digest(identity),
@@ -173,6 +175,11 @@ def make_client(plan, root, cid, key, approved_body, *, delegate):
             or any(importlib.metadata.version(name) != value for name, value in identity["dependencies"].items())):
         raise RuntimeError("Phase-1 plan/source/dependency identity changed")
     stage = plan["contract"]["calls"][cid]
+    wire.validate_body(stage, approved_body)
+    if identity["reference_tokenizer"] is not None:
+        estimate = inputs.estimate_input(stage, approved_body, identity["reference_tokenizer"])
+        if not estimate["within_reference_profile"]:
+            raise ValueError("Input exceeds local reference planning profile; not proof of provider rejection")
     transport = Phase1Transport(plan["contract"], root, cid, delegate)
     transport.approved_body = json.loads(json.dumps(approved_body))
     return OpenAI(api_key=key, base_url=ENDPOINTS[stage], organization="", project="", max_retries=0,
@@ -268,3 +275,72 @@ def observe_case(plan, index, root, keys, delegates):
                 "top14_chunk_ids": [row.chunk_id for row in top14]}
     finally:
         _SLOT.release()
+
+
+def save_case(plan, index, root, keys, delegates):
+    """Exclusive private case artifact, bound to plan and three raw wire responses.
+
+    Existing artifacts are verified by zero-send reconstruction, never trusted
+    as permission to skip missing wire stages. Caller still verifies the snapshot.
+    """
+    if type(index) is not int or not 0 <= index < 160:
+        raise ValueError("Invalid case index")
+    root = Path(root)
+    identity = {"plan_sha256": wire.digest(plan)}
+    if not root.exists():
+        root.mkdir()
+        wire.write_json(root / "identity.json", identity)
+    if (root.is_symlink() or any(path.is_symlink() for path in root.rglob("*"))
+            or json.loads((root / "identity.json").read_text(encoding="utf-8")) != identity
+            or any(path.name not in {"identity.json", "cases", "wire", "run.lock", "halt.json"} for path in root.iterdir())):
+        raise RuntimeError("Case store identity/files changed")
+    if (root / "halt.json").exists():
+        raise RuntimeError("Case store halted; audit before any progress")
+    lock = root / "run.lock"
+    with lock.open("x", encoding="utf-8"):
+        pass
+    try:
+        directory = root / "cases"
+        directory.mkdir(exist_ok=True)
+        filenames = {path.name for path in directory.iterdir()}
+        if filenames != {f"{i:03d}.json" for i in range(len(filenames))}:
+            raise RuntimeError("Case files are not a contiguous prefix")
+        path = directory / f"{index:03d}.json"
+        if not path.exists() and index != len(filenames):
+            raise RuntimeError("Cannot skip saving a case")
+        history = root / "wire/attempts.jsonl"
+        events = wire._read_jsonl(history) if history.exists() else []
+        receipts = {event["call_id"]: {key: event[key] for key in ("call_id", "request_sha256", "response_sha256")}
+                    for event in events if event.get("status") == "complete"}
+        for i in range(len(filenames)):
+            artifact = json.loads((directory / f"{i:03d}.json").read_text(encoding="utf-8"))
+            question_id = plan["identity"]["questions"][i][0]
+            call_ids = [key for key in plan["contract"]["calls"] if key.startswith(question_id + ":")]
+            if (set(artifact) != {"plan_sha256", "index", "result", "result_sha256", "calls"}
+                    or artifact["plan_sha256"] != identity["plan_sha256"] or artifact["index"] != i
+                    or artifact["result_sha256"] != wire.digest(artifact["result"])
+                    or not set(call_ids) <= receipts.keys()
+                    or artifact["calls"] != [receipts[key] for key in call_ids]):
+                raise RuntimeError("Case artifact integrity/wire receipts changed")
+        saved = json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+        cid = plan["identity"]["questions"][index][0]
+        ids = [key for key in plan["contract"]["calls"] if key.startswith(cid + ":")]
+        if saved is not None:
+            if (saved.get("plan_sha256") != identity["plan_sha256"] or saved.get("index") != index
+                    or not set(ids) <= {event["call_id"] for event in events if event.get("status") == "complete"}):
+                raise RuntimeError("Saved case lacks its complete wire history")
+        result = observe_case(plan, index, root / "wire", keys, delegates)
+        events = wire._read_jsonl(root / "wire/attempts.jsonl")
+        calls = [{"call_id": event["call_id"], "request_sha256": event["request_sha256"],
+                  "response_sha256": event["response_sha256"]} for event in events if event["call_id"] in ids]
+        if [event["call_id"] for event in calls] != ids:
+            raise RuntimeError("Incomplete case wire receipts")
+        record = identity | {"index": index, "result": result, "result_sha256": wire.digest(result), "calls": calls}
+        if saved is not None and saved != record:
+            wire.write_json(root / "halt.json", {"case_index": index, "reason": "artifact_reconstruction_mismatch"})
+            raise RuntimeError("Case artifact differs from snapshot/wire reconstruction")
+        if saved is None:
+            wire.write_json(path, record)
+        return record
+    finally:
+        lock.unlink()

@@ -1,6 +1,7 @@
 """Synthetic phase-1 cases: real SQL/BM25/RRF/SDK, MockTransport only."""
 
 from decimal import Decimal
+import hashlib
 import json
 from types import SimpleNamespace
 
@@ -8,6 +9,7 @@ import httpx
 from openai import OpenAIError
 import pytest
 from sqlmodel import SQLModel, Session, create_engine
+from tokenizers import Tokenizer, models, pre_tokenizers
 
 from experiments.evals import runtime_retrieval as evaluation
 from models.document import Document, DocumentChunk
@@ -202,3 +204,91 @@ def test_source_and_stale_lock_fail_closed(runtime, tmp_path, monkeypatch, chang
     assert len(seen) == before
     if change == "stale_lock":
         assert (root / "transport.lock").exists()  # Never automatically remove another attempt's lock.
+
+
+@pytest.fixture
+def reference_asset(tmp_path, monkeypatch):
+    # Synthetic vocabulary, NOT the official cloud tokenizer; no downloads in CI.
+    tokenizer = Tokenizer(models.WordLevel({"[UNK]": 0, "word": 1}, unk_token="[UNK]"))
+    tokenizer.pre_tokenizer = pre_tokenizers.Whitespace()
+    tokenizer.enable_truncation(max_length=1)  # Counter must explicitly disable this.
+    path = tmp_path / "tokenizer.json"
+    content = tokenizer.to_str().encode()
+    path.write_bytes(content)
+    monkeypatch.setattr(evaluation.inputs, "TOKENIZER_SHA256", hashlib.sha256(content).hexdigest())
+    evaluation.inputs._tokenizer.cache_clear()
+    yield path
+    evaluation.inputs._tokenizer.cache_clear()
+
+
+def test_reference_token_count_repeats_query_instruction_and_never_truncates(reference_asset):
+    profile = evaluation.inputs.reference_profile(reference_asset)
+    body = {"query": "word word", "instruct": "word", "documents": ["word"] * 100}
+    result = evaluation.inputs.estimate_input("rerank", body, profile)
+    assert result["query_tokens"] == 2 and result["document_tokens_sum"] == 100
+    assert result["repeated_input_tokens"] == 400 and result["planning_tokens"] == 6900
+    assert result["within_reference_profile"] and not result["provider_equivalence_attested"]
+    body["documents"][0] = "word " * 4000
+    assert not evaluation.inputs.estimate_input("rerank", body, profile)["within_reference_profile"]
+
+
+@pytest.mark.parametrize("change", ["hash", "version", "overflow"])
+def test_reference_estimate_stops_before_wire_creation(reference_asset, tmp_path, change):
+    question = "word " * 7000 if change == "overflow" else "word"
+    value = evaluation.build_plan([(f"DEV_SYNTH_{i:03d}", question) for i in range(160)], "a" * 64,
+                                  "OFFLINE_TEST_ONLY", tokenizer_path=reference_asset)
+    if change == "hash":
+        reference_asset.write_bytes(b"{}")
+    elif change == "version":
+        value["identity"]["reference_tokenizer"]["tokenizers_version"] = "changed"
+        value["contract"]["authorization_reference"] = "offline:" + evaluation.wire.digest(value["identity"])
+    body = {"model": "text-embedding-v4", "input": [question.rstrip()], "dimensions": 1024, "encoding_format": "float"}
+    seen, root = [], tmp_path / "wire"
+    with pytest.raises(ValueError):
+        evaluation.make_client(value, root, "DEV_SYNTH_000:E", KEYS["embedding"], body,
+                               delegate=providers(seen)["embedding"])
+    assert not root.exists() and not seen
+
+
+def test_private_case_artifact_reconstructs_without_resending(runtime, tmp_path):
+    value, seen, root = plan(), [], tmp_path / "run"
+    delegates = providers(seen)
+    first = evaluation.save_case(value, 0, root, KEYS, delegates)
+    assert (root / "cases/000.json").exists() and len(seen) == 3
+    assert evaluation.save_case(value, 0, root, KEYS, delegates) == first and len(seen) == 3
+    evaluation.save_case(value, 1, root, KEYS, delegates)
+    assert len(seen) == 6 and (root / "cases/001.json").exists()
+    assert not (root / "run.lock").exists()
+
+
+@pytest.mark.parametrize("change", ["result", "wire_receipt", "partial_file", "stale_lock", "orphan", "skip"])
+def test_case_artifact_integrity_blocks_spending(runtime, tmp_path, change):
+    value, seen, root = plan(), [], tmp_path / "run"
+    delegates = providers(seen)
+    evaluation.save_case(value, 0, root, KEYS, delegates)
+    path = root / "cases/000.json"
+    record = json.loads(path.read_text(encoding="utf-8"))
+    if change == "result":
+        record["result"]["top14_chunk_ids"] = []
+        path.write_text(json.dumps(record), encoding="utf-8")
+    elif change == "wire_receipt":
+        record["calls"][0]["response_sha256"] = "changed"
+        path.write_text(json.dumps(record), encoding="utf-8")
+    elif change == "partial_file":
+        path.write_text('{"index":', encoding="utf-8")
+    elif change == "stale_lock":
+        (root / "run.lock").write_text("", encoding="utf-8")
+    elif change == "orphan":
+        (root / "cases/002.json").write_text("{}", encoding="utf-8")
+    with pytest.raises((RuntimeError, ValueError, FileExistsError)):
+        evaluation.save_case(value, 2 if change == "skip" else 1, root, KEYS, delegates)
+    assert len(seen) == 3
+
+
+def test_missing_case_file_is_rebuilt_only_from_complete_wire_responses(runtime, tmp_path):
+    value, seen, root = plan(), [], tmp_path / "run"
+    delegates = providers(seen)
+    first = evaluation.save_case(value, 0, root, KEYS, delegates)
+    (root / "cases/000.json").unlink()  # Simulate crash after wire completion, before case save.
+    assert evaluation.save_case(value, 0, root, KEYS, delegates) == first
+    assert len(seen) == 3
