@@ -203,6 +203,16 @@ usage记账不是发票硬上限，合成报告明确标记，不能当真实模
 中断恢复与源文件不变；本提交不运行真实DEV、模型、部署或Ticket动作。
 验证：新增24项合成测试、全量848项离线测试通过；Ruff与diff检查通过，保留7条既有Alembic警告。
 
+恢复实现追加：[receipt恢复适配器](runtime_retrieval_recovery.py)不修改已冻结的旧模块/plan或检索算法。
+旧入口重开HNSW后重新检索已完成题目，可能因近似检索候选/同距顺序变化而停止；这不是历史结果失效，
+也不能通过反复重查直到碰巧一致来恢复。新适配对已完成题目核验原始请求/响应/usage摘要、完整候选与排名、
+RRF与Top14投影、当前获批SQL正文/可见性，直接返回原观测；不再用一次新检索替代历史事实。
+未完成题目在首次Dense检索后、任何rerank发送前独占保存选择与距离，绑定plan/适配器SHA/query投影；
+恢复只读同一决策，原始客户端仍检查实际payload及全部预算/身份/来源门。部分题已完成的模型调用仍按旧wire响应恢复。
+该独立适配器必须显式传入自身`--adapter-sha256`及原授权文件/哈希，先提交并离线验证；
+恢复绑定单独持久化，旧prepare/守卫/检索源码不变。pending/halt不会自动清理，未知计费仍需单独审计。
+这是持久化恢复修复，不是DEV调参、不增加授权题目/模型/预算，也不回填或重算已完成题目的排名。
+
 2026-10-20 已准备 [v5.3 / v5.3.1 新 TRAIN 对照协议](reports/refusal_evidence_sufficiency/v5_3_1_prospective_protocol.md)及[零调用 manifest](reports/refusal_evidence_sufficiency/v5_3_1_prospective_preparation.json)：复用已有 prospective50 的相同问题、顺序和完整 Top14，不覆盖旧 v5.2.1/v5.3 协议。先最多50次盲标注并由当前助手复核冻结，再最多100次配对分类；规划估算约 ¥18.97，拟分阶段记账额度 ¥10 / ¥15、合计 ¥25，并非账单硬保证。当前无标注、预测、付费执行契约或新运行器；AI proxy 与既有 TRAIN 暴露不能当独立专家验收。`python -m experiments.evals.refusal_v5_3_1_preparation` 只计算计划，`--write-manifest` 只独占保存元数据，无付费入口；真实外发与费用需新授权，不打开 DEV、不重跑检索、不生成答案、不晋级策略。
 
 上述为准备时快照。随后用户明确授权两阶段，完成复用旧持久化引擎的[独立执行适配器](refusal_v5_3_1_runner.py)与[执行记录](reports/refusal_evidence_sufficiency/v5_3_1_prospective_execution.md)：实际3次盲标注，usage共15087 tokens，估算 ¥0.0748575；2份只作可证明的引用记法恢复，第3份遗漏某个已列支持来源的行号，按现行协议停止。没有付费重试，其余47题未发送，标签未冻结、分类0次，不计算拒答效果。先明确同意“保留无效机器草稿、由助手独立证据复核生成最终标签”的追加协议后才继续，不靠重试或放宽分类校验通过。
