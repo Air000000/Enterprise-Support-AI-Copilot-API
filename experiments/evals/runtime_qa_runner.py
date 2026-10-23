@@ -5,7 +5,7 @@ mount .env, use the daily API, or interpret an approval JSON as human consent.
 """
 
 import argparse
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from datetime import datetime, timezone
 from functools import partial
 import importlib.metadata
@@ -275,6 +275,20 @@ def replay_history(root, book):
                     transport.close()
 
 
+@contextmanager
+def no_provider_fallback():
+    """Even a late server worker cannot escape the per-case evaluated clients."""
+    from rag_runtime import build_rag_index, hybrid_ask, hybrid_search, query_chroma, query_rag_chroma
+    def denied(*args, **kwargs):
+        raise RuntimeError("Provider/index access outside the active evaluated case is forbidden")
+    with ExitStack() as stack:
+        for mod, name in ((build_rag_index, "get_client"), (hybrid_search, "get_rerank_client"),
+                (hybrid_ask, "get_classifier_client"), (hybrid_ask, "get_llm_client"),
+                (query_rag_chroma, "get_llm_client"), (hybrid_search, "get_collection"), (query_chroma, "get_collection")):
+            stack.enter_context(patch.object(mod, name, denied))
+        yield
+
+
 def http_case(client, row, arm, root, reference, book, keys, collection, *, profile=None, delegates=None, allow_network=False):
     """Actual /rag/ask, actual JWT, captured selection and stage-by-stage SDK replay."""
     from auth import CurrentUser, create_access_token
@@ -373,15 +387,24 @@ def http_case(client, row, arm, root, reference, book, keys, collection, *, prof
              top_n=len(candidates), instruct=DEFAULT_RERANK_INSTRUCTION))
         return rerank_original(query, candidates, **kwargs)
 
+    def guarded(function):
+        def call(*args, **kwargs):
+            try:
+                return function(*args, **kwargs)
+            except Exception:
+                keep(root / "halt.json", {"status": "AUDIT_REQUIRED_NO_AUTOMATIC_RETRY"})
+                raise
+        return call
+
     factory, clients = client_factory(c, root / "wire", book, keys, validate, profile, delegates=delegates, allow_network=allow_network)
     try:
         with ExitStack() as stack:
-            for mod, name, value in ((dense, "get_collection", lambda: SimpleNamespace(query=query)),
-                    (hybrid, "get_collection", lambda: SimpleNamespace(query=query)),
+            for mod, name, value in ((dense, "get_collection", lambda: SimpleNamespace(query=guarded(query))),
+                    (hybrid, "get_collection", lambda: SimpleNamespace(query=guarded(query))),
                     (embeddings, "get_client", lambda: factory("embedding")),
                     (hybrid, "get_rerank_client", lambda: factory("rerank")),
-                    (hybrid, "rerank_candidates", rerank),
-                    (ask_dense if arm == "D" else hybrid_ask, "search_chroma" if arm == "D" else "search_hybrid", search),
+                    (hybrid, "rerank_candidates", guarded(rerank)),
+                    (ask_dense if arm == "D" else hybrid_ask, "search_chroma" if arm == "D" else "search_hybrid", guarded(search)),
                     (ask_dense, "get_llm_client", lambda: factory("generation")),
                     (hybrid_ask, "get_llm_client", lambda: factory("generation")),
                     (hybrid_ask, "get_classifier_client", lambda: factory("classifier"))):
@@ -473,7 +496,7 @@ def execute_service(root, plan, reference, keys):
         collection = client.get_collection("local_doc_rag", embedding_function=None)
         (root / "service").mkdir(exist_ok=True)
         hybrid._bm25_index.cache_clear()
-        with live_http_client(main.app) as http:
+        with no_provider_fallback(), live_http_client(main.app) as http:
             # Local round-trip may include a cold BM25 build and four bounded model stages.
             http.timeout = httpx.Timeout(600)
             for index, row in enumerate(plan["questions"]):

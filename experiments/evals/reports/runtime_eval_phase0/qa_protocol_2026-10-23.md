@@ -144,6 +144,8 @@ next model call, not re-queried to reconstruct history. A lost HTTP response is
 reconstructed through the same service with saved selections/model receipts.
 No additional paid call for completed stages. Native-volume per-case ledgers avoid
 rescanning all large provider payloads on every call.
+Ordinary provider/index getters are blocked for the entire local server lifetime;
+only the active case may attach guarded clients, including during late-worker shutdown.
 
 Unknown pending, stale locks, guard/structure/billing failures require explicit
 audit; no automatic deletion or retry, and timeouts do not imply free calls.

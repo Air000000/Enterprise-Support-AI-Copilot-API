@@ -68,7 +68,7 @@ def runtime(tmp_path, monkeypatch):
                             tenant_id=run.TENANT, category="other") for name in ("a", "b")]])
     override = app.dependency_overrides.pop(get_current_user)
     try:
-        with live_http_client(app) as client:
+        with run.no_provider_fallback(), live_http_client(app) as client:
             assert client.post("/rag/ask", json={"question": "reset?"}).status_code == 401
             yield client, SimpleNamespace(query=query), queries
     finally:
@@ -100,6 +100,9 @@ def test_http_pair_and_mid_case_resume_never_requery_or_resend(runtime, tmp_path
     dense = run.http_case(client, row, "D", tmp_path / "D", "OFFLINE_ONLY", run.Book(), keys, collection, delegates=providers(seen))
     assert dense["body"]["answer"] == restored["body"]["answer"]
     assert len(seen) == 6 and len(queries) == 2
+    from rag_runtime import query_rag_chroma
+    with pytest.raises(RuntimeError):
+        query_rag_chroma.get_llm_client()  # A late worker cannot fall back to ordinary env clients.
     assert all("stratum" not in json.dumps(body) and "another-tenant" not in json.dumps(body) for _, body in seen)
     assert [s for s, _ in seen] == ["embedding", "rerank", "classifier", "generation", "embedding", "generation"]
     assert all("SYNTHETIC_ONLY_KEY" not in p.read_text(encoding="utf-8") for p in tmp_path.rglob("*.json"))
