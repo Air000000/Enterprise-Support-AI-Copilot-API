@@ -1,0 +1,207 @@
+{
+  "status": "FULL160_ARCHIVAL_RETRIEVAL_COMPARISON",
+  "execution_mode": "live",
+  "plan_sha256": "2add859d7d5c70278b6ff110f27cf0149d0896dbd38551f8dee585415745bca6",
+  "cases": 160,
+  "metrics": {
+    "D": {
+      "recall@5": 0.65,
+      "recall@20": 0.8125,
+      "mrr@10": 0.522264384920635
+    },
+    "DR": {
+      "recall@5": 0.725,
+      "recall@20": 0.85625,
+      "mrr@10": 0.5596378968253968
+    },
+    "H": {
+      "recall@5": 0.75625,
+      "recall@20": 0.875,
+      "mrr@10": 0.5779885912698413
+    }
+  },
+  "context_hit_at_chunk14": {
+    "D": 0.75625,
+    "DR": 0.79375,
+    "H": 0.83125
+  },
+  "paired_differences": {
+    "H-DR:recall@5": {
+      "absolute_delta": 0.03125,
+      "delta_x100": 3.125,
+      "ci95": [
+        0.00625,
+        0.0625
+      ]
+    },
+    "H-DR:recall@20": {
+      "absolute_delta": 0.01875,
+      "delta_x100": 1.875,
+      "ci95": [
+        0,
+        0.04375
+      ]
+    },
+    "H-DR:mrr@10": {
+      "absolute_delta": 0.018350694444444447,
+      "delta_x100": 1.8350694444444446,
+      "ci95": [
+        -0.003980654761904762,
+        0.04318452380952382
+      ]
+    },
+    "DR-D:recall@5": {
+      "absolute_delta": 0.075,
+      "delta_x100": 7.5,
+      "ci95": [
+        0.0125,
+        0.14375
+      ]
+    },
+    "DR-D:recall@20": {
+      "absolute_delta": 0.04375,
+      "delta_x100": 4.375,
+      "ci95": [
+        0.0125,
+        0.08125
+      ]
+    },
+    "DR-D:mrr@10": {
+      "absolute_delta": 0.0373735119047619,
+      "delta_x100": 3.7373511904761902,
+      "ci95": [
+        -0.019821428571428577,
+        0.09627232142857144
+      ]
+    },
+    "H-D:recall@5": {
+      "absolute_delta": 0.10625,
+      "delta_x100": 10.625,
+      "ci95": [
+        0.04375,
+        0.16875
+      ]
+    },
+    "H-D:recall@20": {
+      "absolute_delta": 0.0625,
+      "delta_x100": 6.25,
+      "ci95": [
+        0.03125,
+        0.1
+      ]
+    },
+    "H-D:mrr@10": {
+      "absolute_delta": 0.05572420634920635,
+      "delta_x100": 5.572420634920635,
+      "ci95": [
+        -0.0032043650793650777,
+        0.11455109126984131
+      ]
+    }
+  },
+  "primary": {
+    "contrast": "H-DR",
+    "metric": "mrr@10",
+    "conclusion": "IMPROVEMENT_NOT_ESTABLISHED"
+  },
+  "bootstrap": {
+    "seed": 20261023,
+    "resamples": 10000,
+    "method": "160 randrange draws per shared resample",
+    "interval_sorted_indices": [
+      249,
+      9749
+    ]
+  },
+  "provider_attempts": 480,
+  "usage_tokens": 8403757,
+  "accounting_cny_not_invoice": "6.29445393572",
+  "wire_attempt_latency": {
+    "embedding": {
+      "n": 160,
+      "first_attempt_ms": 321,
+      "p50_ms": 236,
+      "p95_ms": 729
+    },
+    "rerank": {
+      "n": 320,
+      "first_attempt_ms": 981,
+      "p50_ms": 952,
+      "p95_ms": 1860
+    }
+  },
+  "quality_acceptance_or_default_promotion": false,
+  "limitations": [
+    "Reused DEV and rekeyed/rebuilt archival HNSW; not fresh independent or ordinary-upload evaluation.",
+    "Reference tokenizer is not attested cloud tokenization; accounting is not an invoice cap.",
+    "Chunk14 context-hit is not document Recall@20 or the ordinary Dense Top3 answer profile.",
+    "Wire attempt latency includes local response persistence, not pure provider or HTTP end-to-end latency.",
+    "Synthetic execution_mode results must never be presented as real model/DEV quality evidence.",
+    "Historical corpus embedding model/endpoint is unknown. This tests archived content vectors plus current query embeddings, not a normal-upload index rebuild.",
+    "The primary H-DR MRR interval spans zero: do not claim established primary improvement or select a secondary metric post hoc as a new primary.",
+    "Intervals are nominal paired-bootstrap comparisons without multiplicity correction; reused DEV is not fresh independent evidence.",
+    "provider_attempts in the source report counts 480 completed accounted requests; one separate pre-HTTP TLS handshake failure is retained in execution_audit, not hidden as a zero-failure run.",
+    "A separately SHA-bound receipt recovery adapter was committed and offline-validated before continuing; captured historical ranks were verified, not replaced with new HNSW results. No thresholds, candidate algorithms or labels were tuned on this run."
+  ],
+  "public_artifact_kind": "DERIVED_AGGREGATE_NO_PRIVATE_MESSAGES_OR_SOURCE_TEXT",
+  "private_source_report_sha256": "5d144b4cda846ed8c4652d6e1b1da1a416763cb6d1eaadedc3d81badea02ab9a",
+  "wire_ledger_sha256": "4d89ac1d4d2942b9a2aebafd546b80ddb02b9077dc3b3fe5a98c13f8fc5d1029",
+  "provenance": {
+    "date": "2026-10-23",
+    "legacy_code_merge_sha": "117528d74c3e00807cf9ef9450cca00f2aa734c2",
+    "prepared_sha256": "c8b1a0d32b177662adaa191e150a9d30a769707f41ab578e1ce880a31d200d66",
+    "image_id": "sha256:640307962012f5aa42b20696f605ebf00efa771c2b402a7b29cfaa4ef86a04f4",
+    "recovery_commit": "db08d177bd86405636940c1574a3cebdc3671a00",
+    "recovery_adapter_sha256": "3e5366ca7a9a5ab578fea470b9a76db4f670313ff51c72da146913faa5ffa3d8",
+    "legacy_frozen_source_modules_modified": false,
+    "retrieval_models": {
+      "embedding": "text-embedding-v4",
+      "rerank": "qwen3-rerank"
+    },
+    "generated_answers": 0,
+    "classifier_calls": 0,
+    "dev_impossible_records_opened": 0,
+    "default_flags_or_daily_service_modified": false
+  },
+  "execution_audit": {
+    "completed_model_requests": {
+      "embedding": 160,
+      "rerank": 320
+    },
+    "successful_request_ids_unique": true,
+    "guarded_transport_dispatch_attempts_including_pre_http_failure": 481,
+    "pre_http_tls_handshake_failures": 1,
+    "automatic_sdk_http_retries": 0,
+    "manually_continued_unsent_ids_after_audit": 1,
+    "completed_request_ids_resent": 0,
+    "pending_at_completion": false,
+    "restoration_stops_before_receipt_fix": 2,
+    "confirmed_hnsw_reconstruction_difference_stops": 1,
+    "earlier_restoration_error_without_captured_cause": 1,
+    "intentional_storage_migrations_at_no_pending_boundaries": 2,
+    "first96_case_files_preserved_byte_for_byte": true,
+    "first289_completed_request_response_files_preserved_byte_for_byte": true,
+    "completed_ledger_prefix_preserved": true,
+    "host_export_matches_native_volume_file_hashes": true,
+    "independent_python_metrics_match": true,
+    "usage_tokens_by_stage": {
+      "embedding": 13991,
+      "rerank": 8389766
+    },
+    "completed_http_request_bytes": 20937429,
+    "accounting_limit_cny": "35",
+    "rates_cny_per_million_input_tokens": {
+      "embedding": "0.5",
+      "rerank": "0.74942"
+    },
+    "invoice_accessed": false
+  },
+  "verification": {
+    "new_synthetic_recovery_tests_windows": 6,
+    "new_synthetic_recovery_tests_linux": 6,
+    "real96_network_disabled_receipt_sql_input_output_check": "PASS_ZERO_MODEL_CALLS",
+    "complete_offline_suite_passed": 854,
+    "existing_alembic_warnings": 7,
+    "runtime_warning": "ranx/Numba uint64-to-int64 warning; independent Python IR aggregation agrees within 1e-12."
+  }
+}
