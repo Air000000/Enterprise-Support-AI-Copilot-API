@@ -72,6 +72,33 @@ checksum为明确的归档占位而非原文件校验值。HNSW使用保留向�
 冷态约19.62秒、缓存命中约2.40秒，峰值进程RSS约2.62GiB。仅用存储向量及重排替身，零提供方调用；不是P50/P95、
 真实HTTP/模型延迟或检索质量提升。并发搜索每进程限1，忙时503；正常部署未改动，正式质量评测仍待调用上限与新授权。
 
+阶段0新增[评测专用请求守卫](runtime_transport.py)，没有CLI、凭据/数据加载器或已授权DEV执行器；普通运行时客户端不变。
+未来专用串行进程可通过`make_client`显式提供冻结contract、私有checkpoint目录、预分配请求ID及凭据，
+但函数调用/`authorization_reference`字符串本身**不构成人工授权**。本轮只用`httpx.MockTransport`测试。
+
+| 阶段 | 固定模型 | HTTP各阶段超时 | 评测请求限制 |
+| --- | --- | --- | --- |
+| embedding | text-embedding-v4 | 30秒 | 每次1条查询、显式1024维、float；不用于全库重建 |
+| rerank | qwen3-rerank | 15秒 | 最多100条正文、完整top_n |
+| classifier | qwen3.5-plus-2026-04-20 | 30秒 | JSON object、关闭思考、最多2048输出tokens |
+| generation | qwen3.5-plus | 30秒 | 关闭思考、最多1024输出tokens |
+
+SDK与底层HTTP重试均为0，禁止代理环境继承和重定向，端点/模型/字段与逐请求、累计字节限制在发送前检查；
+请求ID必须属于contract且不能再次发送。HTTPX超时是connect/read/write/pool各阶段超时，**不是严格总时长deadline**。
+复用已有`write_json`/`_append_jsonl`的exclusive/fsync写盘方式：先保存pending及原始请求body，收到HTTP200后先保存完整响应，
+再校验usage/finish并追加完成记录，最后移除pending。断线、HTTP失败、缺失usage、截断、超额usage或写盘失败会保留pending并停止后续发送；
+HTTP错误或检测到当前凭据回显时只保存状态、字节数和摘要，不保存正文/头部；请求正文若含当前凭据也会在发送前拒绝。
+其余完整响应保留在私有目录供复核，不付费修补或重试无效草稿。
+恢复时校验contract、守卫及持久化helper源码、SDK版本、请求/响应摘要和usage；完成的响应可供未来执行器恢复，但不重发完成ID，
+不自动清理pending/锁或修复损坏记录。原始请求/成功或无效HTTP200响应可能含问题、来源、模型输出，须放在受控的Git忽略目录，不能提交公共仓库。
+
+Dense评测client显式补充输出上限/关闭思考；Hybrid沿用其已有同样设置。这是将来需单独冻结的**受限生成口径**，
+不修改普通Dense提示词/距离阈值/默认工厂，也不回填历史质量指标或证明历史embedding身份。
+该守卫只约束请求与token记账，不检查来源语义授权、不提供人民币价格或账单硬保证，也不是完整断点评测调度器；
+仍需冻结输入/来源白名单与payload、索引/模型配置、指标/失败口径、人民币估算及计费未知审计流程，并取得新DEV/外发/预算授权后再整合执行。
+本轮[零调用验证记录](reports/runtime_eval_phase0/transport_readiness_2026-10-22.json)：25项新测试与792项全量离线测试通过，
+原运行时工厂/提示词/阈值及日常服务未改；没有DEV执行器、人民币报价或新的付费授权。
+
 2026-10-20 已准备 [v5.3 / v5.3.1 新 TRAIN 对照协议](reports/refusal_evidence_sufficiency/v5_3_1_prospective_protocol.md)及[零调用 manifest](reports/refusal_evidence_sufficiency/v5_3_1_prospective_preparation.json)：复用已有 prospective50 的相同问题、顺序和完整 Top14，不覆盖旧 v5.2.1/v5.3 协议。先最多50次盲标注并由当前助手复核冻结，再最多100次配对分类；规划估算约 ¥18.97，拟分阶段记账额度 ¥10 / ¥15、合计 ¥25，并非账单硬保证。当前无标注、预测、付费执行契约或新运行器；AI proxy 与既有 TRAIN 暴露不能当独立专家验收。`python -m experiments.evals.refusal_v5_3_1_preparation` 只计算计划，`--write-manifest` 只独占保存元数据，无付费入口；真实外发与费用需新授权，不打开 DEV、不重跑检索、不生成答案、不晋级策略。
 
 上述为准备时快照。随后用户明确授权两阶段，完成复用旧持久化引擎的[独立执行适配器](refusal_v5_3_1_runner.py)与[执行记录](reports/refusal_evidence_sufficiency/v5_3_1_prospective_execution.md)：实际3次盲标注，usage共15087 tokens，估算 ¥0.0748575；2份只作可证明的引用记法恢复，第3份遗漏某个已列支持来源的行号，按现行协议停止。没有付费重试，其余47题未发送，标签未冻结、分类0次，不计算拒答效果。先明确同意“保留无效机器草稿、由助手独立证据复核生成最终标签”的追加协议后才继续，不靠重试或放宽分类校验通过。
