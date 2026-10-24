@@ -127,6 +127,7 @@ def test_unknown_billing_stops_but_known_classifier_format_failure_is_http_failu
 
 
 def test_budget_reference_and_wire_identity_are_complete(tmp_path):
+    assert not {"python-jose", "PyJWT"} & set(run.identity()["dependencies"])  # Auth uses stdlib HMAC, not an extra JWT package.
     assert qa.CAPS == {"service": Decimal("35"), "evidence": Decimal("22"), "answer": Decimal("23")}
     assert sum(qa.CAPS.values()) == Decimal("80")
     assert qa.full_reserve() == dict(service="136.802246080", evidence="96.501760", answer="96.501760")

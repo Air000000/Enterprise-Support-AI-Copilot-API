@@ -56,7 +56,7 @@ def code_identity():
 
 def identity():
     return dict(sources=code_identity(), python=sys.version,
-        dependencies={n: importlib.metadata.version(n) for n in ("openai", "httpx", "chromadb", "sqlmodel", "bm25s", "tokenizers", "uvicorn", "alembic", "numpy", "scipy", "fastapi", "pydantic", "python-jose", "h11")},
+        dependencies={n: importlib.metadata.version(n) for n in ("openai", "httpx", "chromadb", "sqlmodel", "bm25s", "tokenizers", "uvicorn", "alembic", "numpy", "scipy", "fastapi", "pydantic", "h11")},
         profiles=qa.PROFILES, caps={k: str(v) for k, v in qa.CAPS.items()}, endpoints=qa.ENDPOINTS,
         judge_model=qa.JUDGE_MODEL, evidence_prompt=qa.EVIDENCE_PROMPT, answer_prompt=qa.ANSWER_PROMPT)
 
@@ -83,6 +83,7 @@ def load_questions(path):
 
 
 def prepare(metadata, snapshot, tokenizer, output):
+    runtime_identity = identity()  # Check actual runtime dependencies before scanning large read-only assets.
     output, snapshot, metadata, tokenizer = map(lambda p: Path(p).resolve(), (output, snapshot, metadata, tokenizer))
     if output.exists() or any(output == p or output in p.parents or p in output.parents for p in (snapshot, metadata, tokenizer)):
         raise ValueError("New output path disjoint from source assets required")
@@ -97,10 +98,10 @@ def prepare(metadata, snapshot, tokenizer, output):
             raise ValueError("Full question exceeds embedding reference profile")
     if assets.inventory(snapshot) != before:
         raise ValueError("Snapshot changed")
-    output.mkdir()
-    plan = dict(identity=identity(), questions=questions, snapshot_root=str(snapshot), metadata=str(metadata),
+    plan = dict(identity=runtime_identity, questions=questions, snapshot_root=str(snapshot), metadata=str(metadata),
                 metadata_sha256=assets.sha(metadata), snapshot_inventory=before, reference_tokenizer=profile,
                 full_reserve_cny=qa.full_reserve(), scope="DEV310_HTTP_AND_TWO_BLIND_REVIEW_PHASES")
+    output.mkdir()
     keep(output / "prepared.json", plan)
     return dict(status="PREPARED_NO_PROVIDER_CALLS", prepared_sha256=assets.sha(output / "prepared.json"),
                 max_provider_calls=3100, accounting_limit_cny=str(sum(qa.CAPS.values())), full_reserve_cny=qa.full_reserve())
