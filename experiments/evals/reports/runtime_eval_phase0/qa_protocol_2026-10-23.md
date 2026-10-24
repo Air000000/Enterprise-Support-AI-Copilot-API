@@ -119,8 +119,13 @@ The pinned local Qwen3 reference tokenizer is not an attested tokenizer for any
 cloud endpoint. E/R reuse the parent reference profile; chat counts full messages
 plus 25% +128 framing tokens, maximum65536. Both raw byte bounds and estimates
 must pass. Never truncate/drop a source or question. Actual usage above a
-reservation, missing usage, non-stop finish, unknown billing or pricing change
+reservation, missing usage, unknown non-stop finish, unknown billing or pricing change
 stops the run. Reconfirm pricing and get **new full phase-2 consent** before live use.
+Exception for service answer generation only: a fully received valid envelope with
+`finish_reason=length`, exactly1024 completion tokens and valid bounded usage is
+accounted once and recorded as a failed HTTP outcome. Never return or grade its
+partial answer, retry it, increase its token limit, or remove it from denominators.
+Classifier/judge truncation and malformed or unknown usage still stop the run.
 
 ## Recovery and commands
 

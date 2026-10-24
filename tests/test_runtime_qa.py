@@ -36,6 +36,9 @@ def providers(seen, failure=None):
             content = json.dumps({} if failure == "schema" else gate()) if stage == "classifier" else "Press reset. [Source 1]"
             value = dict(id="synthetic", model=body["model"], choices=[dict(index=0, finish_reason="stop", message=dict(role="assistant", content=content))],
                          usage=dict(prompt_tokens=20, completion_tokens=10, total_tokens=30))
+            if failure == "length" and stage == "generation":
+                value["choices"][0]["finish_reason"] = "length"
+                value["usage"].update(completion_tokens=1024, total_tokens=1044)
         return httpx.Response(200, json=value)
     from functools import partial
     return {s: httpx.MockTransport(partial(send, s)) for s in qa.ENDPOINTS}
@@ -160,6 +163,49 @@ def test_budget_reference_and_wire_identity_are_complete(tmp_path):
     assert run.wire.STAGES == old
     with pytest.raises(ValueError):
         run.client_factory({}, tmp_path / "blocked", run.Book(), {}, lambda *a: None, None)
+
+
+@pytest.mark.parametrize("arm", ["D", "H"])
+def test_known_generation_length_is_accounted_failure_and_replays_without_send(runtime, tmp_path, monkeypatch, arm):
+    client, collection, queries = runtime
+    row = dict(id="DEV_SYNTH", question="How to reset?", stratum="answerable")
+    seen, keys, book = [], {s: "OFFLINE_ONLY" for s in qa.ENDPOINTS}, run.Book()
+    folder = tmp_path / "service" / ("000-" + arm)
+    folder.parent.mkdir()
+    original = run.keep
+    def crash_before_http_checkpoint(path, value):
+        if path.name == "result.json":
+            raise OSError("synthetic checkpoint interruption")
+        return original(path, value)
+    monkeypatch.setattr(run, "keep", crash_before_http_checkpoint)
+    with pytest.raises(OSError):
+        run.http_case(client, row, arm, folder, "OFFLINE", book, keys, collection, delegates=providers(seen, "length"))
+    monkeypatch.setattr(run, "keep", original)
+    calls = 2 if arm == "D" else 4
+    assert len(seen) == calls and len(book.rows) == calls and len(queries) == 1
+    assert not (folder / "wire/pending.json").exists() and not (folder / "halt.json").exists()
+    fresh = run.Book()
+    run.replay_history(tmp_path, fresh)
+    assert fresh.check() == book.check() and len(fresh.rows) == calls
+    result = run.http_case(client, row, arm, folder, "OFFLINE", fresh, keys, collection, delegates=providers(seen, "length"))
+    assert result["http_status"] != 200 and result["body"] == {} and result["latency_ms"] is None
+    assert len(seen) == calls and len(queries) == 1
+    assert run.assets.read_json(folder / "generation_failure.json")["usage_recorded"] is True
+    score = qa.score(result, dict(verdict="SUFFICIENT"), None)
+    assert score["failed"] and not score["refused"] and not score["correct"]
+
+
+def test_generation_length_exception_does_not_relax_unknown_usage_or_judges():
+    payload = dict(choices=[dict(index=0, finish_reason="length", message=dict(role="assistant", content="partial"))],
+                   usage=dict(prompt_tokens=20, completion_tokens=1024, total_tokens=1044))
+    assert run.service_usage_record("generation", payload)["finish_reason"] == "length"
+    with pytest.raises(ValueError):
+        run.wire.usage_record("generation", payload)  # Shared wire guard remains strict.
+    for stage, changed in (("classifier", payload), ("generation", payload | {"usage": {}}),
+            ("generation", payload | {"usage": dict(prompt_tokens=20, completion_tokens=1023, total_tokens=1043)}),
+            ("generation", payload | {"usage": dict(prompt_tokens=20, completion_tokens=1024, total_tokens=1)})):
+        with pytest.raises((ValueError, KeyError)):
+            run.service_usage_record(stage, changed)
 
 
 def test_frozen_question_loader_and_phase2_authorization_are_explicit(tmp_path, monkeypatch):

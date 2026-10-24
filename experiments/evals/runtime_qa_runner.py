@@ -31,6 +31,23 @@ from experiments.evals import runtime_retrieval_runner as assets
 from experiments.evals import runtime_transport as wire
 
 TENANT, CATEGORY = "tenant_eval_techqa_archival", "other"
+_STRICT_USAGE = wire.usage_record
+
+
+def service_usage_record(stage, payload):
+    """Account only a fully received, at-limit generation truncation; never accept it."""
+    choices = payload.get("choices")
+    if stage != "generation" or not isinstance(choices, list) or len(choices) != 1 or choices[0].get("finish_reason") != "length":
+        return _STRICT_USAGE(stage, payload)
+    choice, usage = choices[0], payload["usage"]
+    message = choice.get("message", {})
+    if (choice.get("index") != 0 or message.get("role") != "assistant"
+            or not isinstance(message.get("content"), str)
+            or usage.get("completion_tokens") != wire.STAGES[stage][3]):
+        raise ValueError("Unknown incomplete generation envelope")
+    # Validate unchanged usage with the strict validator, retaining the actual finish reason.
+    checked = _STRICT_USAGE(stage, payload | {"choices": [choice | {"finish_reason": "stop"}]})
+    return checked | {"finish_reason": "length"}
 
 
 def keep(path, value):
@@ -169,10 +186,18 @@ class Transport(wire.RuntimeEvalTransport):
 
     def handle_request(self, request):
         try:
-            return self._handle(request)
+            with patch.object(wire, "usage_record", service_usage_record if self.kind is None else _STRICT_USAGE):
+                response = self._handle(request)
         except Exception:
             keep(self.root.parent / "halt.json", {"status": "AUDIT_REQUIRED_NO_AUTOMATIC_RETRY"})
             raise
+        if self.stage == "generation" and response.json()["choices"][0]["finish_reason"] == "length":
+            keep(self.root.parent / "generation_failure.json", dict(
+                reason="generation_output_truncated", call_id=self.call_id, usage_recorded=True))
+            response.close()
+            # Outside the unknown-outcome handler: HTTP failure, no partial answer or resend.
+            raise RuntimeError("Known generation truncation; accounted failure, never retry")
+        return response
 
     def _handle(self, request):
         self._check_files()
@@ -265,7 +290,8 @@ def replay_history(root, book):
                     raise RuntimeError("Completed case missing wire identity")
                 continue
             c = assets.read_json(contract_path)
-            with qa.wire_profile(folder != "service"):
+            with qa.wire_profile(folder != "service"), patch.object(
+                    wire, "usage_record", service_usage_record if folder == "service" else _STRICT_USAGE):
                 transport = wire.RuntimeEvalTransport(c, path.parent, next(iter(c["calls"])), httpx.MockTransport(lambda r: None))
                 try:
                     if (path.parent / "pending.json").exists() or (path.parent / "transport.lock").exists():
