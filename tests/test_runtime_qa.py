@@ -28,6 +28,8 @@ def providers(seen, failure=None):
         seen.append((stage, body))
         if failure == "timeout":
             raise httpx.ReadTimeout("PRIVATE_NEVER_LOG")
+        if failure == "http400" and stage == "classifier":
+            return httpx.Response(400, json={"error": {"message": "SYNTHETIC_PRIVATE_ERROR"}})
         if stage == "embedding":
             value = dict(data=[dict(index=0, embedding=[1.]*1024)], usage=dict(prompt_tokens=5, total_tokens=5))
         elif stage == "rerank":
@@ -206,6 +208,69 @@ def test_generation_length_exception_does_not_relax_unknown_usage_or_judges():
             ("generation", payload | {"usage": dict(prompt_tokens=20, completion_tokens=1024, total_tokens=1)})):
         with pytest.raises((ValueError, KeyError)):
             run.service_usage_record(stage, changed)
+
+
+def test_explicit_http400_audit_holds_unknown_usage_and_never_resends(runtime, tmp_path):
+    client, collection, queries = runtime
+    row = dict(id="DEV_SYNTH", question="How to reset?", stratum="answerable")
+    seen, keys = [], {s: "OFFLINE_ONLY" for s in qa.ENDPOINTS}
+    case = tmp_path / "service/000-H"
+    case.parent.mkdir()
+    with pytest.raises(RuntimeError):
+        run.http_case(client, row, "H", case, "OFFLINE", run.Book(), keys, collection, delegates=providers(seen, "http400"))
+    assert len(seen) == 3 and (case / "wire/pending.json").exists()
+    pending = run.assets.read_json(case / "wire/pending.json")
+    failure = run.assets.read_json(case / "wire/failure.json")
+    archive = tmp_path / "audit"
+    archive.mkdir()
+    (case / "wire/pending.json").rename(archive / "pending.json")
+    (case / "halt.json").rename(archive / "halt.json")
+    (case / "wire/requests/2.json").rename(case / "failed_request.json")
+    decision = pending | dict(http_status=400, response_sha256=failure["response_sha256"],
+        response_bytes=failure["response_bytes"], usage_status="UNKNOWN", retry_allowed=False,
+        reservation_cny=str(qa.charge("classifier", *qa.PROFILES["classifier"][:2])), approval_reference="OFFLINE_EXPLICIT_AUDIT")
+    run.keep(case / "provider_failure.json", decision)
+    run.keep(tmp_path / "prepared.json", dict(approved_http400_failures={case.name: decision}))
+    result = dict(http_status=503, body={}, latency_ms=None, reconstructed_after_interruption=True,
+                  context_sha256=run.assets.sha(case / "context.json"), selection_sha256=run.assets.sha(case / "selection.json"))
+    run.keep(case / "result.json", result | dict(observation_sha256=run.wire.digest(result)))
+    restored = run.Book()
+    run.replay_history(tmp_path, restored)
+    assert len(restored.rows) == 2 and len(restored.failures) == 1
+    assert restored.reserved()["service"] == Decimal(decision["reservation_cny"])
+    total = restored.check()
+    restored.hold_failed_classifier(decision)
+    assert restored.check() == total
+    cached = run.http_case(client, row, "H", case, "OFFLINE", restored, keys, collection, delegates=providers(seen))
+    assert cached["http_status"] == 503 and len(seen) == 3 and len(queries) == 1
+    scored = qa.score(cached, dict(verdict="SUFFICIENT"), None)
+    assert scored["failed"] and not scored["refused"] and not scored["correct"]
+    (case / "result.json").rename(archive / "result.json")
+    with pytest.raises(RuntimeError):
+        run.http_case(client, row, "H", case, "OFFLINE", restored, keys, collection, delegates=providers(seen))
+    assert len(seen) == 3  # Missing failure checkpoint cannot trigger a replay or a send.
+    (archive / "result.json").rename(case / "result.json")
+    (tmp_path / "prepared.json").rename(archive / "prepared.json")
+    run.keep(tmp_path / "prepared.json", {})
+    with pytest.raises(ValueError):
+        run.replay_history(tmp_path, run.Book())
+
+
+def test_audited_unknown_usage_counts_against_call_and_money_limits(monkeypatch):
+    failure = dict(call_id="failed", stage="classifier", request_sha256="a", response_sha256="b")
+    b = run.Book()
+    b.rows = {str(i): ("classifier", 1, 0, "a", "b") for i in range(309)}
+    b.hold_failed_classifier(failure)
+    assert len(b.rows) + len(b.failures) == 310
+    with pytest.raises(RuntimeError):
+        b.check("classifier")
+    with pytest.raises(RuntimeError):
+        b.add(failure | dict(prompt_tokens=1, completion_tokens=0))
+    with pytest.raises(RuntimeError):
+        b.hold_failed_classifier(failure | dict(response_sha256="changed"))
+    monkeypatch.setitem(qa.CAPS, "service", Decimal("0.1"))
+    with pytest.raises(RuntimeError):
+        run.Book().hold_failed_classifier(failure)
 
 
 def test_frozen_question_loader_and_phase2_authorization_are_explicit(tmp_path, monkeypatch):
