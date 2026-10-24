@@ -2,6 +2,9 @@
 
 from decimal import Decimal
 import json
+import os
+import subprocess
+import sys
 from types import SimpleNamespace
 
 import httpx
@@ -33,6 +36,9 @@ def providers(seen, failure=None):
             content = json.dumps({} if failure == "schema" else gate()) if stage == "classifier" else "Press reset. [Source 1]"
             value = dict(id="synthetic", model=body["model"], choices=[dict(index=0, finish_reason="stop", message=dict(role="assistant", content=content))],
                          usage=dict(prompt_tokens=20, completion_tokens=10, total_tokens=30))
+            if failure == "length" and stage == "generation":
+                value["choices"][0]["finish_reason"] = "length"
+                value["usage"].update(completion_tokens=1024, total_tokens=1044)
         return httpx.Response(200, json=value)
     from functools import partial
     return {s: httpx.MockTransport(partial(send, s)) for s in qa.ENDPOINTS}
@@ -127,6 +133,9 @@ def test_unknown_billing_stops_but_known_classifier_format_failure_is_http_failu
 
 
 def test_budget_reference_and_wire_identity_are_complete(tmp_path):
+    assert not {"python-jose", "PyJWT"} & set(run.identity()["dependencies"])  # Auth uses stdlib HMAC, not an extra JWT package.
+    assert qa.CAPS == {"service": Decimal("35"), "evidence": Decimal("22"), "answer": Decimal("23")}
+    assert sum(qa.CAPS.values()) == Decimal("80")
     assert qa.full_reserve() == dict(service="136.802246080", evidence="96.501760", answer="96.501760")
     assert sum(map(Decimal, qa.full_reserve().values())) == Decimal("329.805766080")
     assert sum(p[4] for p in qa.PROFILES.values()) == 3100
@@ -140,6 +149,11 @@ def test_budget_reference_and_wire_identity_are_complete(tmp_path):
         book.add(event | {"response_sha256": "changed"})
     with pytest.raises(ValueError):
         qa.charge("generation", 65537, 1)
+    reserved = run.Book()
+    reserved.rows = {str(i): ("classifier", 65536, 2048, "a", "b") for i in range(153)}
+    assert Decimal(reserved.check()["service"]) < Decimal("35")
+    with pytest.raises(RuntimeError):
+        reserved.check("classifier")  # Completed cost plus next full reservation, not only completed cost.
     book.rows = {str(i): ("answer", 65536, 2048, "a", "b") for i in range(620)}
     with pytest.raises(RuntimeError):
         book.check("answer")
@@ -149,6 +163,49 @@ def test_budget_reference_and_wire_identity_are_complete(tmp_path):
     assert run.wire.STAGES == old
     with pytest.raises(ValueError):
         run.client_factory({}, tmp_path / "blocked", run.Book(), {}, lambda *a: None, None)
+
+
+@pytest.mark.parametrize("arm", ["D", "H"])
+def test_known_generation_length_is_accounted_failure_and_replays_without_send(runtime, tmp_path, monkeypatch, arm):
+    client, collection, queries = runtime
+    row = dict(id="DEV_SYNTH", question="How to reset?", stratum="answerable")
+    seen, keys, book = [], {s: "OFFLINE_ONLY" for s in qa.ENDPOINTS}, run.Book()
+    folder = tmp_path / "service" / ("000-" + arm)
+    folder.parent.mkdir()
+    original = run.keep
+    def crash_before_http_checkpoint(path, value):
+        if path.name == "result.json":
+            raise OSError("synthetic checkpoint interruption")
+        return original(path, value)
+    monkeypatch.setattr(run, "keep", crash_before_http_checkpoint)
+    with pytest.raises(OSError):
+        run.http_case(client, row, arm, folder, "OFFLINE", book, keys, collection, delegates=providers(seen, "length"))
+    monkeypatch.setattr(run, "keep", original)
+    calls = 2 if arm == "D" else 4
+    assert len(seen) == calls and len(book.rows) == calls and len(queries) == 1
+    assert not (folder / "wire/pending.json").exists() and not (folder / "halt.json").exists()
+    fresh = run.Book()
+    run.replay_history(tmp_path, fresh)
+    assert fresh.check() == book.check() and len(fresh.rows) == calls
+    result = run.http_case(client, row, arm, folder, "OFFLINE", fresh, keys, collection, delegates=providers(seen, "length"))
+    assert result["http_status"] != 200 and result["body"] == {} and result["latency_ms"] is None
+    assert len(seen) == calls and len(queries) == 1
+    assert run.assets.read_json(folder / "generation_failure.json")["usage_recorded"] is True
+    score = qa.score(result, dict(verdict="SUFFICIENT"), None)
+    assert score["failed"] and not score["refused"] and not score["correct"]
+
+
+def test_generation_length_exception_does_not_relax_unknown_usage_or_judges():
+    payload = dict(choices=[dict(index=0, finish_reason="length", message=dict(role="assistant", content="partial"))],
+                   usage=dict(prompt_tokens=20, completion_tokens=1024, total_tokens=1044))
+    assert run.service_usage_record("generation", payload)["finish_reason"] == "length"
+    with pytest.raises(ValueError):
+        run.wire.usage_record("generation", payload)  # Shared wire guard remains strict.
+    for stage, changed in (("classifier", payload), ("generation", payload | {"usage": {}}),
+            ("generation", payload | {"usage": dict(prompt_tokens=20, completion_tokens=1023, total_tokens=1043)}),
+            ("generation", payload | {"usage": dict(prompt_tokens=20, completion_tokens=1024, total_tokens=1)})):
+        with pytest.raises((ValueError, KeyError)):
+            run.service_usage_record(stage, changed)
 
 
 def test_frozen_question_loader_and_phase2_authorization_are_explicit(tmp_path, monkeypatch):
@@ -281,3 +338,41 @@ def test_fresh_migration_copies_only_sources_and_never_upgrades_archive(tmp_path
         assert db.execute("SELECT count(*) FROM ticket").fetchone()[0] == 0
         assert db.execute("SELECT version_num FROM alembic_version").fetchone()[0]
     assert run.assets.sha(source / "runtime.db") == before
+
+
+def test_fresh_service_configures_database_before_snapshot_import(tmp_path):
+    # Fresh process catches import-order bugs hidden by the HTTP fixture's patched engine.
+    script = """
+import sys
+from pathlib import Path
+from types import SimpleNamespace
+from experiments.evals import runtime_qa_runner as run
+root = Path(sys.argv[1])
+source = root / 'source'
+source.mkdir()
+run.os.ST_RDONLY = getattr(run.os, 'ST_RDONLY', 1)
+run.os.statvfs = lambda p: SimpleNamespace(f_flag=run.os.ST_RDONLY)
+run.assets.inventory = lambda p: {}
+run.load_questions = lambda p: []
+def verify(p):
+    from experiments.evals import runtime_retrieval
+    import database
+    from rag_runtime import hybrid_search
+    expected = 'sqlite:///' + str(root / 'owned_work/runtime.db')
+    assert str(database.engine.url) == expected
+    assert hybrid_search.engine is database.engine
+    raise RuntimeError('OFFLINE_VERIFIED_STOP_BEFORE_COPY_OR_CALLS')
+run.assets.verify_snapshot = verify
+try:
+    run.execute_service(root, dict(snapshot_root=str(source), snapshot_inventory={},
+        metadata='synthetic', questions=[]), 'OFFLINE', {})
+except RuntimeError as error:
+    assert str(error) == 'OFFLINE_VERIFIED_STOP_BEFORE_COPY_OR_CALLS'
+else:
+    raise AssertionError('Did not stop at offline verification')
+"""
+    env = {k: v for k, v in os.environ.items() if not any(s in k.upper() for s in ('KEY', 'TOKEN', 'SECRET'))}
+    env.update(PYTHON_DOTENV_DISABLED="1", DATABASE_URL="sqlite://", SQL_ECHO="false")
+    result = subprocess.run([sys.executable, "-B", "-c", script, str(tmp_path)], env=env,
+                            capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stderr

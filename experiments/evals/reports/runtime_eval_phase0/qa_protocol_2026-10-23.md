@@ -105,9 +105,13 @@ Rates below are CNY per million input/output tokens, without cache/free quota:
 
 Service full reserve **136.80224608**, evidence **96.501760**, answer
 **96.501760**; total **329.80576608** across at most **3100** provider calls.
-Proposed accounting caps **150 + 105 + 105 = 360**, not an expected invoice or a
-provider hard billing guarantee. Most outputs/inputs may use less; no DEV-derived
-prediction is claimed in this preparation. Exact duplicates/refusals can reduce
+The original **150 + 105 + 105 = 360** proposal is superseded on 2026-10-24 by
+execution accounting caps **35 + 22 + 23 = 80** (service/evidence/answer).
+This is a deliberately smaller stop budget, not a promise all310 will finish,
+an expected invoice or a provider hard billing guarantee. Each send must fit its
+phase's remaining cap including its full next-call reservation. No automatic cap
+increase or unused-budget transfer. Original full-profile theoretical cost above
+remains unchanged, not rewritten as an observed estimate. Exact duplicates/refusals can reduce
 judge calls, never increase the fixed limits. Assistant review adds no provider call
 here, but does consume the assistant session's normal quota.
 
@@ -115,8 +119,13 @@ The pinned local Qwen3 reference tokenizer is not an attested tokenizer for any
 cloud endpoint. E/R reuse the parent reference profile; chat counts full messages
 plus 25% +128 framing tokens, maximum65536. Both raw byte bounds and estimates
 must pass. Never truncate/drop a source or question. Actual usage above a
-reservation, missing usage, non-stop finish, unknown billing or pricing change
+reservation, missing usage, unknown non-stop finish, unknown billing or pricing change
 stops the run. Reconfirm pricing and get **new full phase-2 consent** before live use.
+Exception for service answer generation only: a fully received valid envelope with
+`finish_reason=length`, exactly1024 completion tokens and valid bounded usage is
+accounted once and recorded as a failed HTTP outcome. Never return or grade its
+partial answer, retry it, increase its token limit, or remove it from denominators.
+Classifier/judge truncation and malformed or unknown usage still stop the run.
 
 ## Recovery and commands
 
@@ -126,7 +135,7 @@ In the isolated image, local `prepare --metadata ... --snapshot ... --tokenizer 
 This preparation PR does **not** run that command on private DEV.
 
 Approval JSON must bind prepared SHA, scope `DEV310_HTTP_AND_TWO_BLIND_REVIEW_PHASES`,
-max_provider_calls3100, accounting_limits_cny(service150/evidence105/answer105),
+max_provider_calls3100, accounting_limits_cny(service35/evidence22/answer23),
 accept_reference_estimate/current_prices_reconfirmed/allow_resume_completed_receipts_only
 all true, and an actual human_approval_reference. File contents do not manufacture consent.
 

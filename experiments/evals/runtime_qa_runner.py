@@ -31,6 +31,23 @@ from experiments.evals import runtime_retrieval_runner as assets
 from experiments.evals import runtime_transport as wire
 
 TENANT, CATEGORY = "tenant_eval_techqa_archival", "other"
+_STRICT_USAGE = wire.usage_record
+
+
+def service_usage_record(stage, payload):
+    """Account only a fully received, at-limit generation truncation; never accept it."""
+    choices = payload.get("choices")
+    if stage != "generation" or not isinstance(choices, list) or len(choices) != 1 or choices[0].get("finish_reason") != "length":
+        return _STRICT_USAGE(stage, payload)
+    choice, usage = choices[0], payload["usage"]
+    message = choice.get("message", {})
+    if (choice.get("index") != 0 or message.get("role") != "assistant"
+            or not isinstance(message.get("content"), str)
+            or usage.get("completion_tokens") != wire.STAGES[stage][3]):
+        raise ValueError("Unknown incomplete generation envelope")
+    # Validate unchanged usage with the strict validator, retaining the actual finish reason.
+    checked = _STRICT_USAGE(stage, payload | {"choices": [choice | {"finish_reason": "stop"}]})
+    return checked | {"finish_reason": "length"}
 
 
 def keep(path, value):
@@ -56,7 +73,7 @@ def code_identity():
 
 def identity():
     return dict(sources=code_identity(), python=sys.version,
-        dependencies={n: importlib.metadata.version(n) for n in ("openai", "httpx", "chromadb", "sqlmodel", "bm25s", "tokenizers", "uvicorn", "alembic", "numpy", "scipy", "fastapi", "pydantic", "python-jose", "h11")},
+        dependencies={n: importlib.metadata.version(n) for n in ("openai", "httpx", "chromadb", "sqlmodel", "bm25s", "tokenizers", "uvicorn", "alembic", "numpy", "scipy", "fastapi", "pydantic", "h11")},
         profiles=qa.PROFILES, caps={k: str(v) for k, v in qa.CAPS.items()}, endpoints=qa.ENDPOINTS,
         judge_model=qa.JUDGE_MODEL, evidence_prompt=qa.EVIDENCE_PROMPT, answer_prompt=qa.ANSWER_PROMPT)
 
@@ -83,6 +100,7 @@ def load_questions(path):
 
 
 def prepare(metadata, snapshot, tokenizer, output):
+    runtime_identity = identity()  # Check actual runtime dependencies before scanning large read-only assets.
     output, snapshot, metadata, tokenizer = map(lambda p: Path(p).resolve(), (output, snapshot, metadata, tokenizer))
     if output.exists() or any(output == p or output in p.parents or p in output.parents for p in (snapshot, metadata, tokenizer)):
         raise ValueError("New output path disjoint from source assets required")
@@ -97,13 +115,13 @@ def prepare(metadata, snapshot, tokenizer, output):
             raise ValueError("Full question exceeds embedding reference profile")
     if assets.inventory(snapshot) != before:
         raise ValueError("Snapshot changed")
-    output.mkdir()
-    plan = dict(identity=identity(), questions=questions, snapshot_root=str(snapshot), metadata=str(metadata),
+    plan = dict(identity=runtime_identity, questions=questions, snapshot_root=str(snapshot), metadata=str(metadata),
                 metadata_sha256=assets.sha(metadata), snapshot_inventory=before, reference_tokenizer=profile,
                 full_reserve_cny=qa.full_reserve(), scope="DEV310_HTTP_AND_TWO_BLIND_REVIEW_PHASES")
+    output.mkdir()
     keep(output / "prepared.json", plan)
     return dict(status="PREPARED_NO_PROVIDER_CALLS", prepared_sha256=assets.sha(output / "prepared.json"),
-                max_provider_calls=3100, accounting_limit_cny="360", full_reserve_cny=qa.full_reserve())
+                max_provider_calls=3100, accounting_limit_cny=str(sum(qa.CAPS.values())), full_reserve_cny=qa.full_reserve())
 
 
 def approval(root, path, expected_sha):
@@ -168,10 +186,18 @@ class Transport(wire.RuntimeEvalTransport):
 
     def handle_request(self, request):
         try:
-            return self._handle(request)
+            with patch.object(wire, "usage_record", service_usage_record if self.kind is None else _STRICT_USAGE):
+                response = self._handle(request)
         except Exception:
             keep(self.root.parent / "halt.json", {"status": "AUDIT_REQUIRED_NO_AUTOMATIC_RETRY"})
             raise
+        if self.stage == "generation" and response.json()["choices"][0]["finish_reason"] == "length":
+            keep(self.root.parent / "generation_failure.json", dict(
+                reason="generation_output_truncated", call_id=self.call_id, usage_recorded=True))
+            response.close()
+            # Outside the unknown-outcome handler: HTTP failure, no partial answer or resend.
+            raise RuntimeError("Known generation truncation; accounted failure, never retry")
+        return response
 
     def _handle(self, request):
         self._check_files()
@@ -264,7 +290,8 @@ def replay_history(root, book):
                     raise RuntimeError("Completed case missing wire identity")
                 continue
             c = assets.read_json(contract_path)
-            with qa.wire_profile(folder != "service"):
+            with qa.wire_profile(folder != "service"), patch.object(
+                    wire, "usage_record", service_usage_record if folder == "service" else _STRICT_USAGE):
                 transport = wire.RuntimeEvalTransport(c, path.parent, next(iter(c["calls"])), httpx.MockTransport(lambda r: None))
                 try:
                     if (path.parent / "pending.json").exists() or (path.parent / "transport.lock").exists():
@@ -461,17 +488,18 @@ def execute_service(root, plan, reference, keys):
         raise ValueError("Read-only archival source mount required")
     if work.is_symlink() or work.resolve().parent != root:
         raise ValueError("Owned work directory must stay inside this run")
-    if assets.inventory(source) != plan["snapshot_inventory"] or load_questions(plan["metadata"]) != plan["questions"]:
-        raise ValueError("Approved immutable input identity differs")
-    assets.verify_snapshot(source)
-    # Persistent native-volume copy is intentional: no Windows bind-mount HNSW/ledger scans.
-    work.mkdir(exist_ok=True)
+    # Snapshot verification imports database via runtime_retrieval; configure it first.
     os.environ.update(DATABASE_URL="sqlite:///"+str(work / "runtime.db"), SQL_ECHO="false", PYTHON_DOTENV_DISABLED="1",
         DASHSCOPE_API_KEY="evaluation-clients-patched-no-env-key", DASHSCOPE_BASE_URL=qa.BEIJING,
         CHAT_MODEL="qwen3.5-plus", DASHSCOPE_MODEL="qwen3.5-plus", EMBEDDING_MODEL="text-embedding-v4",
         JWT_SECRET=secrets.token_hex(32), JWT_ACCESS_TOKEN_EXPIRE_MINUTES="10", AUTH_DEMO_USERS_JSON="",
         ANONYMIZED_TELEMETRY="False", RAG_HYBRID_SEARCH_ENABLED="true", RAG_HYBRID_ASK_ENABLED="true",
         RAG_HYBRID_MAX_VISIBLE_CHUNKS="200000", DOCUMENT_STORAGE_DIR=str(work / "uploads"))
+    if assets.inventory(source) != plan["snapshot_inventory"] or load_questions(plan["metadata"]) != plan["questions"]:
+        raise ValueError("Approved immutable input identity differs")
+    assets.verify_snapshot(source)
+    # Persistent native-volume copy is intentional: no Windows bind-mount HNSW/ledger scans.
+    work.mkdir(exist_ok=True)
     marker = work / "ready.json"
     if not marker.exists():
         if any(work.iterdir()):
