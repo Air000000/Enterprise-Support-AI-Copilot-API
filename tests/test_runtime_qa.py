@@ -127,6 +127,8 @@ def test_unknown_billing_stops_but_known_classifier_format_failure_is_http_failu
 
 
 def test_budget_reference_and_wire_identity_are_complete(tmp_path):
+    assert qa.CAPS == {"service": Decimal("35"), "evidence": Decimal("22"), "answer": Decimal("23")}
+    assert sum(qa.CAPS.values()) == Decimal("80")
     assert qa.full_reserve() == dict(service="136.802246080", evidence="96.501760", answer="96.501760")
     assert sum(map(Decimal, qa.full_reserve().values())) == Decimal("329.805766080")
     assert sum(p[4] for p in qa.PROFILES.values()) == 3100
@@ -140,6 +142,11 @@ def test_budget_reference_and_wire_identity_are_complete(tmp_path):
         book.add(event | {"response_sha256": "changed"})
     with pytest.raises(ValueError):
         qa.charge("generation", 65537, 1)
+    reserved = run.Book()
+    reserved.rows = {str(i): ("classifier", 65536, 2048, "a", "b") for i in range(153)}
+    assert Decimal(reserved.check()["service"]) < Decimal("35")
+    with pytest.raises(RuntimeError):
+        reserved.check("classifier")  # Completed cost plus next full reservation, not only completed cost.
     book.rows = {str(i): ("answer", 65536, 2048, "a", "b") for i in range(620)}
     with pytest.raises(RuntimeError):
         book.check("answer")

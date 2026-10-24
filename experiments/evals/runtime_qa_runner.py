@@ -103,7 +103,7 @@ def prepare(metadata, snapshot, tokenizer, output):
                 full_reserve_cny=qa.full_reserve(), scope="DEV310_HTTP_AND_TWO_BLIND_REVIEW_PHASES")
     keep(output / "prepared.json", plan)
     return dict(status="PREPARED_NO_PROVIDER_CALLS", prepared_sha256=assets.sha(output / "prepared.json"),
-                max_provider_calls=3100, accounting_limit_cny="360", full_reserve_cny=qa.full_reserve())
+                max_provider_calls=3100, accounting_limit_cny=str(sum(qa.CAPS.values())), full_reserve_cny=qa.full_reserve())
 
 
 def approval(root, path, expected_sha):
