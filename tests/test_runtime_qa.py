@@ -2,6 +2,9 @@
 
 from decimal import Decimal
 import json
+import os
+import subprocess
+import sys
 from types import SimpleNamespace
 
 import httpx
@@ -289,3 +292,41 @@ def test_fresh_migration_copies_only_sources_and_never_upgrades_archive(tmp_path
         assert db.execute("SELECT count(*) FROM ticket").fetchone()[0] == 0
         assert db.execute("SELECT version_num FROM alembic_version").fetchone()[0]
     assert run.assets.sha(source / "runtime.db") == before
+
+
+def test_fresh_service_configures_database_before_snapshot_import(tmp_path):
+    # Fresh process catches import-order bugs hidden by the HTTP fixture's patched engine.
+    script = """
+import sys
+from pathlib import Path
+from types import SimpleNamespace
+from experiments.evals import runtime_qa_runner as run
+root = Path(sys.argv[1])
+source = root / 'source'
+source.mkdir()
+run.os.ST_RDONLY = getattr(run.os, 'ST_RDONLY', 1)
+run.os.statvfs = lambda p: SimpleNamespace(f_flag=run.os.ST_RDONLY)
+run.assets.inventory = lambda p: {}
+run.load_questions = lambda p: []
+def verify(p):
+    from experiments.evals import runtime_retrieval
+    import database
+    from rag_runtime import hybrid_search
+    expected = 'sqlite:///' + str(root / 'owned_work/runtime.db')
+    assert str(database.engine.url) == expected
+    assert hybrid_search.engine is database.engine
+    raise RuntimeError('OFFLINE_VERIFIED_STOP_BEFORE_COPY_OR_CALLS')
+run.assets.verify_snapshot = verify
+try:
+    run.execute_service(root, dict(snapshot_root=str(source), snapshot_inventory={},
+        metadata='synthetic', questions=[]), 'OFFLINE', {})
+except RuntimeError as error:
+    assert str(error) == 'OFFLINE_VERIFIED_STOP_BEFORE_COPY_OR_CALLS'
+else:
+    raise AssertionError('Did not stop at offline verification')
+"""
+    env = {k: v for k, v in os.environ.items() if not any(s in k.upper() for s in ('KEY', 'TOKEN', 'SECRET'))}
+    env.update(PYTHON_DOTENV_DISABLED="1", DATABASE_URL="sqlite://", SQL_ECHO="false")
+    result = subprocess.run([sys.executable, "-B", "-c", script, str(tmp_path)], env=env,
+                            capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stderr

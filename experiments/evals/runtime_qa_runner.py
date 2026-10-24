@@ -462,17 +462,18 @@ def execute_service(root, plan, reference, keys):
         raise ValueError("Read-only archival source mount required")
     if work.is_symlink() or work.resolve().parent != root:
         raise ValueError("Owned work directory must stay inside this run")
-    if assets.inventory(source) != plan["snapshot_inventory"] or load_questions(plan["metadata"]) != plan["questions"]:
-        raise ValueError("Approved immutable input identity differs")
-    assets.verify_snapshot(source)
-    # Persistent native-volume copy is intentional: no Windows bind-mount HNSW/ledger scans.
-    work.mkdir(exist_ok=True)
+    # Snapshot verification imports database via runtime_retrieval; configure it first.
     os.environ.update(DATABASE_URL="sqlite:///"+str(work / "runtime.db"), SQL_ECHO="false", PYTHON_DOTENV_DISABLED="1",
         DASHSCOPE_API_KEY="evaluation-clients-patched-no-env-key", DASHSCOPE_BASE_URL=qa.BEIJING,
         CHAT_MODEL="qwen3.5-plus", DASHSCOPE_MODEL="qwen3.5-plus", EMBEDDING_MODEL="text-embedding-v4",
         JWT_SECRET=secrets.token_hex(32), JWT_ACCESS_TOKEN_EXPIRE_MINUTES="10", AUTH_DEMO_USERS_JSON="",
         ANONYMIZED_TELEMETRY="False", RAG_HYBRID_SEARCH_ENABLED="true", RAG_HYBRID_ASK_ENABLED="true",
         RAG_HYBRID_MAX_VISIBLE_CHUNKS="200000", DOCUMENT_STORAGE_DIR=str(work / "uploads"))
+    if assets.inventory(source) != plan["snapshot_inventory"] or load_questions(plan["metadata"]) != plan["questions"]:
+        raise ValueError("Approved immutable input identity differs")
+    assets.verify_snapshot(source)
+    # Persistent native-volume copy is intentional: no Windows bind-mount HNSW/ledger scans.
+    work.mkdir(exist_ok=True)
     marker = work / "ready.json"
     if not marker.exists():
         if any(work.iterdir()):
