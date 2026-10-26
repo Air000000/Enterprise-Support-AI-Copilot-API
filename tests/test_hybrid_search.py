@@ -455,7 +455,7 @@ def ask_runtime(runtime, monkeypatch):
 ASK_BODY = {"question": "How to resolve VPN?", "retrieval_mode": "hybrid", "refusal_policy": "v5_3_experimental", "category": "it"}
 
 
-@pytest.mark.parametrize("policy", ["v5_3_experimental", "v5_3_1_experimental"])
+@pytest.mark.parametrize("policy", ["v5_3_experimental", "v5_3_1_experimental", "v5_3_1_contract_experimental"])
 def test_hybrid_ask_admits_with_null_distance_and_audits_gate(ask_runtime, monkeypatch, policy):
     engine, _, state, ask = ask_runtime
     good = add_document(engine, content="VPN guidance with necessary conditions.")
@@ -484,7 +484,11 @@ def test_hybrid_ask_admits_with_null_distance_and_audits_gate(ask_runtime, monke
     from experiments.evals.refusal_question_scoped_coverage import CLASSIFIER_SYSTEM_PROMPT_V5_3_DEV
     from experiments.evals.refusal_version_audit_clarification import CLASSIFIER_SYSTEM_PROMPT_V5_3_1_DEV
     expected_prompt = CLASSIFIER_SYSTEM_PROMPT_V5_3_DEV if policy == ask.POLICY else CLASSIFIER_SYSTEM_PROMPT_V5_3_1_DEV
-    assert classifier["messages"][0]["content"] == expected_prompt
+    if policy == ask.CONTRACT_POLICY:
+        assert classifier["messages"][0]["content"].startswith(expected_prompt)
+        assert "Final output contract" in classifier["messages"][0]["content"]
+    else:
+        assert classifier["messages"][0]["content"] == expected_prompt
     payload = json.loads(classifier["messages"][1]["content"])
     assert set(payload) == {"question", "sources"}
     assert payload["sources"][0]["segments"][0]["content"] == "VPN guidance with necessary conditions."
@@ -523,14 +527,20 @@ def test_hybrid_ask_insufficient_never_generates_and_is_filterable(ask_runtime, 
     assert [stage for stage, _ in state["events"]] == ["gate"]
 
 
-@pytest.mark.parametrize("failure", ["bad_gate", "truncated_gate", "gate_provider", "generation_provider", "truncated_answer", "empty_answer", "no_citation", "unknown_citation", "uncited_support"])
-@pytest.mark.parametrize("policy", ["v5_3_experimental", "v5_3_1_experimental"])
+@pytest.mark.parametrize("failure", ["bad_gate", "missing_ambiguities", "misplaced_audit", "bad_status", "truncated_gate", "gate_provider", "generation_provider", "truncated_answer", "empty_answer", "no_citation", "unknown_citation", "uncited_support"])
+@pytest.mark.parametrize("policy", ["v5_3_experimental", "v5_3_1_experimental", "v5_3_1_contract_experimental"])
 def test_hybrid_ask_failures_are_not_success_or_normal_refusal(ask_runtime, failure, policy):
     engine, _, state, _ = ask_runtime
     add_document(engine)
     add_document(engine)  # Source 2 is present but not admitted by the gate.
     if failure == "bad_gate":
         state["gate"]["requirements"][0]["evidence"] = [{"source_id": "Source 1", "segment_ids": [999]}]
+    elif failure == "missing_ambiguities":
+        del state["gate"]["unresolved_ambiguities"]
+    elif failure == "misplaced_audit":
+        state["gate"]["applicability"] = state["gate"]["coverage_checks"]["applicability"]
+    elif failure == "bad_status":
+        state["gate"]["requirements"][0]["status"] = "SUPPORTED|MISSING"
     elif failure == "truncated_gate":
         state["gate_finish"] = "length"
     elif failure in {"gate_provider", "generation_provider"}:
@@ -549,10 +559,11 @@ def test_hybrid_ask_failures_are_not_success_or_normal_refusal(ask_runtime, fail
         assert "secret-key" not in response.text + logs[0]["error_message"]
         assert json.loads(logs[0]["scores_json"])["refusal_policy"] == policy
     assert sum(stage == "gate" for stage, _ in state["events"]) == 1
-    assert sum(stage == "generation" for stage, _ in state["events"]) == (failure not in {"bad_gate", "truncated_gate", "gate_provider"})
+    assert sum(stage == "generation" for stage, _ in state["events"]) == (failure not in {
+        "bad_gate", "missing_ambiguities", "misplaced_audit", "bad_status", "truncated_gate", "gate_provider"})
 
 
-@pytest.mark.parametrize("policy", ["v5_3_experimental", "v5_3_1_experimental"])
+@pytest.mark.parametrize("policy", ["v5_3_experimental", "v5_3_1_experimental", "v5_3_1_contract_experimental"])
 def test_hybrid_ask_empty_and_generator_refusal_are_distinct(ask_runtime, policy):
     engine, calls, state, ask = ask_runtime
     with TestClient(main.app) as api:
@@ -569,7 +580,8 @@ def test_hybrid_ask_empty_and_generator_refusal_are_distinct(ask_runtime, policy
 
 
 @pytest.mark.parametrize("stage", ["before_gate", "gate", "generation"])
-def test_hybrid_ask_doc_mutation_blocks_stale_answer(ask_runtime, monkeypatch, stage):
+@pytest.mark.parametrize("policy", ["v5_3_experimental", "v5_3_1_contract_experimental"])
+def test_hybrid_ask_doc_mutation_blocks_stale_answer(ask_runtime, monkeypatch, stage, policy):
     engine, _, state, ask = ask_runtime
     doc = add_document(engine)
 
@@ -590,11 +602,11 @@ def test_hybrid_ask_doc_mutation_blocks_stale_answer(ask_runtime, monkeypatch, s
     else:
         state["hooks"][stage] = mutate
     with TestClient(main.app) as api:
-        assert api.post("/rag/ask", json=ASK_BODY).status_code == 503
+        assert api.post("/rag/ask", json=ASK_BODY | {"refusal_policy": policy}).status_code == 503
     assert len(state["events"]) == {"before_gate": 0, "gate": 1, "generation": 2}[stage]
 
 
-@pytest.mark.parametrize("policy", ["v5_3_experimental", "v5_3_1_experimental"])
+@pytest.mark.parametrize("policy", ["v5_3_experimental", "v5_3_1_experimental", "v5_3_1_contract_experimental"])
 def test_hybrid_ask_flags_policy_and_missing_config_stop_early(ask_runtime, monkeypatch, policy):
     _, calls, state, ask = ask_runtime
     body = ASK_BODY | {"refusal_policy": policy}
@@ -613,6 +625,44 @@ def test_hybrid_ask_flags_policy_and_missing_config_stop_early(ask_runtime, monk
     with pytest.raises(ValueError, match="Unknown experimental refusal policy"):
         ask.ask_hybrid("x", 14, "tenant_demo", refusal_policy="unknown")
     assert calls == state["events"] == []
+
+
+@pytest.mark.parametrize("policy", ["v5_3_experimental", "v5_3_1_experimental", "v5_3_1_contract_experimental"])
+def test_generation_source_contract_preserves_complete_chunks_and_original_ids(ask_runtime, policy):
+    engine, _, state, ask = ask_runtime
+    for title in ("A", "B", "C"):
+        add_document(engine, content=f"{title}: fictional procedure.\nOnly for release 14.\nDo not use for release 13.")
+    for item in state["gate"]["requirements"] + list(state["gate"]["coverage_checks"].values()):
+        if item["status"] == "SUPPORTED":
+            item["evidence"] = [{"source_id": "Source 3", "segment_ids": [1, 2, 3]}]
+    state["answer"] = "Follow the release 14 procedure only. [Source 3]"
+    with TestClient(main.app) as api:
+        response = api.post("/rag/ask", json=ASK_BODY | {"refusal_policy": policy})
+        assert response.status_code == 200, response.text
+        assert len(response.json()["sources"]) == 3
+    classifier, generation = [body for _, body in state["events"]]
+    full = json.loads(classifier["messages"][1]["content"])["sources"]
+    assert len(full) == 3  # Excluded evidence still participates in the gate audit.
+    payload = json.loads(generation["messages"][1]["content"])
+    expected = [{"source_id": source["source_id"], "content": "".join(s["content"] for s in source["segments"])}
+                for source in full]
+    assert payload["sources"] == (expected[-1:] if policy == ask.CONTRACT_POLICY else expected)
+    assert payload["allowed_citation_ids"] == ["Source 3"]
+    assert payload["sources"][-1]["content"].endswith("Do not use for release 13.")
+    assert generation["max_tokens"] == 1024 and classifier["max_tokens"] == 2048
+
+
+def test_contract_prompt_does_not_mutate_frozen_builder():
+    from experiments.evals.refusal_evidence_sufficiency import ClassifierInput, ContextSource
+    from experiments.evals.refusal_version_audit_clarification import build_classifier_messages_v5_3_1_dev
+    from rag_runtime.hybrid_ask import build_contract_classifier_messages
+
+    item = ClassifierInput("Fictional question", (ContextSource("Source 1", "c", "d", "First line\nSecond line"),))
+    original = build_classifier_messages_v5_3_1_dev(item)
+    candidate = build_contract_classifier_messages(item)
+    assert candidate[1] == original[1]
+    assert candidate[0]["content"].startswith(original[0]["content"])
+    assert build_classifier_messages_v5_3_1_dev(item) == original
 
 
 def test_ask_acceptance_guard_rejects_labels_and_foreign_text():

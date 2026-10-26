@@ -144,7 +144,7 @@ BM25 按请求重建、最多 5000 条可见 chunk；无额外持久索引或缓
 本路径不生成答案、不套用 Dense 拒答阈值。开启、外发说明和分数契约见 [README](../README.md#31-可选-hybrid-搜索)。
 SQL 复查缩小并发变更窗口，但不提供跨 SQL/Chroma 的原子快照。
 
-`/rag/ask` 另有默认关闭的实验路径：两个 Hybrid 开关均开启、请求显式指定 `retrieval_mode=hybrid` 和 `refusal_policy=v5_3_experimental` 或 `v5_3_1_experimental`，且不传 `max_distance`：
+`/rag/ask` 另有默认关闭的实验路径：两个 Hybrid 开关均开启、请求显式指定 `retrieval_mode=hybrid` 和 `refusal_policy=v5_3_experimental`、`v5_3_1_experimental` 或 `v5_3_1_contract_experimental`，且不传 `max_distance`：
 
 ```text
 Hybrid Top14 prefix
@@ -157,6 +157,7 @@ Hybrid Top14 prefix
 
 实现位于 `rag_runtime/hybrid_ask.py`，复用冻结的纯提示词/校验函数，不运行评测或改写冻结源码。
 仅按策略选择已有消息构建函数，检索、解析、生成与可见性复查共用；响应及各类审计保留原策略名，不自动切换版本。v5.3.1 接线通过不代表真实模型质量已通过验收。
+显式 `v5_3_1_contract_experimental` 另在 v5.3.1 分类提示末尾重申输出契约，保持严格校验；分类仍读取完整 Top14 前缀，生成改为仅使用门控批准来源的完整 chunk，保留原编号与顺序，响应 sources 不裁剪。它不修改冻结策略构建器、默认模式或历史请求，既不修补模型输出，也不重试。该上下文选择可能影响条件覆盖，离线接线检查不能证明真实语义质量或可靠性改善；原冻结评测运行器不用于该新契约。
 无上下文为 `no_context`；gate 不足为 `refused_insufficient_evidence`；生成器拒答为 `refused_by_generator`。
 格式、截断、非法引用、提供方或可见性错误均返回脱敏 503、审计 `failed`，不会当作正确拒答或自动切换 Dense。
 分类使用强制专用 Phase B 配置，生成复用通用 chat 配置；两者无自动重试，完整上下文属于新增外发。
