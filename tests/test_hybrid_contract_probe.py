@@ -195,3 +195,22 @@ def test_refuses_missing_consent_hash_and_changed_billing_before_send(tmp_path, 
         with pytest.raises(ValueError, match="cap"):
             run(root, sha, transport)
     assert calls == []
+
+
+def test_existing_singapore_workspace_endpoint_is_bound_not_silently_replaced(tmp_path):
+    endpoints = probe.ENDPOINTS | {"classifier": "https://ws-fictional.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"}
+    root = tmp_path / "workspace"
+    value = probe.prepare(root, endpoints)
+    assert value["endpoints"] == endpoints
+    transport, calls = delegates()
+    run(root, probe.wire.digest(value), transport, max_cases=1)
+    contract = probe.read(next(root.glob("cases/*/contract.json")))
+    assert contract["stages"]["classifier"]["base_url"] == endpoints["classifier"]
+    assert len(calls) == 2
+
+
+@pytest.mark.parametrize("url", ["https://foreign.invalid/v1", "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "https://ws-fictional.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1?leak=1"])
+def test_rejects_unapproved_classifier_region_or_endpoint(url):
+    with pytest.raises(ValueError, match="scopes"):
+        probe.plan(probe.ENDPOINTS | {"classifier": url})

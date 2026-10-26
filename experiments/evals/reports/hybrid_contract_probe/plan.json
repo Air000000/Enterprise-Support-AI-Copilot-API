@@ -156,7 +156,7 @@
     "generation": "https://dashscope.aliyuncs.com/compatible-mode/v1"
   },
   "sources": {
-    "experiments/evals/hybrid_contract_probe.py": "87a479742eac4bca25a5f11e26e11b61390440d5588e6d0b674f28d41d740f03",
+    "experiments/evals/hybrid_contract_probe.py": "dfa2b80e434eedf700f6ec4d607b60ecfebb8176ca19914603809773b5b94936",
     "experiments/evals/hybrid_contract_probe_cases.py": "67770971194d90fb323ba610c7f4362359e46f0418965c1566f5c15cb1b3c4b5",
     "experiments/evals/refusal_citation_selection.py": "31c959c47608d28f4dad7be794d9a62d004a8d6ae8558255edb732828ebbf29e",
     "experiments/evals/refusal_coverage_citation_example.py": "1b7e6841e8efd844d2c3ca1191a3618c64cae32b7008e801f827043a14d338e3",
@@ -208,5 +208,5 @@
   "provider_calls": 0,
   "case_count": 12,
   "source_count_per_case": 14,
-  "plan_sha256": "129d94d5eafd95f191b356c321c78b5ca4c8852928ebe75030e5d7fe44c3566f"
+  "plan_sha256": "74de2c949baa99078ebd4880bad59f2c5c1fbdc15fbbbaf7ceaea270d282a448"
 }

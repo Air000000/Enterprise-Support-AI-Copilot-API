@@ -7,6 +7,7 @@ import importlib.metadata
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import sys
 import tempfile
@@ -66,7 +67,13 @@ def fingerprint():
             for p in sorted(set(paths))}
 
 
-def plan():
+def plan(endpoints=None):
+    endpoints = ENDPOINTS if endpoints is None else endpoints
+    if (set(endpoints) != set(ENDPOINTS) or endpoints["generation"] != ENDPOINTS["generation"]
+            or not isinstance(endpoints["classifier"], str) or not (endpoints["classifier"] == ENDPOINTS["classifier"]
+                or re.fullmatch(r"https://[a-z0-9-]+\.ap-southeast-1\.maas\.aliyuncs\.com/compatible-mode/v1",
+                                endpoints["classifier"]))):
+        raise ValueError("Only pinned Beijing generation and Singapore classifier scopes allowed")
     cases = fixtures.inputs()
     order = [(c["id"], p) for i, c in enumerate(cases) for p in (POLICIES if i % 2 == 0 else POLICIES[::-1])]
     calls, bounds = {}, {s: 0 for s in ENDPOINTS}
@@ -86,7 +93,7 @@ def plan():
         cases=cases, cases_sha256=wire.digest(cases), rubrics_sha256=wire.digest(fixtures.FIXTURES),
         expected_counts={label: sum(f[3] == label for f in fixtures.FIXTURES) for label in ("SUFFICIENT", "INSUFFICIENT")},
         order=order, classifier_request_sha256=calls, max_request_bytes=bounds, profiles=profiles,
-        endpoints=ENDPOINTS, sources=fingerprint(), dependencies={n: importlib.metadata.version(n) for n in ("openai", "httpx")},
+        endpoints=endpoints, sources=fingerprint(), dependencies={n: importlib.metadata.version(n) for n in ("openai", "httpx")},
         max_classifier_calls=24, max_generation_calls=24, max_total_calls=48, accounting_cap_cny=CAP,
         planning_full_reservation_cny=str(reserve), invoice_guarantee=False,
         price_source="https://help.aliyun.com/zh/model-studio/model-pricing", price_checked="2026-10-26",
@@ -108,9 +115,9 @@ def budget(value):
         yield
 
 
-def prepare(root):
+def prepare(root, endpoints=None):
     root = Path(root)
-    value = plan()
+    value = plan(endpoints)
     if root.exists() and (not (root / "plan.json").is_file() or root.is_symlink()):
         raise ValueError("Unidentified output directory; never adopt or overwrite")
     root.mkdir(parents=True, exist_ok=True)
@@ -119,7 +126,7 @@ def prepare(root):
 
 
 def contract(value, name, policy, reference):
-    return dict(authorization_reference=reference, stages={s: dict(base_url=ENDPOINTS[s],
+    return dict(authorization_reference=reference, stages={s: dict(base_url=value["endpoints"][s],
         max_request_bytes=value["max_request_bytes"][s]) for s in ENDPOINTS},
         calls={f"{name}:{policy}:{s}": s for s in ENDPOINTS},
         max_total_request_bytes=sum(value["max_request_bytes"].values()))
@@ -155,7 +162,7 @@ def execute(root, keys, expected_sha, reference, *, confirmed=False, delegates=N
         raise ValueError("max_cases must be1..24")
     root = Path(root)
     value = read(root / "plan.json")
-    if value != plan() or wire.digest(value) != expected_sha or root.is_symlink() or any(p.is_symlink() for p in root.rglob("*")):
+    if value != plan(value["endpoints"]) or wire.digest(value) != expected_sha or root.is_symlink() or any(p.is_symlink() for p in root.rglob("*")):
         raise ValueError("Frozen plan/code/input/dependency identity changed")
     if any(root.rglob("pending.json")) or any(root.rglob("halt.json")) or any(root.rglob("*.lock")):
         raise RuntimeError("Pending/unknown outcome or stale lock requires audit, not automatic resumption")
@@ -211,7 +218,7 @@ def execute(root, keys, expected_sha, reference, *, confirmed=False, delegates=N
                     delegate = delegates[stage] if delegates is not None else httpx.HTTPTransport(retries=0, trust_env=False)
                     transport = reuse.Transport(c, folder / "wire", cid, delegate, book=book,
                         validate=lambda b: validate(stage, b), profile=None)
-                    client = OpenAI(api_key=keys[stage], base_url=ENDPOINTS[stage], organization="", project="",
+                    client = OpenAI(api_key=keys[stage], base_url=value["endpoints"][stage], organization="", project="",
                         max_retries=0, timeout=30, http_client=httpx.Client(transport=transport,
                             trust_env=False, follow_redirects=False, timeout=30))
                     clients.append(client)
@@ -247,7 +254,7 @@ def execute(root, keys, expected_sha, reference, *, confirmed=False, delegates=N
 def report(root, expected_sha):
     root = Path(root)
     value = read(root / "plan.json")
-    if value != plan() or wire.digest(value) != expected_sha:
+    if value != plan(value["endpoints"]) or wire.digest(value) != expected_sha:
         raise ValueError("Frozen plan changed")
     if any(root.rglob("pending.json")) or any(root.rglob("halt.json")) or any(root.rglob("*.lock")):
         raise RuntimeError("Unresolved attempt/lock; no complete report")
@@ -290,6 +297,7 @@ def main():
     parser.add_argument("--authorization-reference")
     parser.add_argument("--confirm-authorization", action="store_true")
     parser.add_argument("--max-cases", type=int, default=24)
+    parser.add_argument("--endpoints-stdin", action="store_true", help="prepare only: bind existing regional URLs, not keys")
     args = parser.parse_args()
     try:
         if args.mode == "plan":
@@ -299,7 +307,8 @@ def main():
         elif args.mode == "prepare":
             if not args.output:
                 raise ValueError("Explicit isolated output directory required")
-            print(json.dumps(dict(plan_sha256=wire.digest(prepare(args.output)), provider_calls=0)))
+            endpoints = json.load(sys.stdin) if args.endpoints_stdin else None
+            print(json.dumps(dict(plan_sha256=wire.digest(prepare(args.output, endpoints)), provider_calls=0)))
         elif args.mode == "report":
             if not args.output or not args.plan_sha256:
                 raise ValueError("Explicit frozen output and plan hash required")
