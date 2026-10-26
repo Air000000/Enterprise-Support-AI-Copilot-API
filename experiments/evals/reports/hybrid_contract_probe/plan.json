@@ -1,0 +1,212 @@
+{
+  "run": "hybrid_contract_fictional_12_v1",
+  "status": "FROZEN_PLAN_NOT_AUTHORIZED",
+  "cases_sha256": "c0814432fa31593fad2c1099d626d3ea1ab967f629a359cded54849484eed6a7",
+  "rubrics_sha256": "e10d9f96ee7adaad492fdef63acc20d3815c84408a30319b5c3ae9d163ace4aa",
+  "expected_counts": {
+    "SUFFICIENT": 8,
+    "INSUFFICIENT": 4
+  },
+  "order": [
+    [
+      "single",
+      "v5_3_1_experimental"
+    ],
+    [
+      "single",
+      "v5_3_1_contract_experimental"
+    ],
+    [
+      "late_source",
+      "v5_3_1_contract_experimental"
+    ],
+    [
+      "late_source",
+      "v5_3_1_experimental"
+    ],
+    [
+      "split_steps",
+      "v5_3_1_experimental"
+    ],
+    [
+      "split_steps",
+      "v5_3_1_contract_experimental"
+    ],
+    [
+      "qualification",
+      "v5_3_1_contract_experimental"
+    ],
+    [
+      "qualification",
+      "v5_3_1_experimental"
+    ],
+    [
+      "scoped_alternative",
+      "v5_3_1_experimental"
+    ],
+    [
+      "scoped_alternative",
+      "v5_3_1_contract_experimental"
+    ],
+    [
+      "chinese",
+      "v5_3_1_contract_experimental"
+    ],
+    [
+      "chinese",
+      "v5_3_1_experimental"
+    ],
+    [
+      "supported_no",
+      "v5_3_1_experimental"
+    ],
+    [
+      "supported_no",
+      "v5_3_1_contract_experimental"
+    ],
+    [
+      "similar_product",
+      "v5_3_1_contract_experimental"
+    ],
+    [
+      "similar_product",
+      "v5_3_1_experimental"
+    ],
+    [
+      "missing_outcome",
+      "v5_3_1_experimental"
+    ],
+    [
+      "missing_outcome",
+      "v5_3_1_contract_experimental"
+    ],
+    [
+      "version_mismatch",
+      "v5_3_1_contract_experimental"
+    ],
+    [
+      "version_mismatch",
+      "v5_3_1_experimental"
+    ],
+    [
+      "unknown_condition",
+      "v5_3_1_experimental"
+    ],
+    [
+      "unknown_condition",
+      "v5_3_1_contract_experimental"
+    ],
+    [
+      "conflict",
+      "v5_3_1_contract_experimental"
+    ],
+    [
+      "conflict",
+      "v5_3_1_experimental"
+    ]
+  ],
+  "classifier_request_sha256": {
+    "single:v5_3_1_experimental": "35329030bdedc45bec93207946616374b087229892a6ea2a92d200346514c729",
+    "single:v5_3_1_contract_experimental": "261c8af95314b98f3c1946a5ad5bb661eea6d3ac63ab43c0e9a62632e1c764f5",
+    "late_source:v5_3_1_experimental": "c15bb7650edb80253040c1f6cee605b8e65b23fd53ad0522ecaa64c29213ef44",
+    "late_source:v5_3_1_contract_experimental": "8a54c16320bfe84655d9baa2b029ee5cff95be1b628545e39536e276dda4111e",
+    "split_steps:v5_3_1_experimental": "ffe6d8fb0ab6e1425a16a83aff842be1607f73c67822bcf180a696edc554820c",
+    "split_steps:v5_3_1_contract_experimental": "8ae9bbabf867eaf1a3f3f8cc3656307cf55c14e5a6851a4f3d9132c4b49effa6",
+    "qualification:v5_3_1_experimental": "15500615104acd2e13d3ef95d2c4e91bda4205e82c12703bca96357a056b8c16",
+    "qualification:v5_3_1_contract_experimental": "8a9c00147365c4367b26e357af6b452f9b1f0252291dcc51f6ba4acc048508e4",
+    "scoped_alternative:v5_3_1_experimental": "8e28a2651383144e6ccfb8d5e07ace175bf09e94832cc25d011bac556e28c6ec",
+    "scoped_alternative:v5_3_1_contract_experimental": "0c9cba0af24c0b55789ef0810649255e584591c241ffd2aabe2eb5525d9c0937",
+    "chinese:v5_3_1_experimental": "097103a851a1570b0fbf58cad65254ae1248a2b23a9e77a63bc93a8417d7a726",
+    "chinese:v5_3_1_contract_experimental": "7c206d397e41a79801ab41348e8cf7ddddded1ca5a48418cb6151f53c133973a",
+    "supported_no:v5_3_1_experimental": "f0d2a81ee21d3760623bd726affe193ac0a4bb34a9c4d00736ab67f669a441c3",
+    "supported_no:v5_3_1_contract_experimental": "b01a183ac50efb07c74a8f3bf1a580f0b4c724a704b1469a2fa52b2deeb6fb8e",
+    "similar_product:v5_3_1_experimental": "7f8cf30943e67f63a6c214633928f2513af43809ba9170ac48626311ded2714a",
+    "similar_product:v5_3_1_contract_experimental": "02c841197fa513554d174b49f18775c35aa9f471768d25b24c261edc2b389cc0",
+    "missing_outcome:v5_3_1_experimental": "9e77f14e370974b72892298027df5d73b3a1bf29df40de917f20f5a232c2f28c",
+    "missing_outcome:v5_3_1_contract_experimental": "b1330255c6882fa9bc07196a93c7190bca2f5c7111261a1eec8ec2ffe93b8267",
+    "version_mismatch:v5_3_1_experimental": "b42ea254c571c2614c238a23ecbb3a02a29457be02ad39fd75f5cd248d972995",
+    "version_mismatch:v5_3_1_contract_experimental": "967d242eb30742de803587bc8a2fd504fed949aa33d63a0f930daec1b4bf80dd",
+    "unknown_condition:v5_3_1_experimental": "038ea97568c5dfdebfc3b214761e4c8f00a516e1b0c52291d760d62935aebe3d",
+    "unknown_condition:v5_3_1_contract_experimental": "b1d007a01daad6a679c00cd2449bcd28c1318b479efafa50d8ea4a9cf384b895",
+    "conflict:v5_3_1_experimental": "fc43a7e9556cee3f5da3dfa914b31a66897b4e3d4dbd99a95e630d8678b8a2ff",
+    "conflict:v5_3_1_contract_experimental": "dc9756a1c6d11f2fb0aacab842e7275f266e1fb77433b43b9bb5d79581cbef6b"
+  },
+  "max_request_bytes": {
+    "classifier": 15873,
+    "generation": 5122
+  },
+  "profiles": {
+    "classifier": [
+      16385,
+      2048,
+      "2.936",
+      "17.614",
+      24
+    ],
+    "generation": [
+      5634,
+      1024,
+      ".8",
+      "4.8",
+      24
+    ]
+  },
+  "endpoints": {
+    "classifier": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+    "generation": "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  },
+  "sources": {
+    "experiments/evals/hybrid_contract_probe.py": "87a479742eac4bca25a5f11e26e11b61390440d5588e6d0b674f28d41d740f03",
+    "experiments/evals/hybrid_contract_probe_cases.py": "67770971194d90fb323ba610c7f4362359e46f0418965c1566f5c15cb1b3c4b5",
+    "experiments/evals/refusal_citation_selection.py": "31c959c47608d28f4dad7be794d9a62d004a8d6ae8558255edb732828ebbf29e",
+    "experiments/evals/refusal_coverage_citation_example.py": "1b7e6841e8efd844d2c3ca1191a3618c64cae32b7008e801f827043a14d338e3",
+    "experiments/evals/refusal_development_policy.py": "43bc0b6169eeeda94d1418d77255cd71f751ef3e980fe6934b007000e7ae99d7",
+    "experiments/evals/refusal_evidence_sufficiency.py": "ff14e79c09b53543d9d6f6a7d9add71eda1e3236df25af4afc2c9a73fe0de2c2",
+    "experiments/evals/refusal_phase_b_runner.py": "6097cbf363c515bd569520ee622399e1251aa01b951b88cf2b6f5ec746d8fc99",
+    "experiments/evals/refusal_question_scoped_coverage.py": "50321c44b4ff70242ddc4f4a221a45829e5105d81169dad08212ae489bd50c98",
+    "experiments/evals/refusal_requirement_coverage.py": "cf7972662ae081c25e56131ddb4cfd987f1f0081f480080cc1880b63d8578283",
+    "experiments/evals/refusal_structured_evidence.py": "48eb7ee44af550e542a94e2a37b1daaf72669ee57a74ee8e95a27c2e725c45b8",
+    "experiments/evals/refusal_v5_paired_runner.py": "18c4eb1a55e0a0803b3860954e6048a587c7048420c09b8524eff9565ae0cab1",
+    "experiments/evals/refusal_version_audit_clarification.py": "57f6c15ced72cd04e3dadfa0674d5165c5892dd2e82d6053abce41fd673fb180",
+    "experiments/evals/runtime_qa.py": "ade694c0997491419619a3703cdc3a177c6657ea7ca352678874af89fb3cb6dd",
+    "experiments/evals/runtime_qa_runner.py": "b65e704de01d95fe4c0a84c5154ab39d4e8f179919fe0a47f796fe2d3e680426",
+    "experiments/evals/runtime_transport.py": "7b286c15fd22b0a0fc049e57978a27be84b757bfadfc166086b895cd3499c802",
+    "rag_runtime/__init__.py": "c74a30e8352df9a7e6bfc084d4c14e0e4d9800ac3938ef69d3bcb52b304f6702",
+    "rag_runtime/build_chroma_index.py": "d6b4dbec2f2fd076cfea3a28cc79627c2f0c782c7c9b431be160191dcbe4fcca",
+    "rag_runtime/build_rag_index.py": "e0422103d41a5e6ba3dcc5d9011ddc2123a3c9892bcaf677c62d0969cf1f3061",
+    "rag_runtime/document_loader.py": "18c3c619093bad2fb3de5f4465dac2a748958372c4bb9076d654513516c117a3",
+    "rag_runtime/hybrid_ask.py": "5dfe7dc73c6e4357cc7003c0b9db2223876319c4ff578e31486170b0c59bff12",
+    "rag_runtime/hybrid_search.py": "40f6265fba2db3accd915fb01e125de47c9910d0ed0352152247fadb3583c29c",
+    "rag_runtime/query_chroma.py": "5f12ef380acecfb3e4ecb9f25d7098b9bf4284863f02ff4ba5892c4c98b8d43e",
+    "rag_runtime/query_index.py": "ae95694a89cdad9b7baee7171a27bee609875359b66387b796d6a9a2b0ed6916",
+    "rag_runtime/query_rag_chroma.py": "7a85cbb29ad9c367bcdd173a1ce8f8a97e208db61b93c3bfd81912c79db02dd5",
+    "rag_runtime/text_splitter.py": "8092db9abdd892986d269513a40fa786e3c1f1fc82a1c4dd282fa1d3b25f8963"
+  },
+  "dependencies": {
+    "openai": "2.38.0",
+    "httpx": "0.28.1"
+  },
+  "max_classifier_calls": 24,
+  "max_generation_calls": 24,
+  "max_total_calls": 48,
+  "accounting_cap_cny": "3",
+  "planning_full_reservation_cny": "2.246453568",
+  "invoice_guarantee": false,
+  "price_source": "https://help.aliyun.com/zh/model-studio/model-pricing",
+  "price_checked": "2026-10-26",
+  "retries": 0,
+  "redirects": false,
+  "thinking": false,
+  "timeout_seconds": 30,
+  "runtime": "ask_hybrid with fixed fictional retrieval/visibility; not HTTP, retrieval or quality acceptance",
+  "execution_image": "sha256:8c86291bfc4e431c9e027fc0878c4cefacb06815f29b87e738c39574d075b65b",
+  "normal_validation_failure": "retain and continue fixed order without repair or retry",
+  "unknown_failure": "stop globally; retain pending/full reservation; no automatic retry or clearing",
+  "semantic_review": "nonblind assistant reads full fictional question/all14 sources/output after all24 outcomes; no paid judge or independent expert gold",
+  "decision_rule": "candidate needs0 runtime validation failures,12/12 expected gate matches,8 source-grounded complete answers retaining qualifiers and4 refusals; both-arm success without reproduced old failure is inconclusive about improvement",
+  "promotion_allowed": false,
+  "provider_calls": 0,
+  "case_count": 12,
+  "source_count_per_case": 14,
+  "plan_sha256": "129d94d5eafd95f191b356c321c78b5ca4c8852928ebe75030e5d7fe44c3566f"
+}
