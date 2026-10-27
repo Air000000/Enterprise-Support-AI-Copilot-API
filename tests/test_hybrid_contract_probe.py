@@ -60,7 +60,11 @@ def test_plan_is_fixed_and_excludes_expectations_from_requests():
     value = probe.plan()
     assert value == probe.plan()
     manifest = probe.read(probe.Path(probe.__file__).with_name("reports") / "hybrid_contract_probe/plan.json")
-    assert manifest["sources"] == value["sources"]
+    # Historical runtime hashes stay frozen; prepare/run bind ALL current source hashes.
+    # Keep this harness and its fixtures pinned without requiring later runtime code
+    # to remain identical to the already completed historical experiment.
+    for path in ("experiments/evals/hybrid_contract_probe.py", "experiments/evals/hybrid_contract_probe_cases.py"):
+        assert manifest["sources"][path] == value["sources"][path]
     assert manifest["cases_sha256"] == value["cases_sha256"]
     assert manifest["classifier_request_sha256"] == value["classifier_request_sha256"]
     assert len(value["cases"]) == 12 and all(len(c["sources"]) == 14 for c in value["cases"])
@@ -214,3 +218,14 @@ def test_existing_singapore_workspace_endpoint_is_bound_not_silently_replaced(tm
 def test_rejects_unapproved_classifier_region_or_endpoint(url):
     with pytest.raises(ValueError, match="scopes"):
         probe.plan(probe.ENDPOINTS | {"classifier": url})
+
+
+def test_runtime_change_cannot_resume_a_plan_despite_historical_manifest(monkeypatch, tmp_path):
+    root = tmp_path / "probe"
+    sha = setup(root)
+    transport, calls = delegates()
+    changed = probe.fingerprint() | {"rag_runtime/hybrid_ask.py": "0" * 64}
+    monkeypatch.setattr(probe, "fingerprint", lambda: changed)
+    with pytest.raises(ValueError, match="identity"):
+        run(root, sha, transport)
+    assert calls == []
