@@ -76,20 +76,19 @@ def test_invalid_source_contract_is_rejected_without_repair(failure):
 
 # Fixed fictional development cases for subsequent model checks, not held-out data.
 SCOPE_REGRESSIONS = (
-    ("Recover LarchWorker error E7 in RuntimeGreen.", "Only RuntimeBlue's startup path has the E7 workaround.", "CONDITIONAL"),
-    ("Recover LarchWorker error E7 in RuntimeGreen.", "RuntimeBlue and RuntimeGreen use the same E7 startup path. Clear its sandbox lease.", "SUPPORTED"),
-    ("Give a sandbox recovery method.", "Clear the sandbox lease. Console mode is another option only when this product supports console mode.", "SUPPORTED"),
-    ("Can I install the E7 fix now?", "The E7 fix is planned for a future release; no released fix is established here.", "MISSING"),
+    ("Recover LarchWorker error E7 in RuntimeGreen.", "Only RuntimeBlue's startup path has the E7 workaround.", "applicability", "CONDITIONAL"),
+    ("Recover LarchWorker error E7 in RuntimeGreen.", "RuntimeBlue and RuntimeGreen use the same E7 startup path. Clear its sandbox lease.", "applicability", "SUPPORTED"),
+    ("Give a sandbox recovery method.", "Clear the sandbox lease. Console mode is another option only when this product supports console mode.", "applicability", "SUPPORTED"),
+    ("Can I install the E7 fix now?", "The E7 fix is planned for a future release; no released fix is established here.", "version_and_time", "MISSING"),
 )
 
 
-@pytest.mark.parametrize("question,text,status", SCOPE_REGRESSIONS)
-def test_fixture_gate_outcomes_follow_supplied_judgment_without_keyword_rules(question, text, status):
+@pytest.mark.parametrize("question,text,facet,status", SCOPE_REGRESSIONS)
+def test_fixture_gate_outcomes_follow_supplied_judgment_without_keyword_rules(question, text, facet, status):
     value = ClassifierInput(question, (ContextSource("Source 1", "c", "d", text),))
     data = judgment()
-    data["coverage_checks"]["applicability"]["status"] = status
-    if status == "MISSING":
-        data["coverage_checks"]["applicability"]["evidence"] = []
+    data["coverage_checks"][facet] = dict(status=status, evidence=[] if status == "MISSING" else ["Source 1"],
+        reason="Supplied fictional judgment: visible compatibility/availability support or unresolved gap.")
     result = scope.validate_response(json.dumps(data), value)
     assert result["decision"] == ("SUFFICIENT" if status == "SUPPORTED" else "INSUFFICIENT")
 
