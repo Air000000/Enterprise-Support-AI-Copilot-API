@@ -80,6 +80,9 @@ SCOPE_REGRESSIONS = (
     ("Recover LarchWorker error E7 in RuntimeGreen.", "RuntimeBlue and RuntimeGreen use the same E7 startup path. Clear its sandbox lease.", "applicability", "SUPPORTED"),
     ("Give a sandbox recovery method.", "Clear the sandbox lease. Console mode is another option only when this product supports console mode.", "applicability", "SUPPORTED"),
     ("Can I install the E7 fix now?", "The E7 fix is planned for a future release; no released fix is established here.", "version_and_time", "MISSING"),
+    ("Explain why LarchWorker3 can show lease-expiry warnings.", "LarchWorker3 warns after lease expiry. An optional recovery applies only to RuntimeBlue.", "version_and_time", "SUPPORTED"),
+    ("Fix the blocked LarchWorker3 startup.", "RuntimeBlue's idle poller emits the same warning; startup failure is not established.", "applicability", "MISSING"),
+    ("Can LarchWorker3 ingest raw images?", "LarchWorker3 supports queue selection. Another component imports formatted batch XML.", "applicability", "CONDITIONAL"),
 )
 
 
@@ -140,7 +143,7 @@ def test_unresolved_applicability_never_generates(ask_runtime, status):
     assert [stage for stage, _ in state["events"]] == ["gate"]
 
 
-@pytest.mark.parametrize("failure", ["unknown_source", "legacy_ids", "provider", "generation_provider", "unapproved_citation", "truncated"])
+@pytest.mark.parametrize("failure", ["unknown_source", "legacy_ids", "duplicate_requirement", "provider", "generation_provider", "unapproved_citation", "truncated"])
 def test_new_policy_errors_fail_closed_without_retry(ask_runtime, failure):
     engine, _, state, _ = ask_runtime
     add_document(engine)
@@ -148,6 +151,8 @@ def test_new_policy_errors_fail_closed_without_retry(ask_runtime, failure):
     source_gate(state)
     if failure in ("unknown_source", "legacy_ids"):
         state["gate"]["requirements"][0]["evidence"] = ["Source 99"] if failure == "unknown_source" else [{"source_id": "Source 1", "segment_ids": [99]}]
+    elif failure == "duplicate_requirement":
+        state["gate"]["requirements"].append(copy.deepcopy(state["gate"]["requirements"][0]))
     elif failure in ("provider", "generation_provider"):
         state["error_stage"] = "gate" if failure == "provider" else "generation"
     elif failure == "unapproved_citation":
@@ -160,7 +165,58 @@ def test_new_policy_errors_fail_closed_without_retry(ask_runtime, failure):
         audit = api.get("/agent-ops/retrieval-logs").json()[0]
         assert audit["retrieval_status"] == "failed"
         assert "secret-key" not in response.text + audit["error_message"]
-    assert [stage for stage, _ in state["events"]] == (["gate"] if failure in ("unknown_source", "legacy_ids", "provider") else ["gate", "generation"])
+    assert [stage for stage, _ in state["events"]] == (["gate"] if failure in ("unknown_source", "legacy_ids", "duplicate_requirement", "provider") else ["gate", "generation"])
+
+
+@pytest.mark.parametrize("suffix", ["\n\nThe exact version is not established. [Source 1]", "\n\nThe exact version is not established."])
+def test_explicit_generator_abstention_preserves_text_and_refusal_audit(ask_runtime, suffix):
+    engine, _, state, ask = ask_runtime
+    add_document(engine)
+    source_gate(state)
+    state["answer"] = ask.REFUSAL + suffix
+    with TestClient(main.app) as api:
+        response = api.post("/rag/ask", json=ASK_BODY | {"refusal_policy": scope.POLICY})
+        assert response.status_code == 200
+        assert response.json()["retrieval_status"] == "refused_by_generator"
+        assert response.json()["answer"] == state["answer"]  # No output repair or discarded explanation.
+        logs = api.get("/agent-ops/retrieval-logs", params={"retrieval_status": "refused_by_generator"}).json()
+        assert len(logs) == 1 and logs[0]["retrieval_status"] == "refused_by_generator"
+        assert api.get("/agent-ops/metrics/retrieval").json()["retrieval_status_counts"] == {"refused_by_generator": 1}
+    assert [stage for stage, _ in state["events"]] == ["gate", "generation"]
+
+
+def test_abstention_marker_does_not_bypass_citation_allowlist(ask_runtime):
+    engine, _, state, ask = ask_runtime
+    add_document(engine)
+    add_document(engine)
+    source_gate(state)
+    state["answer"] = ask.REFUSAL + "\nAn unapproved explanation. [Source 2]"
+    with TestClient(main.app) as api:
+        response = api.post("/rag/ask", json=ASK_BODY | {"refusal_policy": scope.POLICY})
+        assert response.status_code == 503
+        assert api.get("/agent-ops/retrieval-logs").json()[0]["retrieval_status"] == "failed"
+    assert [stage for stage, _ in state["events"]] == ["gate", "generation"]
+
+
+@pytest.mark.parametrize("policy", ["v5_3_experimental", "v5_3_1_experimental", "v5_3_1_contract_experimental"])
+def test_historical_policies_keep_exact_refusal_contract(ask_runtime, policy):
+    engine, _, state, ask = ask_runtime
+    add_document(engine)
+    state["answer"] = ask.REFUSAL + "\nA historical cited explanation. [Source 1]"
+    with TestClient(main.app) as api:
+        response = api.post("/rag/ask", json=ASK_BODY | {"refusal_policy": policy})
+    assert response.status_code == 200 and response.json()["retrieval_status"] == "ok"
+    assert response.json()["answer"] == state["answer"]
+
+
+def test_abstention_marker_inside_answer_is_not_a_keyword_rule(ask_runtime):
+    engine, _, state, ask = ask_runtime
+    add_document(engine)
+    source_gate(state)
+    state["answer"] = "The guide quotes '" + ask.REFUSAL + "' but establishes this scoped procedure. [Source 1]"
+    with TestClient(main.app) as api:
+        response = api.post("/rag/ask", json=ASK_BODY | {"refusal_policy": scope.POLICY})
+    assert response.status_code == 200 and response.json()["retrieval_status"] == "ok"
 
 
 def test_source_provenance_cannot_prove_semantics_or_force_generated_conditions(ask_runtime):
