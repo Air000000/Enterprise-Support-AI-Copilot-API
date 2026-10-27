@@ -163,6 +163,8 @@ def ask_hybrid(question, top_k, tenant_id, category=None, *, refusal_policy=POLI
     if answer == REFUSAL:
         return HybridRagResponse(question, REFUSAL, "refused_by_generator", results, gate, refusal_policy)
     citations = set(re.findall(r"\[(source\b[^\]]*)\]", answer, flags=re.IGNORECASE))
-    if not citations or not citations <= set(gate["supporting_source_ids"]):
+    # ponytail: exact protocol marker only, not a semantic refusal keyword list.
+    marked_refusal = refusal_policy == source_scope.POLICY and answer.startswith(REFUSAL)
+    if (not citations and not marked_refusal) or not citations <= set(gate["supporting_source_ids"]):
         raise RuntimeError("Missing or unapproved answer citation")
-    return HybridRagResponse(question, answer, "ok", results, gate, refusal_policy)
+    return HybridRagResponse(question, answer, "refused_by_generator" if marked_refusal else "ok", results, gate, refusal_policy)
