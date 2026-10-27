@@ -69,7 +69,7 @@ class RagAskRequest(BaseModel): # 用户问问题时传进来的请求体
     # tenant_id: Optional[str] = None
     category: Optional[str] = None
     retrieval_mode: Literal["dense", "hybrid"] = "dense"
-    refusal_policy: Literal["v5_3_experimental", "v5_3_1_experimental", "v5_3_1_contract_experimental"] | None = None
+    refusal_policy: Literal["v5_3_experimental", "v5_3_1_experimental", "v5_3_1_contract_experimental", "source_scope_experimental"] | None = None
 
     @field_validator("question")
     @classmethod
@@ -101,5 +101,5 @@ class RagAskResponse(BaseModel):    # 整个问答接口返回体
     top_distance: Optional[float] = None
     sources: list[RagSourceResponse]
     retrieval_mode: Literal["dense", "hybrid"] = "dense"
-    refusal_policy: Literal["dense_distance", "v5_3_experimental", "v5_3_1_experimental", "v5_3_1_contract_experimental"] = "dense_distance"
+    refusal_policy: Literal["dense_distance", "v5_3_experimental", "v5_3_1_experimental", "v5_3_1_contract_experimental", "source_scope_experimental"] = "dense_distance"
     evidence_gate: dict | None = None

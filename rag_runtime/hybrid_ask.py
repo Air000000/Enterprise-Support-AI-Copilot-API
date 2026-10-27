@@ -17,6 +17,7 @@ from experiments.evals.refusal_question_scoped_coverage import (
 from experiments.evals.refusal_version_audit_clarification import build_classifier_messages_v5_3_1_dev
 from rag_runtime.hybrid_search import HybridSearchResult, load_visible_chunks, search_hybrid
 from rag_runtime.query_rag_chroma import get_llm_client
+from rag_runtime import source_scope
 
 POLICY = "v5_3_experimental"
 CONTRACT_POLICY = "v5_3_1_contract_experimental"
@@ -45,7 +46,8 @@ Missing evidence must remain MISSING/CONDITIONAL, not fabricated support.
 # Keep previous wire contracts available for frozen runs and explicit rollback.
 POLICY_BUILDERS = {POLICY: build_classifier_messages_v5_3_dev,
                    "v5_3_1_experimental": build_classifier_messages_v5_3_1_dev,
-                   CONTRACT_POLICY: build_contract_classifier_messages}
+                   CONTRACT_POLICY: build_contract_classifier_messages,
+                   source_scope.POLICY: source_scope.build_messages}
 CLASSIFIER_MODEL = "qwen3.5-plus-2026-04-20"
 REFUSAL = "我在已提供资料中没有找到足够依据。"
 
@@ -121,7 +123,9 @@ def ask_hybrid(question, top_k, tenant_id, category=None, *, refusal_policy=POLI
                 model=CLASSIFIER_MODEL, temperature=0, response_format={"type": "json_object"},
                 extra_body={"enable_thinking": False}, max_tokens=2048,
                 messages=POLICY_BUILDERS[refusal_policy](classifier_input))
-            gate = validate_requirement_coverage_response(completed_text(response), classifier_input)
+            validate = (source_scope.validate_response if refusal_policy == source_scope.POLICY
+                        else validate_requirement_coverage_response)
+            gate = validate(completed_text(response), classifier_input)
     require_current_visibility()
     if gate["decision"] != "SUFFICIENT":
         return HybridRagResponse(question, REFUSAL, "refused_insufficient_evidence", results, gate, refusal_policy)
@@ -131,12 +135,15 @@ def ask_hybrid(question, top_k, tenant_id, category=None, *, refusal_policy=POLI
     # complete approved chunks, preserving their conditions and original IDs.
     payload = {"question": question, "sources": [
         {"source_id": s.source_id, "content": s.content} for s in classifier_input.sources
-        if refusal_policy != CONTRACT_POLICY or s.source_id in gate["supporting_source_ids"]],
+        if refusal_policy not in (CONTRACT_POLICY, source_scope.POLICY) or s.source_id in gate["supporting_source_ids"]],
         "allowed_citation_ids": gate["supporting_source_ids"]}
     contract_instruction = (
         "sources 仅包含门控批准来源的完整原文，编号可能不连续，禁止重新编号或猜测其他来源。"
         "每个事实性段落用独立的 [Source N] 引用批准编号；不要在引用括号内添加解释。"
-        if refusal_policy == CONTRACT_POLICY else "")
+        if refusal_policy in (CONTRACT_POLICY, source_scope.POLICY) else "")
+    if refusal_policy == source_scope.POLICY:
+        payload["gate_applicability"] = {k: gate["coverage_checks"]["applicability"][k] for k in ("status", "reason")}
+        contract_instruction += source_scope.GENERATION_RULES
     with get_llm_client().with_options(max_retries=0, timeout=30) as client:
         require_current_visibility()
         model = os.getenv("CHAT_MODEL") or os.getenv("DASHSCOPE_MODEL", "qwen3.5-plus")
