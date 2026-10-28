@@ -299,7 +299,7 @@ def test_api_mode_audit_and_tenant_authority(runtime, monkeypatch):
         assert json.loads(logs[-1].scores_json)["score_type"] == "rerank_relevance"
         assert json.loads(logs[-1].source_documents_json)[0]["dense_rank"] is None
         assert json.loads(logs[-1].source_documents_json)[0]["bm25_rank"] == 1
-        for body in ({"query": "  "}, {"query": "x", "top_k": 11},
+        for body in ({"query": "  "}, {"query": "x", "retrieval_mode": "dense", "top_k": 11},
                      {"query": "x", "retrieval_mode": "hybrid", "top_k": 15},
                      {"query": "x", "retrieval_mode": "unknown"}):
             assert client.post("/rag/search", json=body).status_code == 422
@@ -613,7 +613,8 @@ def test_hybrid_ask_flags_policy_and_missing_config_stop_early(ask_runtime, monk
     with TestClient(main.app) as api:
         for invalid in (body | {"max_distance": 0.9}, body | {"top_k": 15}, body | {"question": "  "},
                         body | {"refusal_policy": None}, body | {"refusal_policy": "unknown"},
-                        {"question": "x", "top_k": 11}, {"question": "x", "refusal_policy": policy}):
+                        {"question": "x", "retrieval_mode": "dense", "top_k": 11},
+                        {"question": "x", "retrieval_mode": "dense", "refusal_policy": policy}):
             assert api.post("/rag/ask", json=invalid).status_code == 422
         for flag in ("RAG_HYBRID_ASK_ENABLED", "RAG_HYBRID_SEARCH_ENABLED"):
             monkeypatch.setenv(flag, "false")

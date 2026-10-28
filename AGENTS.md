@@ -149,5 +149,6 @@ Document, RAG, Ticket and AgentOps paths use this server-side context; do not tr
 client-supplied tenant IDs. Legacy Todo paths are tenant-scoped too. Pre-migration
 Todo rows with unknown ownership remain stored but hidden until ownership is verified.
 Demo credentials/JWT defaults are not production IAM or database-level isolation.
-Hybrid is integrated as explicit opt-in; Dense remains the repository default.
-Refusal candidates remain experimental; do not rewrite frozen negative results.
+API search, ask and Ticket preview default to Hybrid; ask defaults to source_scope_experimental.
+Keep explicit Dense rollback and false-valued Hybrid kill switches. Ticket decisions still require confirm.
+Default selection is an engineering choice, not quality promotion; do not rewrite frozen negative results.

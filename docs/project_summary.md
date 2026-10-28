@@ -43,7 +43,7 @@ TechQA offline evaluation / refusal gate demo
 - AgentOps 支持 run / tool call / approval request 查询与汇总
 - Document Backend 支持上传、索引、删除闭环
 - Demo JWT 提供认证上下文与应用层租户范围；不是生产级 IAM
-- 默认检索、问答和工单仍为 Dense Chroma；Hybrid / rerank / Top14 已接入默认关闭的可选搜索与实验问答；后者须显式选择 v5.3 实验 gate，未通过独立语义质量验收，不替换默认拒答
+- 搜索、问答和工单预览默认 Hybrid / rerank / Top14；问答默认来源级 `source_scope_experimental` 证据门控，显式 Dense 可回退。固定工程场景已验收，总体语义改善尚未证实；工单规则和人工确认建单流程不变
 
 ## Legacy Compatibility
 

@@ -100,6 +100,64 @@ def source_gate(state):
     state["gate"] = judgment()
 
 
+def test_default_contract_and_explicit_dense_rollback():
+    from pydantic import ValidationError
+    from schemas.rag import RagAskRequest, RagSearchRequest
+    from schemas.agent_ticket import TicketAgentPreviewRequest
+
+    ask = RagAskRequest(question="Example")
+    assert (ask.retrieval_mode, ask.refusal_policy, ask.top_k, ask.max_distance) == ("hybrid", scope.POLICY, 14, None)
+    assert RagSearchRequest(query="Example").retrieval_mode == "hybrid"
+    assert TicketAgentPreviewRequest(message="Example").retrieval_mode == "hybrid"
+    dense = RagAskRequest(question="Example", retrieval_mode="dense")
+    assert (dense.refusal_policy, dense.top_k, dense.max_distance) == (None, 3, .9)
+    assert RagSearchRequest(query="Example", retrieval_mode="dense").top_k == 3
+    assert RagAskRequest.model_json_schema()["properties"]["refusal_policy"]["default"] == scope.POLICY
+    for payload in ({"max_distance": .9}, {"refusal_policy": None},
+                    {"retrieval_mode": "dense", "refusal_policy": scope.POLICY},
+                    {"retrieval_mode": "dense", "max_distance": None}):
+        with pytest.raises(ValidationError):
+            RagAskRequest(question="Example", **payload)
+
+
+def test_omitted_modes_use_hybrid_and_current_gate_with_unset_flags(ask_runtime, monkeypatch):
+    engine, rerank_calls, state, _ = ask_runtime
+    for flag in ("RAG_HYBRID_SEARCH_ENABLED", "RAG_HYBRID_ASK_ENABLED"):
+        monkeypatch.delenv(flag, raising=False)
+    own = add_document(engine, content="Visible fictional recovery path.")
+    add_document(engine, tenant="foreign", content="FOREIGN_BODY")
+    source_gate(state)
+    with TestClient(main.app) as api:
+        search = api.post("/rag/search", json={"query": "recovery", "category": "it"})
+        assert search.status_code == 200 and search.json()["retrieval_mode"] == "hybrid"
+        assert search.json()["top_k"] == 14
+        answer = api.post("/rag/ask", json={"question": "How to recover?", "category": "it"})
+        assert answer.status_code == 200, answer.text
+        assert answer.json()["retrieval_mode"] == "hybrid" and answer.json()["refusal_policy"] == scope.POLICY
+        assert answer.json()["evidence_gate"]["evidence_unit"] == "full_source_chunk"
+        assert [s["document_id"] for s in answer.json()["sources"]] == [own.id]
+        preview = api.post("/agent/ticket/preview", json={"message": "VPN 连不上", "category": "it"})
+        assert preview.status_code == 200 and preview.json()["retrieval_mode"] == "hybrid"
+        assert preview.json()["should_create_ticket"] is True
+        trace = api.get(f"/agent-ops/runs/{preview.json()['agent_run_id']}/trace").json()
+        search_tool = next(t for t in trace["tool_calls"] if t["tool_name"] == "search_kb")
+        assert json.loads(search_tool["tool_input_json"])["top_k"] == 14
+        assert all(t["tool_name"] != "create_ticket" for t in trace["tool_calls"])
+    assert len(rerank_calls) == 3 and [stage for stage, _ in state["events"]] == ["gate", "generation"]
+    assert "FOREIGN_BODY" not in json.dumps(rerank_calls) + json.dumps(state["events"])
+
+
+def test_explicit_kill_switch_blocks_default_ask_without_fallback(ask_runtime, monkeypatch):
+    engine, calls, state, _ = ask_runtime
+    add_document(engine)
+    monkeypatch.setenv("RAG_HYBRID_ASK_ENABLED", "false")
+    with TestClient(main.app) as api:
+        response = api.post("/rag/ask", json={"question": "How to recover?", "category": "it"})
+        assert response.status_code == 503
+        assert api.get("/agent-ops/retrieval-logs").json()[0]["retrieval_status"] == "failed"
+    assert calls == state["events"] == []
+
+
 def test_api_preserves_full_qualified_sources_scope_audit_and_noncontiguous_ids(ask_runtime):
     engine, _, state, _ = ask_runtime
     for name in ("A", "B", "C"):

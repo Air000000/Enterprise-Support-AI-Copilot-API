@@ -18,7 +18,7 @@ def search_documents(
     '''
     if retrieval_mode == "hybrid":
         load_dotenv()
-        if os.getenv("RAG_HYBRID_SEARCH_ENABLED", "false").strip().lower() != "true":
+        if os.getenv("RAG_HYBRID_SEARCH_ENABLED", "true").strip().lower() != "true":
             raise RuntimeError("Hybrid search is disabled")
         from rag_runtime.hybrid_search import search_hybrid
         return search_hybrid(query, top_k, tenant_id, category)
@@ -45,7 +45,7 @@ def answer_question(
     '''
     if retrieval_mode == "hybrid":
         load_dotenv()
-        if any(os.getenv(flag, "false").strip().lower() != "true" for flag in (
+        if any(os.getenv(flag, "true").strip().lower() != "true" for flag in (
             "RAG_HYBRID_SEARCH_ENABLED", "RAG_HYBRID_ASK_ENABLED"
         )):
             raise RuntimeError("Experimental Hybrid ask is disabled")

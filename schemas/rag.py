@@ -12,9 +12,9 @@ class RagSearchRequest(BaseModel):
     用户发给 API 的请求
     '''
     query: str = Field(..., min_length=1)   
-    top_k: int = Field(default=3, ge=1, le=14, description="Dense: 1-10/default3; Hybrid: 1-14/default14 when omitted")
+    top_k: int = Field(default=14, ge=1, le=14, description="Hybrid default 14/max 14; explicit Dense default 3/max 10")
     category: Optional[str] = None
-    retrieval_mode: Literal["dense", "hybrid"] = "dense"
+    retrieval_mode: Literal["dense", "hybrid"] = "hybrid"
 
     @field_validator("query")
     @classmethod
@@ -25,10 +25,10 @@ class RagSearchRequest(BaseModel):
 
     @model_validator(mode="after")
     def mode_limit(self):
+        if self.retrieval_mode == "dense" and "top_k" not in self.model_fields_set:
+            self.top_k = 3
         if self.retrieval_mode == "dense" and self.top_k > 10:
             raise ValueError("Dense top_k must not exceed 10")
-        if self.retrieval_mode == "hybrid" and "top_k" not in self.model_fields_set:
-            self.top_k = 14
         return self
 
 class RagSearchResultResponse(BaseModel):
@@ -64,12 +64,12 @@ class RagSearchResponse(BaseModel):
 
 class RagAskRequest(BaseModel): # 用户问问题时传进来的请求体
     question: str = Field(..., min_length=1)
-    top_k: int = Field(default=3, ge=1, le=14, description="Dense default3/max10; Hybrid default14/max14")
-    max_distance: float = Field(default=0.9, gt=0)
+    top_k: int = Field(default=14, ge=1, le=14, description="Hybrid default 14/max 14; explicit Dense default 3/max 10")
+    max_distance: float | None = Field(default=None, gt=0, description="Dense only; defaults to 0.9 when Dense is explicitly selected")
     # tenant_id: Optional[str] = None
     category: Optional[str] = None
-    retrieval_mode: Literal["dense", "hybrid"] = "dense"
-    refusal_policy: Literal["v5_3_experimental", "v5_3_1_experimental", "v5_3_1_contract_experimental", "source_scope_experimental"] | None = None
+    retrieval_mode: Literal["dense", "hybrid"] = "hybrid"
+    refusal_policy: Literal["v5_3_experimental", "v5_3_1_experimental", "v5_3_1_contract_experimental", "source_scope_experimental"] | None = "source_scope_experimental"
 
     @field_validator("question")
     @classmethod
@@ -81,13 +81,17 @@ class RagAskRequest(BaseModel): # 用户问问题时传进来的请求体
     @model_validator(mode="after")
     def mode_limit(self):
         if self.retrieval_mode == "dense":
-            if self.top_k > 10 or self.refusal_policy is not None:
+            if "top_k" not in self.model_fields_set:
+                self.top_k = 3
+            if "max_distance" not in self.model_fields_set:
+                self.max_distance = 0.9
+            if "refusal_policy" not in self.model_fields_set:
+                self.refusal_policy = None
+            if self.top_k > 10 or self.refusal_policy is not None or self.max_distance is None:
                 raise ValueError("Dense top_k must not exceed 10 and uses the existing distance policy")
         else:
-            if "max_distance" in self.model_fields_set or self.refusal_policy is None:
-                raise ValueError("Hybrid requires an explicit experimental policy and no max_distance")
-            if "top_k" not in self.model_fields_set:
-                self.top_k = 14
+            if self.max_distance is not None or self.refusal_policy is None:
+                raise ValueError("Hybrid requires an evidence policy and no distance threshold")
         return self
 
 class RagSourceResponse(RagSearchResultResponse):

@@ -12,7 +12,7 @@ class TicketAgentPreviewRequest(BaseModel):
     """
     message: str = Field(..., min_length=1, max_length=2000)
     category: TicketCategory | None = None
-    retrieval_mode: Literal["dense", "hybrid"] = "dense"
+    retrieval_mode: Literal["dense", "hybrid"] = "hybrid"
 
 
 class TicketDraft(BaseModel):

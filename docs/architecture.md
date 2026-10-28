@@ -98,7 +98,7 @@ data/todos.db
 
 ## 4. RAG 请求链路
 
-### /rag/search（默认 Dense）
+### /rag/search（显式 Dense 回退）
 
 ```text
 POST /rag/search
@@ -111,7 +111,7 @@ POST /rag/search
 → RetrievalLog
 ```
 
-### /rag/ask（默认 Dense）
+### /rag/ask（显式 Dense 回退）
 
 ```text
 POST /rag/ask
@@ -126,7 +126,7 @@ POST /rag/ask
 → RetrievalLog
 ```
 
-默认 serving、`/rag/ask` 和 Ticket Agent 仍是 Dense Chroma；Ticket preview 另可显式复用 Hybrid 搜索，见 §6。`/rag/search` 增加默认关闭的 `retrieval_mode=hybrid` 路径：
+默认搜索、问答和 Ticket preview 使用 `retrieval_mode=hybrid`；问答默认 `source_scope_experimental`。显式 Dense 回退流程如上。两个 Hybrid 开关默认开启，已有配置中的显式 `false` 仍生效。默认检索路径：
 
 ```text
 CurrentUser tenant + category
@@ -139,17 +139,17 @@ CurrentUser tenant + category
 ```
 
 `rag_runtime/hybrid_search.py` 复用现有分词、BM25、RRF 和重排纯组件，不运行评测或加载评测数据。
-BM25 按请求重建、最多 5000 条可见 chunk；无额外持久索引或缓存失效系统。
+BM25 使用按租户 / 分类 / 完整 SQL chunk 内容键控的进程内 LRU 缓存；默认最多 5000 条可见 chunk，无额外持久索引。
 无技术词的中文查询跳过 BM25。重排失败返回脱敏 503，由调用方显式选 Dense 回退。
-本路径不生成答案、不套用 Dense 拒答阈值。开启、外发说明和分数契约见 [README](../README.md#31-可选-hybrid-搜索)。
+搜索本身不生成答案、不套用 Dense 拒答阈值。配置、外发说明和分数契约见 [README](../README.md#31-默认-hybrid-搜索)。
 SQL 复查缩小并发变更窗口，但不提供跨 SQL/Chroma 的原子快照。
 
-`/rag/ask` 另有默认关闭的实验路径：两个 Hybrid 开关均开启、请求显式指定 `retrieval_mode=hybrid` 和 `refusal_policy=v5_3_experimental`、`v5_3_1_experimental` 或 `v5_3_1_contract_experimental`，且不传 `max_distance`：
+`/rag/ask` 默认使用以下来源级证据门控路径，省略模式 / 策略即可；`max_distance` 必须省略或为 null。显式旧策略保留原契约：
 
 ```text
 Hybrid Top14 prefix
 → current SQL visibility/content recheck
-→ selected v5.3 / v5.3.1 classifier + same strict original-line selection/coverage validation
+→ source_scope classifier → strict source-ID / requirement / coverage validation
 → INSUFFICIENT: fixed refusal (no generation)
 → SUFFICIENT: full-context generation → supporting-source ID validation
 → current SQL recheck → response + typed scores/gate audit
@@ -163,7 +163,7 @@ Hybrid Top14 prefix
 分类使用强制专用 Phase B 配置，生成复用通用 chat 配置；两者无自动重试，完整上下文属于新增外发。
 Qwen3.5 Plus 生成与分类均显式关闭思考模式；生成仍为 1024 输出 tokens、30 秒超时。
 失败审计仅增加分类/生成/未细分服务阶段与有界异常类型链，不记录异常正文；验收脚本另记响应读取阶段、已知 usage 和结束原因，不记录隐藏思考。
-详细配置、输出上限与已知语义限制见 [实验问答说明](../README.md#32-实验-hybrid-问答默认关闭)。
+来源级分类器只输出来源 ID，程序投影完整原文并验证；`evidence_unit=full_source_chunk` 不代表精确句段选择或语义支持。生成只接收批准来源的完整正文。版本覆盖审计仍有已知语义错误；切换默认不改写历史负结果。详细配置、输出上限与限制见 [证据门控问答说明](../README.md#32-默认-hybrid-问答与证据门控)。
 它不是 v5.3 / v5.3.1 正式晋级、生产可用性承诺或 Ticket Agent 逻辑替换。
 
 ## 5. 文档生命周期
@@ -193,7 +193,7 @@ SQLite 与 Chroma 是两个独立存储，目前没有跨存储分布式事务�
 
 ## 6. 工单 Agent
 
-`preview` 新增可选 `retrieval_mode=hybrid`（默认 `dense`），复用 `services.rag_service.search_documents`，受现有搜索开关控制，默认 Top14；无需实验 ask 开关。来源距离可为空，独立保留重排/融合分数与通道排名；Hybrid 的 `search_kb` 输出及运行摘要不把距离冒充最终分数。Hybrid 失败脱敏为 503，运行/工具均记失败，不继续产生审批或暗中切回 Dense。
+`preview` 默认 `retrieval_mode=hybrid`，复用 `services.rag_service.search_documents`，受搜索开关控制，默认 Top14；无需 ask 开关，显式 Dense 使用 Top3。来源距离可为空，独立保留重排/融合分数与通道排名；Hybrid 的 `search_kb` 输出及运行摘要不把距离冒充最终分数。Hybrid 失败脱敏为 503，运行/工具均记失败，不继续产生审批或暗中切回 Dense。
 
 此处只共享检索；工单建议仍由原规则生成，不运行 v5.x 证据分类或答案生成。`confirm` 不重检索，保留 pending、租户、草稿匹配及条件消费约束，只有显式确认才创建工单。
 
@@ -277,7 +277,7 @@ Bearer Token
 
 当前不声明：
 
-- 默认线上检索或问答/工单已经切换到 Hybrid Retrieval（目前是默认关闭的可选搜索/实验问答）；
+- 仓库默认切换等于某个运行进程已更新、公网已部署或已证实质量改善；
 - Ticket Agent 是自主 ReAct / Function Calling Agent；
 - Demo JWT 是生产级 IAM；
 - Docker Compose 是生产部署；

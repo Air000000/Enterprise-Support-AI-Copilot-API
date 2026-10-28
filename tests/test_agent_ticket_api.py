@@ -74,6 +74,7 @@ def test_agent_ticket_preview_returns_draft(client, monkeypatch):
     response = client.post(
         "/agent/ticket/preview",
         json={
+            "retrieval_mode": "dense",
             "message": "VPN 连不上，重启客户端也没用",
             "category": "it",
         },
@@ -127,6 +128,7 @@ def test_agent_ticket_preview_can_return_no_ticket(client, monkeypatch):
     response = client.post(
         "/agent/ticket/preview",
         json={
+            "retrieval_mode": "dense",
             "message": "请假怎么申请？",
             "category": "hr",
         },
@@ -215,6 +217,7 @@ def test_agent_ticket_preview_with_empty_message_should_fail(client):
     response = client.post(
         "/agent/ticket/preview",
         json={
+            "retrieval_mode": "dense",
             "message": "",
             "category": "it",
         },
@@ -227,6 +230,7 @@ def test_agent_ticket_preview_with_invalid_category_should_fail(client):
     response = client.post(
         "/agent/ticket/preview",
         json={
+            "retrieval_mode": "dense",
             "message": "VPN 连不上",
             "category": "invalid",
         },
