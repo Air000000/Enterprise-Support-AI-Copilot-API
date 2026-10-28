@@ -90,6 +90,7 @@ def test_rag_search_returns_results(client, monkeypatch):
     response = client.post(
         "/rag/search",
         json={
+            "retrieval_mode": "dense",
             "query": "为什么系统能判断两段文字语义相近？",
             "top_k": 3,
             "category": "general",
@@ -190,6 +191,7 @@ def test_rag_ask_returns_answer_and_sources(client, monkeypatch):
     response = client.post(
         "/rag/ask",
         json={
+            "retrieval_mode": "dense",
             "question": "RAG 为什么需要 chunk？",
             "top_k": 3,
             "max_distance": 0.9,
@@ -235,6 +237,7 @@ def test_rag_search_rejects_empty_query(client):
     response = client.post(
         "/rag/search",
         json={
+            "retrieval_mode": "dense",
             "query": "",
             "top_k": 3,
         },
@@ -246,6 +249,7 @@ def test_rag_ask_rejects_empty_question(client):
     response = client.post(
         "/rag/ask",
         json={
+            "retrieval_mode": "dense",
             "question": "",
             "top_k": 3,
             "max_distance": 0.9,
@@ -258,6 +262,7 @@ def test_rag_search_rejects_invalid_top_k(client):
     response = client.post(
         "/rag/search",
         json={
+            "retrieval_mode": "dense",
             "query": "RAG 为什么需要 chunk？",
             "top_k": 0,
         },
@@ -269,6 +274,7 @@ def test_rag_ask_rejects_invalid_max_distance(client):
     response = client.post(
         "/rag/ask",
         json={
+            "retrieval_mode": "dense",
             "question": "RAG 为什么需要 chunk？",
             "top_k": 3,
             "max_distance": 0,
@@ -291,6 +297,7 @@ def test_rag_search_returns_500_when_service_fails(client, monkeypatch):
     response = client.post(
         "/rag/search",
         json={
+            "retrieval_mode": "dense",
             "query": "RAG 为什么需要 chunk？",
             "top_k": 3,
         },
@@ -332,6 +339,7 @@ def test_rag_ask_returns_500_when_service_fails(client, monkeypatch):
     response = client.post(
         "/rag/ask",
         json={
+            "retrieval_mode": "dense",
             "question": "RAG 为什么需要 chunk？",
             "top_k": 3,
             "max_distance": 0.9,

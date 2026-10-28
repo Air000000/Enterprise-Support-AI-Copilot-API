@@ -155,6 +155,7 @@ def test_ticket_agent_preview_confirm_agentops_smoke_flow(
     preview_response = client.post(
         "/agent/ticket/preview",
         json={
+            "retrieval_mode": "dense",
             "message": "VPN 连不上，重启客户端也没用",
             "category": "it",
         },
@@ -307,7 +308,7 @@ def test_concurrent_approval_decisions_have_one_winner(
 ):
     monkeypatch.setattr(ticket_agent_service, "search_chroma", lambda **kwargs: [])
     preview = ticket_agent_service.preview_ticket(
-        TicketAgentPreviewRequest(message="VPN 连不上", category="it"),
+        TicketAgentPreviewRequest(retrieval_mode="dense", message="VPN 连不上", category="it"),
         tenant_id="tenant_demo",
         user_id="support_demo",
     )

@@ -288,6 +288,7 @@ def test_preview_ticket_returns_high_priority_for_common_vpn_issue(monkeypatch):
 
     response = preview_ticket(
         request=TicketAgentPreviewRequest(
+            retrieval_mode="dense",
             message="VPN 连不上，重启客户端也没用",
             category="it",
         ),
@@ -400,6 +401,7 @@ def test_preview_ticket_with_other_category_does_not_filter_rag_by_other(monkeyp
 
     response = preview_ticket(
         request=TicketAgentPreviewRequest(
+            retrieval_mode="dense",
             message="不知道这个问题应该找哪个部门处理",
             category="other",
         ),
@@ -460,6 +462,7 @@ def test_preview_ticket_infers_category_from_top_source_when_category_missing(mo
 
     response = preview_ticket(
         request=TicketAgentPreviewRequest(
+            retrieval_mode="dense",
             message="申请客户数据访问权限失败了",
             category=None,
         ),
@@ -520,6 +523,7 @@ def test_preview_ticket_can_return_no_ticket_for_knowledge_question(monkeypatch)
 
     response = preview_ticket(
         request=TicketAgentPreviewRequest(
+            retrieval_mode="dense",
             message="请问请假怎么申请？",
             category="hr",
         ),
@@ -945,6 +949,7 @@ def test_preview_ticket_marks_search_kb_tool_call_failed_when_search_fails(monke
     with pytest.raises(RuntimeError) as exc_info:
         preview_ticket(
             request=TicketAgentPreviewRequest(
+                retrieval_mode="dense",
                 message="VPN 连不上",
                 category="it",
             ),

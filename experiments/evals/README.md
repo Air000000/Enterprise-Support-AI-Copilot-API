@@ -6,7 +6,7 @@
 
 ### 当前在线运行时
 
-当前 API **默认使用 Dense Chroma 检索**；冻结的 Dense100 + BM25100 → RRF(k=60) Top100 → qwen3-rerank → 直接 Top14 已接入默认关闭的可选搜索和实验问答。实验问答可显式选择 `v5_3_experimental` 或 `v5_3_1_experimental` 证据 gate；v5.3.1 是接入后的实验候选，不代表质量晋级。Ticket Agent 默认 Dense，preview 可显式复用 Hybrid 搜索，但不调用 v5.x gate。代码接入不等于默认启用、公网部署或独立质量验收通过，配置与请求契约见 [当前运行时说明](../../README.md#3-rag-在线运行时)。
+当前 API 搜索、问答和工单预览**默认使用冻结 Hybrid**：Dense100 + BM25100 → RRF(k=60) Top100 → qwen3-rerank → 直接 Top14；问答默认 `source_scope_experimental` 来源级证据 gate，历史策略与 Dense 保留为显式选项。工单只复用检索，不调用问答 gate，真实建单仍需人工确认。2026-10-28 的默认切换是工程选择，不修改冻结实验及负结果，不代表独立语义质量改善或公网部署；配置与请求契约见 [当前运行时说明](../../README.md#3-rag-在线运行时)。
 
 `portfolio_v1_rag_freeze/` 的架构及时间线保留冻结当时的快照，其中“在线集成尚未完成”不作为当前 API 接入状态；历史实验参数与结论不因此改写。
 

@@ -127,8 +127,7 @@ def run_flow(client):
 
     def search(query, category, mode=None):
         body = {"query": query, "category": category, "tenant_id": "tenant_other"}
-        if mode:
-            body["retrieval_mode"] = mode
+        body["retrieval_mode"] = mode or "dense"
         data = request("POST", "/rag/search", headers=own, json=body)
         if data["retrieval_mode"] != (mode or "dense"):
             raise RuntimeError("Wrong retrieval mode")
@@ -139,7 +138,7 @@ def run_flow(client):
     dense = search(VPN_QUERY, "it")
     hybrid = search(VPN_QUERY, "it", "hybrid")
     if dense["top_k"] != 3 or {r["document_id"] for r in dense["results"]} != {ids['vpn.md'], ids['printer.md']}:
-        raise RuntimeError("Default Dense regression")
+        raise RuntimeError("Explicit Dense fallback regression")
     if hybrid["top_k"] != 14 or {r["document_id"] for r in hybrid["results"]} != {ids['vpn.md'], ids['printer.md']}:
         raise RuntimeError("Hybrid candidate scope mismatch")
     if hybrid["results"][0]["document_id"] != ids["vpn.md"]:
@@ -159,7 +158,7 @@ def run_flow(client):
     if len(logs) != 5 or len(hybrid_logs) != 4 or any(r["top_distance"] is not None for r in hybrid_logs):
         raise RuntimeError("Missing or incorrectly typed retrieval audit")
     return {"status": "PASS", "checks": ["upload/index", "JWT tenant scope", "body tenant ignored",
-            "default Dense", "Hybrid VPN ranking", "category", "delete", "empty corpus", "typed audit"]}
+            "explicit Dense fallback", "Hybrid VPN ranking", "category", "delete", "empty corpus", "typed audit"]}
 
 
 @contextmanager

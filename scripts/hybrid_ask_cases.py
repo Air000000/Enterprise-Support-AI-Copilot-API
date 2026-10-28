@@ -101,9 +101,9 @@ def run_flow(client, records, progress):
     own = headers["support"]
     if client.get(f"/documents/{ids['foreign.md']}", headers=own).status_code != 404:
         raise RuntimeError("Tenant isolation failed")
-    dense = request("POST", "/rag/search", headers=own, json={"query": CASES[0][1], "category": "it"})
+    dense = request("POST", "/rag/search", headers=own, json={"query": CASES[0][1], "category": "it", "retrieval_mode": "dense"})
     if dense["retrieval_mode"] != "dense" or [r["document_id"] for r in dense["results"]] != [ids["vpn.md"]]:
-        raise RuntimeError("Dense default regression")
+        raise RuntimeError("Explicit Dense fallback regression")
     for name, question, category, expected in CASES:
         if name == "deleted":
             request("DELETE", f"/documents/{ids['vpn.md']}", headers=own)
@@ -125,4 +125,4 @@ def run_flow(client, records, progress):
     counts = request("GET", "/agent-ops/metrics/retrieval", headers=own)["retrieval_status_counts"]
     if len(logs) != 9 or counts != {"ok": 3, "refused_insufficient_evidence": 4, "no_context": 2}:
         raise RuntimeError("Acceptance audit/status mismatch")
-    return {"status": "PASS", "cases": progress, "checks": ["real JWT", "tenant/category scope", "Dense default", "typed audit"]}
+    return {"status": "PASS", "cases": progress, "checks": ["real JWT", "tenant/category scope", "explicit Dense fallback", "typed audit"]}
