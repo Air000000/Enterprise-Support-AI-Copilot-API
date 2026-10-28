@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-27",
+  "status": "PASS_FIXED8_ENGINEERING_NOT_QUALITY_PROMOTION",
+  "policy": "source_scope_experimental",
+  "execution_commit": "72bf9aa7d43af69d33014bca97e5740648b79e98",
+  "merged_main_commit": "458a61df1576c3e6b0223cfc609f86ed828ebdcc",
+  "identical_code_tree": "b9eba3ee424cfd2c82af85100ae6cd7125e26f16",
+  "fixtures": "scripts/hybrid_ask_cases.py: original7 fictional documents and8 fixed cases",
+  "scope": "Isolated Linux container, real Uvicorn loopback TCP/JWT/upload/index/SQL/Chroma/Hybrid/rerank/classifier/generation; temporary stores and real providers, no public deployment",
+  "cases": [
+    {"case": "supported", "status": "ok"},
+    {"case": "missing", "status": "refused_insufficient_evidence"},
+    {"case": "version", "status": "refused_insufficient_evidence"},
+    {"case": "conflict", "status": "refused_insufficient_evidence"},
+    {"case": "chinese", "status": "ok"},
+    {"case": "unrelated", "status": "refused_insufficient_evidence"},
+    {"case": "empty", "status": "no_context", "model_calls": 0},
+    {"case": "deleted", "status": "no_context", "model_calls": 0}
+  ],
+  "actual_calls": {"embedding": 14, "rerank": 6, "classifier": 6, "generation": 2},
+  "provider_calls": 28,
+  "automatic_retries": 0,
+  "unresolved_attempts": 0,
+  "checks": [
+    "JWT tenant/category scope and body tenant spoofing protection",
+    "Default Dense search, optional current-policy Hybrid ask",
+    "Actual full-source classifier and approved-full-source generation payloads",
+    "Both generated answers retain complete steps, conditions and valid citations under assistant full-source review",
+    "Deletion/empty scopes make zero model calls",
+    "Nine retrieval audits:3 ok including Dense search,4 evidence refusals,2 no_context",
+    "Alembic revision20261022_0002 and zero ticket/Agent action rows",
+    "All28 completed receipts and request scopes verified offline; audit sends no model calls"
+  ],
+  "action_row_counts": {"ticket": 0, "agent_runs": 0, "approval_requests": 0, "tool_calls": 0},
+  "semantic_warnings": [
+    {"cases": ["supported", "conflict"], "facet": "version_and_time", "observed": "NOT_REQUIRED", "assessment": "Explicit static version1.0 remains material. Other fields establish matching scope but do not make this audit convention correct."},
+    {"cases": ["version"], "facet": "version_and_time", "observed": "SUPPORTED", "assessment": "Reason acknowledges requested2.0 is outside the source's1.0 coverage. Other MISSING facets correctly refuse; this field does not establish2.0 compatibility."}
+  ],
+  "historical_quality_context": {
+    "scope": "Prior DEV310 paired full-system comparison; Hybrid Top14 with v5_3_1_experimental versus Dense Top3, not this source-scope policy",
+    "grounded_complete_answers": {"dense": {"passed": 74, "total": 310}, "hybrid": {"passed": 85, "total": 310}},
+    "difference_percentage_points": 3.55,
+    "paired_bootstrap_95_interval_percentage_points": [-2.26, 9.03],
+    "primary_improvement_established": false,
+    "limitations": "Different retrieval/context/generation/gate settings prevent attributing the difference to refusal alone. Qwen-family proxy judging plus assistant review is not independent expert gold; reused DEV diagnostics are not new blind tests.",
+    "old_results_unchanged": true,
+    "new_DEV310_run": false
+  },
+  "not_covered": [
+    "Functional Dense answer generation; the live default Dense check is search only",
+    "Ticket Agent preview/confirm, persistent Compose restart or public deployment in this run",
+    "All real-world applicability, optional-cause explanations, long contexts, generator refusal or failure branches",
+    "Independent held-out quality, production IAM/load/latency reliability, or general accuracy100%"
+  ],
+  "reproduction": "Public smoke CLI remains bound to original v5_3_experimental. This run used a separately frozen local thin adapter with exact receipt replay. Raw requests/responses and item-level reviews remain local; this aggregate is not a publicly independently recomputable quality benchmark.",
+  "plan_sha256": "e68d0725de8a597e2c04aa2fac149ced5ceb4fcecee42078a12fcf083a3c0a92",
+  "completion_sha256": "3bdc36c8ceaef51fcd2f58ccfa02759be4866d6c663bce3e1676e6c17cc42a04",
+  "default_changed": false,
+  "promotion_allowed": false,
+  "quality_improvement_established": false
+}
