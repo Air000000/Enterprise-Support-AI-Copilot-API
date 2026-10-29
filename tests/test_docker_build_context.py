@@ -13,7 +13,7 @@ def test_build_context_excludes_secrets_and_runtime_mounts():
     root = Path(__file__).resolve().parents[1]
     rules = set((root / ".dockerignore").read_text(encoding="utf-8").splitlines())
     assert {".env", ".env.*", "!.env.example", ".git/", "data/", "storage/", "experiments/chroma_db/",
-            "docker_data/", "docker_storage/", "docker_chroma_db/"} <= rules
+            "docker_data/", "docker_storage/", "docker_chroma_db/", ".worktrees/"} <= rules
 
 
 def test_live_check_refuses_non_disposable_environment_before_http(monkeypatch):
