@@ -7,6 +7,7 @@ venv/
 !.env.example
 .git/
 .gitignore
+.worktrees/
 todos.db
 *.db-journal
 *.db-wal

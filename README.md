@@ -690,10 +690,24 @@ DASHSCOPE_API_KEY=your_dashscope_api_key_here
 DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 DASHSCOPE_MODEL=qwen3.5-plus
 EMBEDDING_MODEL=text-embedding-v4
+# 默认 Hybrid 搜索与工单预览需要专用重排配置
+DASHSCOPE_RERANK_API_KEY=your_singapore_dashscope_api_key_here
+DASHSCOPE_RERANK_BASE_URL=https://your_workspace_id.ap-southeast-1.maas.aliyuncs.com/compatible-api/v1
+# 默认问答还需要专用证据分类配置
+DASHSCOPE_PHASE_B_API_KEY=your_singapore_dashscope_api_key_here
+DASHSCOPE_PHASE_B_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
+RAG_HYBRID_SEARCH_ENABLED=true
+RAG_HYBRID_ASK_ENABLED=true
 DATABASE_URL=sqlite:///data/todos.db
-SQL_ECHO=true
+SQL_ECHO=false
 DOCUMENT_STORAGE_ROOT=storage/documents
 ```
+
+填写各区域实际凭据与工作空间地址后才能执行非空默认问答；占位值不是有效配置。
+缺配置或提供方失败会返回脱敏 503，不会自动回退。显式请求
+`{"question":"你的问题","retrieval_mode":"dense"}` 可沿用 Dense + 距离拒答；
+关闭 Hybrid 开关本身不会改变 API 默认模式。文档须先上传并显式索引，
+旧静态索引和离线 TechQA 归档不会自动成为 Hybrid 可见语料。外发与费用范围见 §3。
 
 ## 安装与数据库迁移
 
@@ -727,7 +741,7 @@ docker compose up --build
 
 Docker Compose 用于本地可复现运行与核心链路验证，不作为生产部署能力声明。
 
-镜像构建排除 `.env`/其变体、开发及 Docker 的数据库/上传文件/Chroma 目录，保留公开 `.env.example`。Git 忽略不等于 Docker 构建忽略；不要把日常运行数据复制进镜像。
+镜像构建排除 `.env`/其变体、本地 `.worktrees/` 开发副本、开发及 Docker 的数据库/上传文件/Chroma 目录，保留公开 `.env.example`。Git 忽略不等于 Docker 构建忽略；不要把日常运行数据复制进镜像。
 
 零模型调用的隔离 Compose 启动验收（Compose ≥ 2.24.4）：
 
