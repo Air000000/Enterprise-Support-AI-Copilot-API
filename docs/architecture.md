@@ -7,7 +7,7 @@
 ```text
 企业知识文档 / 上传文档
 → 文档生命周期管理
-→ Chroma 检索
+→ Hybrid 检索（Chroma Dense + BM25 + RRF + rerank）
 → RAG 回答 + 来源
 → 工单 Agent 预览
 → 人工确认
@@ -53,7 +53,7 @@ enterprise-support-ai-copilot-api/
 | Schema 层 | `schemas/` | 请求 / 响应数据模型 |
 | Service 层 | `services/` | 业务编排与状态流转 |
 | 持久化层 | `models/`、`database.py` | SQLModel 表与 SQLite Session |
-| RAG 运行时 | `rag_runtime/` | Chroma 检索、Context 组装、LLM 调用 |
+| RAG 运行时 | `rag_runtime/` | Dense / Hybrid 检索、证据门控、Context 组装、LLM 调用 |
 | 兼容层 | `experiments/rag_local/` | 兼容历史 import 与 `python -m` 入口 |
 | 评测层 | `experiments/evals/` | TechQA 检索、生成、拒答与失败归因 |
 | 脚本 | `scripts/` | 冒烟测试与本地验证 |
@@ -131,7 +131,8 @@ POST /rag/ask
 ```text
 CurrentUser tenant + category
 → SQL indexed/current-version DocumentChunk allowlist
-→ Dense100 (Chroma ids + metadata filter) + BM25100 (same SQL scope)
+→ Dense100 (Chroma tenant/category + managed-source metadata filter, then SQL eligibility check)
+  + BM25100 (same SQL scope)
 → RRF(k=60) Top100
 → SQL visibility/content recheck
 → qwen3-rerank → SQL recheck → Top14 prefix
