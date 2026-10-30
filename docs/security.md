@@ -2,12 +2,19 @@
 
 Enterprise Support AI Copilot 安全设计说明。
 
-## 当前边界提示（2026-10-08）
+## 当前边界提示（2026-10-30）
 
 当前 `main` 已有 `auth.py` Demo JWT：受保护路由从 Bearer token 获取 `user_id` / `tenant_id`，
 Document / AgentOps 路由检查 support/admin 角色，相关服务传递并约束租户范围。
 账户和默认密钥仍是演示配置，不等价于生产级 IAM、完整 RBAC 或数据库级隔离；
 preview/confirm 的审批校验也不保证并发恰好一次建单。不能直接据此开放公网服务。
+
+当前默认 Hybrid 会将查询发往 embedding，并将查询和最多 100 条租户候选正文发往专用 rerank；
+默认 source_scope 问答还需要专用 Phase B 分类配置，生成使用通用 chat 配置。
+配置与外发范围见 [README](../README.md#3-rag-在线运行时)和 [.env.example](../.env.example)。
+固定 8 类场景工程验收不代表业务准确率；版本审计仍有语义错误，真实引用不保证语义支持。
+审批由同租户 pending 条件更新保证至多一次消费；工单与审计分别写入，无跨事务恰好一次或崩溃恢复保证。
+当前配置允许 shell 环境优先，迁移和启动必须使用同一组配置；下文“.env 唯一配置源”为历史建议。
 
 **以下正文保留早期 mock-context MVP 的历史设计与风险清单。** 其中“尚无认证”、
 “tenant_id 始终为 mock”、“尚无 Alembic”等描述不是当前实现清单。
@@ -980,8 +987,8 @@ Smoke scripts
 当前项目提供：
 
 ```text
-scripts/冒烟_agentops_flow.py
-scripts/冒烟_document_backend_flow.py
+scripts/smoke_agentops_flow.py
+scripts/smoke_document_backend_flow.py
 ```
 
 Smoke scripts 的定位：

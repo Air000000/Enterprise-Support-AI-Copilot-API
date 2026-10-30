@@ -24,7 +24,7 @@ Ticket Agent 是 Enterprise Support AI Copilot 中的业务执行层。
 ↓
 创建真实 工单
 ↓
-记录 agent_runs / 工具调用s / approval_requests / 指标
+记录 agent_runs / tool_calls / approval_requests / 指标
 ```
 
 ---
@@ -66,13 +66,16 @@ POST /agent/ticket/confirm
 ```http
 GET  /agent-ops/runs
 GET  /agent-ops/runs/{agent_run_id}
+GET  /agent-ops/runs/{agent_run_id}/trace
 GET  /agent-ops/runs/{agent_run_id}/tool-calls
 GET  /agent-ops/runs/{agent_run_id}/approval-requests
-GET  /agent-ops/指标/summary
+GET  /agent-ops/metrics/summary
 
 POST /agent-ops/approval-requests/{approval_request_id}/reject
 POST /agent-ops/approval-requests/{approval_request_id}/cancel
 ```
+
+`/agent-ops` 接口要求 support/admin 角色，查询限定 JWT 所属租户；`/runs/{agent_run_id}/trace` 聚合 run、tool_calls 与 approval_requests。
 
 当前项目使用 `/agent-ops` 作为运维观测接口前缀，用于查看 Agent 运行记录、工具调用记录、审批记录和指标汇总。
 
@@ -116,9 +119,9 @@ updated_at
 
 ---
 
-### 工具调用s
+### tool_calls
 
-`工具调用s` 记录 Agent 在运行过程中调用过的工具。
+`tool_calls` 记录 Agent 在运行过程中调用过的工具。
 
 它回答的问题是：
 
@@ -134,8 +137,8 @@ Agent 调用了哪个工具？
 
 ```text
 search_kb
-classify_工单
-create_工单
+classify_ticket
+create_ticket
 ```
 
 ---
@@ -153,7 +156,7 @@ Agent 建议执行什么动作？
 确认前的 草稿 payload 是什么？
 ```
 
-`create_工单` 属于会修改业务状态的动作，因此必须先生成 `approval_request`，再等待用户确认。
+`create_ticket` 属于会修改业务状态的动作，因此必须先生成 `approval_request`，再等待用户确认。
 
 ---
 
@@ -162,7 +165,7 @@ Agent 建议执行什么动作？
 ### 接口
 
 ```http
-POST /agent/工单/预览
+POST /agent/ticket/preview
 ```
 
 ### 示例请求
@@ -183,12 +186,12 @@ POST /agent/工单/预览
 4. 调用知识库检索
 5. 检索成功后，将 search_kb 工具调用 更新为 success
 6. 将检索结果转换为 来源
-7. 创建 classify_工单 工具调用，状态为 pending
+7. 创建 classify_ticket 工具调用，状态为 pending
 8. 根据用户问题和 来源 判断是否需要创建工单
 9. 推断 工单 category
 10. 推断 工单 priority
 11. 生成 reason
-12. 将 classify_工单 工具调用 更新为 success
+12. 将 classify_ticket 工具调用 更新为 success
 13. 如果不需要创建工单，更新 agent_run 为 completed，并返回 无需建单响应
 14. 如果需要创建工单，生成 工单草稿
 15. 创建 approval_request，状态为 pending
@@ -209,7 +212,7 @@ RAG 检索
 ↓
 来源
 ↓
-classify_工单 工具调用
+classify_ticket 工具调用
 ↓
 TicketDraft
 ↓
@@ -224,16 +227,19 @@ TicketAgentPreviewResponse
 
 `search_kb` 是对底层 RAG 检索的业务语义抽象。
 
-底层当前使用 Chroma 检索，但 AgentOps 中记录的工具名是 `search_kb`，而不是 `search_chroma`。这样做的好处是：以后底层从 Chroma 换成 Milvus、pgvector 或 Elasticsearch，Agent 工具语义不需要变化。
+底层默认使用 Chroma Dense + BM25 + RRF + rerank，但 AgentOps 中记录的工具名是 `search_kb`，而不是 `search_chroma`。这样做的好处是：以后底层从 Chroma 换成 Milvus、pgvector 或 Elasticsearch，Agent 工具语义不需要变化。
+
+以下为默认 Hybrid 的示意审计值，实际 ID 和分数以响应为准；`distance=null` 可以来自 BM25 独有命中，重排分数不是概率。
 
 ### 工具输入 JSON 示例
 
 ```json
 {
   "query": "VPN 连不上，重启客户端也没用",
-  "top_k": 3,
+  "top_k": 14,
   "tenant_id": "tenant_demo",
-  "category": "it"
+  "category": "it",
+  "retrieval_mode": "hybrid"
 }
 ```
 
@@ -243,7 +249,11 @@ TicketAgentPreviewResponse
 {
   "results_count": 1,
   "document_ids": ["doc_vpn_guide"],
-  "top_distance": 0.52
+  "top_distance": null,
+  "retrieval_mode": "hybrid",
+  "score_type": "rerank_relevance",
+  "larger_is_better": true,
+  "rerank_scores": [0.92]
 }
 ```
 
@@ -262,11 +272,11 @@ TicketAgentPreviewResponse
 
 ---
 
-## 7. classify_工单 工具调用
+## 7. classify_ticket 工具调用
 
-`classify_工单` 记录工单判断和分类过程。
+`classify_ticket` 记录工单判断和分类过程。
 
-它不是单纯的模型分类，而是当前系统中的规则化决策步骤。它基于用户问题和 RAG 来源 判断：
+它是确定性规则决策步骤，不调用 LLM 分类。它基于用户问题和 RAG 来源 判断：
 
 ```text
 是否需要创建工单
@@ -281,7 +291,7 @@ TicketAgentPreviewResponse
 {
   "message": "VPN 连不上，重启客户端也没用",
   "requested_category": "it",
-  "来源_count": 1,
+  "sources_count": 1,
   "source_categories": ["it"],
   "source_document_ids": ["doc_vpn_guide"]
 }
@@ -291,7 +301,7 @@ TicketAgentPreviewResponse
 
 ```json
 {
-  "should_create_工单": true,
+  "should_create_ticket": true,
   "category": "it",
   "priority": "high",
   "reason": "用户描述包含故障、异常、申请或权限类信号，建议生成工单草稿，用户确认后创建工单。"
@@ -300,7 +310,7 @@ TicketAgentPreviewResponse
 
 ### 设计意义
 
-`classify_工单` 让系统可以解释：
+`classify_ticket` 让系统可以解释：
 
 ```text
 为什么这次请求需要创建工单？
@@ -319,22 +329,27 @@ TicketAgentPreviewResponse
 {
   "agent_run_id": 1,
   "approval_request_id": 10,
-  "should_create_工单": true,
+  "retrieval_mode": "hybrid",
+  "should_create_ticket": true,
   "reason": "用户描述包含故障、异常、申请或权限类信号，建议生成工单草稿，用户确认后创建工单。",
-  "草稿": {
+  "draft": {
     "title": "VPN 连不上，重启客户端也没用",
     "description": "用户问题：VPN 连不上，重启客户端也没用\n\n系统根据用户描述生成工单草稿，建议支持人员进一步确认和处理。\n\n相关知识库来源：\n1. vpn_guide (doc_vpn_guide, doc_vpn_guide_chunk_1)",
     "category": "it",
     "priority": "high"
   },
-  "来源": [
+  "sources": [
     {
       "document_id": "doc_vpn_guide",
       "chunk_id": "doc_vpn_guide_chunk_1",
       "title": "vpn_guide",
-      "source_path": "experiments/docs/it/vpn_guide.md",
-      "distance": 0.52,
-      "预览": "VPN 故障排查说明。",
+      "source_path": "storage/documents/tenant_demo/doc_vpn_guide/v1/vpn_guide.md",
+      "distance": null,
+      "rerank_score": 0.92,
+      "fusion_score": 0.016393,
+      "dense_rank": null,
+      "bm25_rank": 1,
+      "preview": "VPN 故障排查说明。",
       "category": "it"
     }
   ]
@@ -348,7 +363,7 @@ TicketAgentPreviewResponse
 ### 接口
 
 ```http
-POST /agent/工单/确认
+POST /agent/ticket/confirm
 ```
 
 ### 示例请求
@@ -357,7 +372,7 @@ POST /agent/工单/确认
 {
   "agent_run_id": 1,
   "approval_request_id": 10,
-  "草稿": {
+  "draft": {
     "title": "VPN 连不上，重启客户端也没用",
     "description": "用户问题：VPN 连不上，重启客户端也没用\n\n系统根据用户描述生成工单草稿，建议支持人员进一步确认和处理。\n\n相关知识库来源：\n1. vpn_guide (doc_vpn_guide, doc_vpn_guide_chunk_1)",
     "category": "it",
@@ -372,18 +387,21 @@ POST /agent/工单/确认
 1. 根据 approval_request_id 和 tenant_id 读取 approval_request
 2. 校验 approval_request.agent_run_id 是否等于 request.agent_run_id
 3. 校验 approval_request.status 是否仍然是 pending
-4. 从 approval_request.草稿_json 中还原服务端保存的 TicketDraft
-5. 校验 request.草稿 是否和服务端保存的 TicketDraft 一致
-6. 将 approval_request 更新为 approved
-7. 使用服务端保存的 approval_草稿 构造 TicketCreate
-8. 创建 create_工单 工具调用，状态为 pending
+4. 从 approval_request.draft_json 中还原服务端保存的 TicketDraft
+5. 校验 request.draft 是否和服务端保存的 TicketDraft 一致
+6. 以审批 ID、tenant_id 和旧状态 pending 条件更新为 approved
+7. 使用服务端保存的 approval_draft 构造 TicketCreate
+8. 创建 create_ticket 工具调用，状态为 pending
 9. 调用 工单服务 创建真实工单
-10. 创建成功后，将 create_工单 工具调用 更新为 success
+10. 创建成功后，将 create_ticket 工具调用 更新为 success
 11. 更新 agent_run 为 completed
 12. 返回创建后的 工单
 ```
 
 ---
+
+confirm / reject / cancel 共用 pending 条件更新，只有一个审批决策能成功，终态不能覆盖。
+这保证审批至多一次消费；工单和审计分别写入，不提供跨事务恰好一次或崩溃恢复保证。
 
 ## 10. 确认阶段安全校验
 
@@ -433,20 +451,20 @@ cancelled
 
 ---
 
-### 10.3 确认 草稿 必须和服务端保存的 草稿_json 一致
+### 10.3 确认 草稿 必须和服务端保存的 draft_json 一致
 
 Preview 阶段会把 工单草稿 保存到：
 
 ```text
-approval_request.草稿_json
+approval_request.draft_json
 ```
 
-Confirm 阶段会重新读取这个服务端保存的 草稿，并和请求体里的 `草稿` 做一致性校验。
+Confirm 阶段会重新读取这个服务端保存的 草稿，并和请求体里的 `draft` 做一致性校验。
 
 如果不一致，返回错误：
 
 ```text
-Confirm 草稿 does not match approval 草稿
+Confirm draft does not match approval draft
 ```
 
 这个校验可以防止：
@@ -457,13 +475,13 @@ Confirm 草稿 does not match approval 草稿
 后端错误地创建 B。
 ```
 
-真正用于创建工单的数据是服务端保存的 `approval_草稿`，而不是客户端临时提交的 草稿。
+真正用于创建工单的数据是服务端保存的 `approval_draft`，而不是客户端临时提交的 草稿。
 
 ---
 
-## 11. create_工单 工具调用
+## 11. create_ticket 工具调用
 
-`create_工单` 是真正修改业务状态的工具调用。
+`create_ticket` 是真正修改业务状态的工具调用。
 
 它只会在 确认阶段执行，并且必须满足：
 
@@ -488,7 +506,7 @@ approval_request.status == pending
 
 ```json
 {
-  "工单_id": 100,
+  "ticket_id": 100,
   "status": "open"
 }
 ```
@@ -501,8 +519,8 @@ approval_request.status == pending
 
 ```text
 search_kb
-classify_工单
-create_工单
+classify_ticket
+create_ticket
 ```
 
 它们分别回答不同问题：
@@ -510,8 +528,8 @@ create_工单
 | tool_name       | 阶段      | 作用                 |
 | --------------- | ------- | ------------------ |
 | search_kb       | 预览 | 记录 Agent 查了什么知识库   |
-| classify_工单 | 预览 | 记录 Agent 为什么建议创建工单 |
-| create_工单   | 确认 | 记录用户确认后系统真正执行了什么   |
+| classify_ticket | 预览 | 记录 Agent 为什么建议创建工单 |
+| create_ticket   | 确认 | 记录用户确认后系统真正执行了什么   |
 
 完整链路：
 
@@ -522,13 +540,13 @@ agent_run
 ↓
 工具调用: search_kb
 ↓
-工具调用: classify_工单
+工具调用: classify_ticket
 ↓
 approval_request
 ↓
 用户确认
 ↓
-工具调用: create_工单
+工具调用: create_ticket
 ↓
 工单
 ↓
@@ -561,8 +579,8 @@ GET /agent-ops/runs/{agent_run_id}/tool-calls
 
 ```text
 search_kb
-classify_工单
-create_工单
+classify_ticket
+create_ticket
 ```
 
 ### 查看某次 Agent run 的审批请求
@@ -574,7 +592,7 @@ GET /agent-ops/runs/{agent_run_id}/approval-requests
 ### 查看 AgentOps 汇总指标
 
 ```http
-GET /agent-ops/指标/summary
+GET /agent-ops/metrics/summary
 ```
 
 示例结果：
@@ -586,10 +604,10 @@ GET /agent-ops/指标/summary
   "completed_agent_runs": 1,
   "failed_agent_runs": 0,
   "cancelled_agent_runs": 0,
-  "total_工具调用s": 3,
-  "pending_工具调用s": 0,
-  "successful_工具调用s": 3,
-  "failed_工具调用s": 0,
+  "total_tool_calls": 3,
+  "pending_tool_calls": 0,
+  "successful_tool_calls": 3,
+  "failed_tool_calls": 0,
   "total_approval_requests": 1,
   "pending_approval_requests": 0,
   "approved_approval_requests": 1,
@@ -602,21 +620,21 @@ GET /agent-ops/指标/summary
 
 ## 14. 工具调用 失败类型统计
 
-在 AgentOps 中，`工具调用s` 表不仅记录每次工具调用的输入、输出、状态和错误信息，还通过 `error_type` 字段记录失败类别。
+在 AgentOps 中，`tool_calls` 表不仅记录每次工具调用的输入、输出、状态和错误信息，还通过 `error_type` 字段记录失败类别。
 
 当前约定的失败类型包括：
 
 * `search_kb_failed`：知识库检索失败。
-* `classify_工单_failed`：工单分类或草稿生成失败。
-* `create_工单_failed`：确认后创建工单失败。
+* `classify_ticket_failed`：工单分类或草稿生成失败。
+* `create_ticket_failed`：确认后创建工单失败。
 
-`/agent-ops/指标/summary` 会返回 `工具调用_error_types`，用于按失败类型聚合统计。例如：
+`/agent-ops/metrics/summary` 会返回 `tool_call_error_types`，用于按失败类型聚合统计。例如：
 
 ```json
 {
-  "failed_工具调用s": 1,
-  "工具调用_error_types": {
-    "create_工单_failed": 1
+  "failed_tool_calls": 1,
+  "tool_call_error_types": {
+    "create_ticket_failed": 1
   }
 }
 ```
@@ -630,7 +648,7 @@ GET /agent-ops/指标/summary
 ### 步骤 1： Preview
 
 ```http
-POST /agent/工单/预览
+POST /agent/ticket/preview
 ```
 
 请求：
@@ -662,7 +680,7 @@ GET /agent-ops/runs/{agent_run_id}/tool-calls
 
 ```text
 search_kb: success
-classify_工单: success
+classify_ticket: success
 ```
 
 ---
@@ -684,7 +702,7 @@ status = pending
 ### 步骤 4： Confirm
 
 ```http
-POST /agent/工单/确认
+POST /agent/ticket/confirm
 ```
 
 请求体使用 预览 返回的 草稿，不能修改 草稿 内容。
@@ -701,8 +719,8 @@ GET /agent-ops/runs/{agent_run_id}/tool-calls
 
 ```text
 search_kb: success
-classify_工单: success
-create_工单: success
+classify_ticket: success
+create_ticket: success
 ```
 
 ---
@@ -710,7 +728,7 @@ create_工单: success
 ### 步骤 6： 查看 指标
 
 ```http
-GET /agent-ops/指标/summary
+GET /agent-ops/metrics/summary
 ```
 
 预期结果：
@@ -718,8 +736,8 @@ GET /agent-ops/指标/summary
 ```text
 total_agent_runs = 1
 completed_agent_runs = 1
-total_工具调用s = 3
-successful_工具调用s = 3
+total_tool_calls = 3
+successful_tool_calls = 3
 total_approval_requests = 1
 approved_approval_requests = 1
 ```
@@ -747,7 +765,7 @@ error_message 记录异常原因
 ```text
 拒绝 确认
 不更新 approval_request
-不创建 create_工单 工具调用
+不创建 create_ticket 工具调用
 不创建真实 工单
 ```
 
@@ -770,7 +788,7 @@ error_message 记录异常原因
 处理方式：
 
 ```text
-比较 request.草稿 和 approval_request.草稿_json
+比较 request.draft 和 approval_request.draft_json
 如果不一致，拒绝 确认
 不创建真实 工单
 ```
@@ -787,7 +805,7 @@ error_message 记录异常原因
 
 ---
 
-### 为什么 search_kb 和 classify_工单 都记录为 工具调用？
+### 为什么 search_kb 和 classify_ticket 都记录为 工具调用？
 
 因为 Agent 的可解释性不仅来自最终结果，也来自中间过程。
 
@@ -797,7 +815,7 @@ error_message 记录异常原因
 Agent 基于哪些知识库内容做判断？
 ```
 
-`classify_工单` 解释：
+`classify_ticket` 解释：
 
 ```text
 Agent 为什么认为需要创建工单？
@@ -807,7 +825,7 @@ Agent 为什么认为需要创建工单？
 
 ---
 
-### 为什么 确认阶段使用服务端保存的 草稿_json？
+### 为什么 确认阶段使用服务端保存的 draft_json？
 
 因为客户端请求不可信。
 
@@ -819,4 +837,4 @@ Agent 为什么认为需要创建工单？
 系统创建了 B。
 ```
 
-因此，真正用于创建工单的数据必须来自 预览阶段服务端保存的 `approval_request.草稿_json`。
+因此，真正用于创建工单的数据必须来自 预览阶段服务端保存的 `approval_request.draft_json`。
