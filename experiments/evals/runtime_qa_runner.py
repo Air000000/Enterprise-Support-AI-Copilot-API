@@ -154,23 +154,39 @@ class Book:
 
     def __init__(self):
         self.rows = {}
+        self.failures = {}
 
     def add(self, event, kind=None):
         stage = kind or event["stage"]
         row = (stage, event["prompt_tokens"], event["completion_tokens"], event["request_sha256"], event["response_sha256"])
         qa.charge(stage, row[1], row[2])
         cid = event["call_id"]
-        if cid in self.rows and self.rows[cid] != row:
+        if cid in self.failures or (cid in self.rows and self.rows[cid] != row):
             raise RuntimeError("Completed receipt changed")
         self.rows[cid] = row
         self.check()
 
+    def hold_failed_classifier(self, event):
+        cid = event["call_id"]
+        row = (event["stage"], event["request_sha256"], event["response_sha256"])
+        if row[0] != "classifier" or cid in self.rows or (cid in self.failures and self.failures[cid] != row):
+            raise RuntimeError("Audited failed attempt changed")
+        self.failures[cid] = row
+        self.check()
+
+    def reserved(self):
+        return {g: sum((qa.charge(r[0], *qa.PROFILES[r[0]][:2]) for r in self.failures.values()
+                        if qa.group(r[0]) == g), qa.Decimal(0)) for g in qa.CAPS}
+
     def check(self, next_stage=None):
-        spent = {g: sum((qa.charge(r[0], r[1], r[2]) for r in self.rows.values() if qa.group(r[0]) == g), qa.Decimal(0)) for g in qa.CAPS}
-        if any(sum(r[0] == s for r in self.rows.values()) > spec[4] for s, spec in qa.PROFILES.items()):
+        reserved = self.reserved()
+        spent = {g: reserved[g] + sum((qa.charge(r[0], r[1], r[2]) for r in self.rows.values()
+                                     if qa.group(r[0]) == g), qa.Decimal(0)) for g in qa.CAPS}
+        stages = [r[0] for r in self.rows.values()] + [r[0] for r in self.failures.values()]
+        if any(stages.count(s) > spec[4] for s, spec in qa.PROFILES.items()):
             raise RuntimeError("Call count exceeded")
         if next_stage is not None:
-            if sum(r[0] == next_stage for r in self.rows.values()) >= qa.PROFILES[next_stage][4]:
+            if stages.count(next_stage) >= qa.PROFILES[next_stage][4]:
                 raise RuntimeError("No approved call slots remain")
             pi, po, *_ = qa.PROFILES[next_stage]
             spent[qa.group(next_stage)] += qa.charge(next_stage, pi, po)
@@ -200,6 +216,8 @@ class Transport(wire.RuntimeEvalTransport):
         return response
 
     def _handle(self, request):
+        if self.call_id in self.book.failures:
+            raise RuntimeError("Audited failed attempt must never be sent again")
         self._check_files()
         if (self.root / "pending.json").exists() or (self.root / "transport.lock").exists():
             raise RuntimeError("Unresolved pending/lock; audit before any restoration/send")
@@ -277,6 +295,36 @@ def client_factory(c, root, book, keys, validate, profile, *, delegates=None, ki
     return factory, clients
 
 
+def audited_classifier_failure(root, case, contract, events):
+    """Only an explicitly approved, hash-bound HTTP400 may become a terminal failure."""
+    decision = assets.read_json(case / "provider_failure.json")
+    approved = assets.read_json(root / "prepared.json").get("approved_http400_failures", {}).get(case.name)
+    if decision != approved or not isinstance(decision.get("approval_reference"), str) or not decision["approval_reference"].strip():
+        raise ValueError("Explicit prepared-plan failure approval required")
+    if (decision.get("stage") != "classifier" or decision.get("http_status") != 400
+            or decision.get("usage_status") != "UNKNOWN" or decision.get("retry_allowed") is not False
+            or decision.get("reservation_cny") != str(qa.charge("classifier", *qa.PROFILES["classifier"][:2]))
+            or contract["stages"]["classifier"]["base_url"] != qa.ENDPOINTS["classifier"]
+            or list(contract["calls"])[len(events)] != decision["call_id"]
+            or contract["calls"][decision["call_id"]] != "classifier"):
+        raise ValueError("Invalid audited classifier failure")
+    request = assets.read_json(case / "failed_request.json")["wire_utf8"]
+    body = json.loads(request)
+    wire.validate_body("classifier", body)
+    failure = assets.read_json(case / "wire/failure.json")
+    result = assets.read_json(case / "result.json")
+    if (wire.digest(body) != decision["request_sha256"] or len(request.encode()) != decision["request_bytes"]
+            or len(request.encode()) > contract["stages"]["classifier"]["max_request_bytes"]
+            or sum(e["request_bytes"] for e in events) + len(request.encode()) > contract["max_total_request_bytes"]
+            or failure != {"http_status": 400, "response_sha256": decision["response_sha256"], "response_bytes": decision["response_bytes"]}
+            or result["http_status"] != 503 or result["body"] != {} or result["latency_ms"] is not None
+            or result["observation_sha256"] != wire.digest({k: v for k, v in result.items() if k != "observation_sha256"})
+            or result["context_sha256"] != assets.sha(case / "context.json")
+            or result["selection_sha256"] != assets.sha(case / "selection.json")):
+        raise ValueError("Audited failure request/result binding differs")
+    return decision
+
+
 def replay_history(root, book):
     for folder in ("service", "evidence", "answer"):
         for contract_path in sorted((root / folder).glob("*/contract.json")):
@@ -296,8 +344,13 @@ def replay_history(root, book):
                 try:
                     if (path.parent / "pending.json").exists() or (path.parent / "transport.lock").exists():
                         raise RuntimeError("Unknown attempt/old lock requires audit; no auto clearing")
-                    for e in transport._history():
+                    events = transport._history()
+                    for e in events:
                         book.add(e, None if folder == "service" else folder)
+                    if (case / "provider_failure.json").exists():
+                        if folder != "service":
+                            raise ValueError("No judge failure exception approved")
+                        book.hold_failed_classifier(audited_classifier_failure(root, case, c, events))
                 finally:
                     transport.close()
 
@@ -333,6 +386,8 @@ def http_case(client, row, arm, root, reference, book, keys, collection, *, prof
     result_path = root / "result.json"
     if (root / "halt.json").exists():
         raise RuntimeError("Halt requires explicit audit")
+    if (root / "provider_failure.json").exists() and not result_path.exists():
+        raise RuntimeError("Missing audited failure result; never resubmit")
     if result_path.exists():
         saved = assets.read_json(result_path)
         if (saved["observation_sha256"] != wire.digest({k: v for k, v in saved.items() if k != "observation_sha256"})
@@ -667,6 +722,9 @@ def report(root):
     book = Book()
     replay_history(root, book)
     value = qa.paired_report(cases) | dict(accounting_cny_not_invoice=book.check(), completed_unique_provider_calls=len(book.rows),
+        total_unique_provider_attempts=len(book.rows)+len(book.failures), unknown_usage_failed_attempts=len(book.failures),
+        unknown_usage_reservations_cny={g: str(v) for g, v in book.reserved().items()},
+        known_usage_priced_cny={g: str(qa.Decimal(book.check()[g])-book.reserved()[g]) for g in qa.CAPS},
                                           prepared_sha256=assets.sha(root / "prepared.json"))
     keep(root / "report.json", value)
     return value
