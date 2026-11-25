@@ -1,0 +1,87 @@
+{
+  "date": "2026-10-28",
+  "status": "PASS_ISOLATED_TICKET_WORKFLOW",
+  "source": {
+    "execution_commit": "1b890dad6ee486581eb6e6de82004e7d98fb9f47",
+    "merged_main_commit": "5aeac11e0a0cc14a53be74c5aed795e74e877632",
+    "identical_tree": "29eedcd7f64b949bea4ab819cd65b994b58df680",
+    "merged_pull_request": 124
+  },
+  "environment": {
+    "container": "Docker with external networking disabled",
+    "http_transport": "Real Uvicorn loopback TCP",
+    "authentication": "Demo JWT with actual login and token validation for two fixture tenants",
+    "database": "Temporary SQLite migrated to Alembic head",
+    "knowledge_search": "Fixed fictional KB stub replacing Dense search",
+    "external_network_attempts": 0,
+    "external_model_calls": 0,
+    "model_cost_cny": 0
+  },
+  "checks": [
+    {
+      "group": "Existing seven-step ticket and AgentOps smoke",
+      "result": "PASS",
+      "observed": "Logged in, previewed the ticket, checked search_kb and classify_ticket records and pending approval, explicitly confirmed, then checked the created ticket, successful create_ticket record and AgentOps metrics."
+    },
+    {
+      "group": "Duplicate confirmation",
+      "result": "PASS",
+      "observed": "Repeating a successful confirmation returned HTTP 400. The ticket count stayed at one for that tenant."
+    },
+    {
+      "group": "Tampered draft and cancellation",
+      "result": "PASS",
+      "observed": "Confirmation with a modified title returned HTTP 400. Cancellation recorded the logged-in decision actor and set cancelled. Later confirmation returned HTTP 400. The ticket count stayed unchanged."
+    },
+    {
+      "group": "Rejection",
+      "result": "PASS",
+      "observed": "Rejection recorded the logged-in decision actor and set rejected. Later confirmation returned HTTP 400. The ticket count stayed unchanged."
+    },
+    {
+      "group": "JWT tenant isolation",
+      "result": "PASS",
+      "observed": "Cross-tenant run, trace, tool-call and approval reads, confirm, reject and cancel returned HTTP 404. Ticket detail also returned HTTP 404 across tenants in both directions. A tenant ID supplied in the preview body had no effect. Confirmation with a JWT from the matching tenant returned HTTP 201 and recorded that tenant and actor on the ticket."
+    },
+    {
+      "group": "Knowledge-only inquiry",
+      "result": "PASS",
+      "observed": "Preview returned no draft or approval, did not request ticket creation and left the ticket count unchanged."
+    },
+    {
+      "group": "Per-tenant lists and metrics",
+      "result": "PASS",
+      "observed": "Each tenant listed only its own runs and one ticket. The run counts were four and one, with one approved approval per tenant. An unauthenticated AgentOps run-list request returned HTTP 401."
+    }
+  ],
+  "checks_passed": 7,
+  "database_rows": {
+    "tickets": 2,
+    "agent_runs": 5,
+    "approval_requests": 4,
+    "tool_calls": 12,
+    "successful_create_ticket_calls": 2
+  },
+  "ticket_creation": "Two explicit confirmations created the only two fictional tickets, one per tenant. Preview did not write a ticket.",
+  "focused_regression": {
+    "passed": 80,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "scope": "Six existing Ticket CRUD, Ticket Agent and AgentOps test modules in a separate offline process with a temporary database. Included single-winner SQLite regression cases for confirm racing confirm, reject or cancel."
+  },
+  "artifact_sha256": {
+    "completion.json": "b5a86dde2e775d60759281158d20b0de0434d4a76eefef9ec034d52c4e57f1f3",
+    "acceptance.py": "a373538a35e40af6f031bd75017e4cdf2d4b2b2e1f83e31e591a14b838114a43",
+    "result.json": "a0c75450d7df5da50497c80952187e903b8acacefdfb6e554af0ec33053796c9",
+    "focused_tests.xml": "134a412c65a567ade4d53931dd2c12ff5846cf25123b0800f5c76ebd6b40ddb7",
+    "report.txt": "4586b9db0bacb5d607c4de6e94d7ff55eb450e1c66e159d3ecb3d9f97f03c47c"
+  },
+  "evidence_scope": "Public aggregate of the local execution record. Hashes identify the archived artifacts. The 2026-10-27 source-scope real-provider acceptance is a separate run.",
+  "out_of_scope": [
+    "Real-provider RAG-to-ticket behavior, retrieval or answer quality, and autonomous model planning",
+    "Same-tenant requester-bound approval and a support/admin role requirement on Ticket Agent confirm. Confirm uses login and JWT tenant scope. AgentOps reject and cancel have their own support/admin role gate.",
+    "Production IAM, production throughput, public deployment and persistent service restart",
+    "Cross-transaction exactly-once ticket and audit writes, crash recovery and storage failure coverage"
+  ]
+}
