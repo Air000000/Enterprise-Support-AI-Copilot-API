@@ -158,6 +158,15 @@ only the active case may attach guarded clients, including during late-worker sh
 
 Unknown pending, stale locks, guard/structure/billing failures require explicit
 audit; no automatic deletion or retry, and timeouts do not imply free calls.
+After separate explicit human consent only, a captured service-classifier HTTP400
+may be finalized as a failed HTTP outcome without resending. The prepared-plan
+hash must bind the decision, original request/failure hashes and approval reference.
+Usage remains UNKNOWN; no usage tokens or successful response may be fabricated.
+Count the failed attempt against the classifier call cap and hold its entire
+input/output reservation within the original service/total limits. Reports separate
+known priced usage from these provisional reserves; neither is an invoice guarantee.
+Retain original pending/halt/request evidence in the audit archive. Missing terminal
+failure checkpoints stop before any resend; judge errors remain strict stops.
 Local-copy initialization failure can require rebuilding **only owned_work** after
 target verification; provider receipts stay intact. Partial write/hash mismatch
 requires audit. A format-invalid classifier is a known HTTP failure if its valid
