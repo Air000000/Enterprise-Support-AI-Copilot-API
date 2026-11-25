@@ -197,11 +197,15 @@ create_ticket
 
 离线集成检查：`pytest tests/test_hybrid_search.py -k ticket_hybrid_document_to_decision`。通过真实 Uvicorn 回环 HTTP、JWT、上传/索引、临时 SQLite 与 Chroma，分别验证 Hybrid 预览后的确认、拒绝和取消，以及 trace/metrics 查询、租户与角色隔离；只有显式确认会在临时库产生测试工单。外部 embedding/rerank 使用替身，不是检索质量或并发审批验收，不外发资料、不修改日常数据。
 
+2026-10-28 的工单隔离验收在断网 Docker 中通过 7 组检查。真实 Uvicorn 回环 TCP、Demo JWT 与临时 SQLite 验证了预览、审批、建单、租户隔离和 AgentOps 审计。两次合法显式确认共创建两张虚构测试工单，每租户一张。知识检索使用固定替身，外部模型调用为零，另有 80 项既有回归通过。工单验收与 10-27 来源级门控真实提供方验收各自独立。 [工单验收聚合记录](docs/reports/ticket_workflow_acceptance_2026-10-28.json) · [来源级门控验收](docs/reports/source_scope_engineering_acceptance_2026-10-27.json)
+
 ### Confirm
 
 `POST /agent/ticket/confirm`
 
-只有以下条件全部成立时才创建真实工单：
+`preview` 和 `confirm` 都要求登录，租户由 JWT 确定。确认校验审批所属租户和 Agent run，未校验确认者是否为审批发起人，也未要求 `support` 或 `admin` 角色。AgentOps 的 reject／cancel 路由有 `support`／`admin` 角色门禁。
+
+同租户审批还须满足以下条件才能确认建单。
 
 ```text
 approval_request.agent_run_id == request.agent_run_id
@@ -220,7 +224,7 @@ request.draft == server-side approval_request.draft_json
 审批更新通过数据库条件更新，限定审批 ID、租户和旧状态 `pending`。
 并发 confirm / reject / cancel 只有一个决策成功，其他决策返回 HTTP 400；终态不可覆盖或重新打开。
 
-> 这是审批决策至多一次消费，不是工单与审计写入的跨事务恰好一次保证，也不包含崩溃恢复。
+> 审批更新保证 `pending` 至多被消费一次。审批、工单和审计分别提交，缺少跨事务恰好一次与崩溃恢复保证。
 
 更多实现细节见 [docs/agent_workflow.md](docs/agent_workflow.md)。
 
@@ -408,6 +412,18 @@ TechQA 的 qrel 是文档级，而检索器返回 chunk。正式 IR 评测会保
 > **查询文本尾部空白漂移：** 历史 retrieval 与 generation 数据中，有些问题语义完全相同，只在末尾多了空格或换行。250/450 条 可回答问题 存在这种差异，其中 74 条 Top3 排序发生变化、5 条 标准相关文档准入 发生变化。由于这不是语义变化，这 5 条不用于因果失败计数；后续 模型服务调用前统一对 query 做 `rstrip()`。
 
 R4 C1 的正式历史状态仍是 **FAIL**。后续保留固定 Hybrid 路线并切换 API 默认是工程选择，不改写历史结论，不构成新的质量改善证据。
+
+### 4.2.1 归档 DEV160 三臂比较（2026-10-23）
+
+在归档向量索引上复用 TechQA DEV 的 160 条可回答查询。三臂共享 Dense100，重排使用 `qwen3-rerank`。Hybrid 加入 BM25100，以 RRF（k=60）融合并取 Top100 后重排。
+
+| 配置 | Recall@5 | Recall@20 | MRR@10 |
+| --- | ---: | ---: | ---: |
+| Dense | 65.000% | 81.250% | 0.522264 |
+| Dense + Rerank | 72.500% | 85.625% | 0.559638 |
+| Hybrid + Rerank | 75.625% | 87.500% | 0.577989 |
+
+预先指定的主要对照 H−DR 的 MRR@10 差值为 **+0.018351**，配对 Bootstrap 95% CI 为 **[−0.003981, 0.043185]**，跨零，结论仍为 `IMPROVEMENT_NOT_ESTABLISHED`。该运行复用 DEV，归档语料的 embedding 模型身份未知。上面的 E0／E1 和 R4 C1 属于各自独立的历史实验，R4 C1 结论仍为 **FAIL**。新的独立盲测和当前问答总体准确率均待另行验证。 [归档检索聚合报告](experiments/evals/reports/runtime_eval_phase0/retrieval_result_2026-10-23.json)
 
 ---
 
@@ -805,7 +821,7 @@ python -m scripts.demo_refusal_coverage
 
 运行步骤及已知错误放行示例见 [离线 gate 演示](docs/demo_script.md#21-离线拒答-gate-演示)。
 
-GitHub Actions 的 `test` 作业执行 Python 3.11 环境配置、依赖安装、`compileall`、Ruff 和核心定向测试。
+2026-10-30，GitHub Actions 在主线 `ce2da949` 上通过 `compileall`、Ruff 和合成离线拒答演示。聚焦测试 **424 项通过**，完整离线套件 **955 项通过、9 条警告**。2026-10-22 的 741 项通过属于 §3.3 记录的历史基线。 [主线 CI 41061451240](https://github.com/Air000000/Enterprise-Support-AI-Copilot-API/actions/runs/41061451240)
 
 Workflow：
 
